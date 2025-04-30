@@ -1,0 +1,62 @@
+version: '3.8'
+
+
+services:
+    # Application Service
+    app:
+        container_name: backend_full_laravel
+        build:
+            context: ./php
+            dockerfile: Dockerfile
+        volumes:
+            - ./backend_full_laravel:/var/www
+        ports:
+            - "9000:9000"
+        working_dir: /var/www
+        depends_on:
+            - db
+
+
+    # Database Service
+    db:
+        image: postgres
+        container_name: postgres
+#        volumes:
+#            - ./postgresql/data:/var/lib/postgresql/data
+        volumes:
+            - /var/lib/postgresql/data
+        ports:
+            - "5432:5432"
+        environment:
+            POSTGRES_DB: blog
+            POSTGRES_USER: root
+            POSTGRES_PASSWORD: password
+
+
+    # Web Server Service
+    nginx:
+        image: nginx:alpine
+        container_name: nginx
+        ports:
+            - "8081:80"
+        volumes:
+            - ./src:/var/www
+            - ./nginx/conf.d/:/etc/nginx/conf.d/
+        depends_on:
+            - app
+            - db
+
+    # React Service
+    react:
+        container_name: react_app
+        build:
+            context: ./frontend_react
+            dockerfile: Dockerfile   # Create a Dockerfile in the react directory
+        volumes:
+            - ./frontend_react:/app
+        ports:
+            - "3000:3000"  # Expose React app on port 3000
+        working_dir: /app
+        environment:
+            - CHOKIDAR_USEPOLLING=true  # Ensure live reload works
+

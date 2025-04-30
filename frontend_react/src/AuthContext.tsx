@@ -1,0 +1,62 @@
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { ReactNode } from 'react';
+
+// Create AuthContext
+interface AuthContextType {
+    isAuthenticated: boolean;
+    login: (email: string, password: string) => Promise<void>;
+    logout: () => void;
+    token: string | null;
+}
+
+const AuthContext = createContext<AuthContextType | null>(null);
+
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
+    const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+        // Check local storage for token and set authentication state
+        const storedToken = localStorage.getItem('token');
+        return storedToken !== null; // If a token exists, user is authenticated
+    });
+
+    const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
+
+    const login = async (email: string, password: string) => {
+        const loginBody = { email, password };
+        const response = await fetch('http://localhost:8081/api/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(loginBody),
+        });
+        
+        if (!response.ok) {
+            throw new Error('Login failed');
+        }
+
+        const data = await response.json();
+        setToken(data.token);
+        localStorage.setItem('token', data.token); // Store the token in local storage
+        setIsAuthenticated(true);
+    };
+
+    const logout = () => {
+        setToken(null);
+        localStorage.removeItem('token'); // Remove the token from local storage
+        setIsAuthenticated(false);
+    };
+
+    // Optional: Clear token if it is expired, on app load
+    useEffect(() => {
+        // Check expiration logic if needed
+    }, []);
+
+    return (
+        <AuthContext.Provider value={{ isAuthenticated, login, logout, token }}>
+            {children}
+        </AuthContext.Provider>
+    );
+};
+
+// Custom hook to use auth context
+export const useAuth = () => useContext(AuthContext);
