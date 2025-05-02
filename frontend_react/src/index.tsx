@@ -3,14 +3,15 @@ import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
+import { AuthProvider } from './AuthContext';
 
 const rootElement = document.getElementById('root');
 if (rootElement) {
-    const root = ReactDOM.createRoot(rootElement); // Correct usage of createRoot
+    const root = ReactDOM.createRoot(rootElement);
     root.render(
-        <React.StrictMode>
+        <AuthProvider>
             <App />
-        </React.StrictMode>
+        </AuthProvider>
     );
 }
 

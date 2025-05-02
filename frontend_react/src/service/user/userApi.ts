@@ -1,0 +1,112 @@
+
+import { getCsrfToken } from '../../util/csrf';
+import { API_BASE_URL, USERS_ENDPOINT } from '../../config/api';
+
+export const fetchUsers = async (token: string | null) => {
+    const response = await fetch(`${API_BASE_URL}/${USERS_ENDPOINT}`, {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+        },
+    });
+
+    if (!response.ok) {
+        throw new Error('Failed to fetch users');
+    }
+
+    return await response.json();
+};
+
+interface AddUserParams {
+    name: string;
+    email: string;
+    password: string;
+    token: string | null;
+}
+
+export const addUser = async ({
+    name,
+    email,
+    password,
+    token,
+}: AddUserParams) => {
+    const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        'X-XSRF-Token': getCsrfToken() || '',
+    };
+
+    const response = await fetch(`${API_BASE_URL}/${USERS_ENDPOINT}`, {
+        method: 'POST',
+        headers: headers,
+        credentials: 'include',
+        body: JSON.stringify({ name, email, password }),
+    });
+
+    if (!response.ok) {
+        throw new Error('Failed to add user');
+    }
+
+    return await response.json();
+};
+
+export interface UpdateUserParams {
+    id: number;
+    name: string;
+    email: string;
+    token: string | null;
+}
+
+export const updateUser = async ({
+    id,
+    name,
+    email,
+    token,
+}: UpdateUserParams) => {
+    const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        'X-XSRF-Token': getCsrfToken() || '',
+    };
+
+    const response = await fetch(`${API_BASE_URL}/${USERS_ENDPOINT}/${id}`, {
+        method: 'PUT',
+        headers,
+        credentials: 'include',
+        body: JSON.stringify({ id, name, email }),
+    });
+
+    if (!response.ok) {
+        throw new Error('Failed to update user');
+    }
+
+    return await response.json();
+};
+
+export interface DeleteUserParams {
+    id: number;
+    token: string | null;
+}
+
+export const deleteUser = async ({
+    id,
+    token,
+}: DeleteUserParams) => {
+    const headers: HeadersInit = {
+        'Authorization': `Bearer ${token}`,
+        'X-XSRF-Token': getCsrfToken() || '',
+    };
+
+    const response = await fetch(`${API_BASE_URL}/${USERS_ENDPOINT}/${id}`, {
+        method: 'DELETE',
+        headers,
+        credentials: 'include',
+    });
+
+    if (!response.ok) {
+        throw new Error('Failed to delete user');
+    }
+
+    return true;
+};

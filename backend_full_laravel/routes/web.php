@@ -1,8 +1,8 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\TokenController;
 use App\Http\Controllers\UserController;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -13,16 +13,8 @@ Route::post('/api/login', [AuthController::class, 'login']);
 Route::post('/api/logout', [AuthController::class, 'logout']);
 
 Route::middleware('auth:sanctum')->group(function () {
-    Route::get('/api/csrf-token', function () {
-        return response()->json([
-            'csrf_token' => csrf_token(),
-        ]);
-    });
-
-    Route::post('/api/tokens/create', function (Request $request) {
-        $token = $request->user()->createToken("token_name");
-        return ['token' => $token->plainTextToken];
-    });
+    Route::get('/api/token/csrf', [TokenController::class, 'generateCsrfToken']);
+    Route::get('/api/token/user', [TokenController::class, 'generateUserToken']);
 
     Route::post('/api/users', [UserController::class, 'store']);
     Route::put('/api/users/{id}', [UserController::class, 'update']);

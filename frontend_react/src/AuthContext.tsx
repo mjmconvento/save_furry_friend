@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { ReactNode } from 'react';
+import { API_BASE_URL } from './config/api';
 
-// Create AuthContext
 interface AuthContextType {
     isAuthenticated: boolean;
     login: (email: string, password: string) => Promise<void>;
@@ -13,20 +13,19 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-        // Check local storage for token and set authentication state
         const storedToken = localStorage.getItem('token');
-        return storedToken !== null; // If a token exists, user is authenticated
+        return storedToken !== null;
     });
 
     const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
-
     const login = async (email: string, password: string) => {
         const loginBody = { email, password };
-        const response = await fetch('http://localhost:8081/api/login', {
+        const response = await fetch(`${API_BASE_URL}/api/login`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
+            credentials: 'include',
             body: JSON.stringify(loginBody),
         });
         
@@ -36,19 +35,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         const data = await response.json();
         setToken(data.token);
-        localStorage.setItem('token', data.token); // Store the token in local storage
+        localStorage.setItem('token', data.token);
         setIsAuthenticated(true);
     };
+    
 
     const logout = () => {
         setToken(null);
-        localStorage.removeItem('token'); // Remove the token from local storage
+        localStorage.removeItem('token');
         setIsAuthenticated(false);
     };
 
-    // Optional: Clear token if it is expired, on app load
     useEffect(() => {
-        // Check expiration logic if needed
     }, []);
 
     return (
@@ -58,5 +56,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     );
 };
 
-// Custom hook to use auth context
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => {
+    const context = useContext(AuthContext);
+    if (!context) {
+        throw new Error('useAuth must be used within an AuthProvider');
+    }
+    return context;
+};
