@@ -1,16 +1,23 @@
-import React from 'react';
 import { useAuth } from './AuthContext';
-import UserList from './component/user/list/UserList';
 import LoginForm from './component/login/LoginForm';
+import Navbar from './component/template/Navbar';
+import UserPage from './page/UserPage';
 
 const App = () => {
-    const { isAuthenticated } = useAuth()!;
+  const { isAuthenticated } = useAuth()!;
 
-    return (
-        <div className="App">
-            {isAuthenticated ? <UserList /> : <LoginForm />}
-        </div>
-    );
+  return (
+    <div className="App">
+      {isAuthenticated ? (
+        <>
+          <Navbar />
+          <UserPage />
+        </>
+      ) : (
+        <LoginForm />
+      )}
+    </div>
+  );
 };
 
 export default App;
