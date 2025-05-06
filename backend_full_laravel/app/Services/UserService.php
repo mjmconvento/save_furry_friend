@@ -2,38 +2,24 @@
 
 namespace App\Services;
 
+use App\Http\Requests\StoreUserRequest;
+use App\Http\Requests\UpdateUserRequest;
 use App\Models\User;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
 class UserService
 {
-    public function storeUser(Request $request)
+    public function storeUser(StoreUserRequest $request)
     {
-        try {
-            $request->validate([
-                'name' => 'required|string|max:255',
-                'email' => 'required|string|email|unique:users',
-                'password' => 'required|string|min:8',
-            ]);
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            return response()->json($e->errors(), 422);
-        }
-
         return User::create([
             'name' => $request->name,
             'email' => $request->email,
-            'password' => Hash::make($request->password),  // Hash the password before saving
+            'password' => Hash::make($request->password),
         ]);
     }
 
-    public function updateUser(Request $request, User $user, string $id): void
+    public function updateUser(UpdateUserRequest $request, User $user): void
     {
-        $request->validate([
-            'name' => 'nullable|string|max:255',
-            'email' => 'nullable|string|email|unique:users,email,' . $id, // Exclude the current user from unique check
-            'password' => 'nullable|string|min:8',
-        ]);
 
         if ($request->has('name')) {
             $user->name = $request->name;

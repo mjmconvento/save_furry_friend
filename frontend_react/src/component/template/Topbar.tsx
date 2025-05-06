@@ -2,7 +2,7 @@ import React from 'react';
 import { AppBar, Toolbar, Typography, Button, Box } from '@mui/material';
 import { useAuth } from '../../AuthContext';
 
-const Navbar = () => {
+const Topbar = () => {
   const { logout } = useAuth()!;
 
   const handleLogout = () => {
@@ -25,4 +25,4 @@ const Navbar = () => {
   );
 };
 
-export default Navbar;
+export default Topbar;

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -6,7 +6,12 @@ import {
   DialogActions,
   TextField,
   Button,
+  Box,
+  Typography,
 } from '@mui/material';
+import ErrorList from '../../template/ErrorList';
+import PersonIcon from '@mui/icons-material/Person';
+import EditIcon from '@mui/icons-material/Edit';
 
 interface EditUserDialogProps {
   open: boolean;
@@ -16,6 +21,7 @@ interface EditUserDialogProps {
   onEmailChange: (value: string) => void;
   onClose: () => void;
   onSave: () => void;
+  formErrorSummary: string[];
 }
 
 const EditUserDialog: React.FC<EditUserDialogProps> = ({
@@ -26,10 +32,35 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({
   onEmailChange,
   onClose,
   onSave,
+  formErrorSummary,
 }) => {
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>Edit User</DialogTitle>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="sm"
+      fullWidth
+      PaperProps={{
+        style: {
+          borderRadius: 16,
+          padding: 20,
+          boxShadow: '0 8px 20px rgba(0,0,0,0.2)',
+        },
+      }}
+    >
+      <Box display="flex" justifyContent="center" mb={1}>
+        <EditIcon sx={{ fontSize: 40, color: 'primary.main' }} />
+      </Box>
+
+      <DialogTitle sx={{ textAlign: 'center' }}>Edit User</DialogTitle>
+      <ErrorList errors={formErrorSummary} />
+
+      <Box mb={2} px={2}>
+        <Typography variant="body2" align="center" color="textSecondary">
+          Fill in the details below to add a new user.
+        </Typography>
+      </Box>
+
       <DialogContent>
         <TextField
           margin="normal"

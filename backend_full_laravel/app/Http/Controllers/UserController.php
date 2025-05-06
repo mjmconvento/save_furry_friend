@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreUserRequest;
+use App\Http\Requests\UpdateUserRequest;
 use App\Models\User;
 use App\Services\UserService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 
 class UserController extends Controller
 {
@@ -31,14 +31,14 @@ class UserController extends Controller
     }
 
 
-    public function store(Request $request)
+    public function store(StoreUserRequest $request)
     {
         $user = $this->userService->storeUser($request);
 
         return response()->json($user, 201);
     }
 
-    public function update(Request $request, string $id): \Illuminate\Http\JsonResponse
+    public function update(UpdateUserRequest $request, string $id): \Illuminate\Http\JsonResponse
     {
         $user = User::find($id);
         if (!$user) {

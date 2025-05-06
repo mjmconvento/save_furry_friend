@@ -19,7 +19,7 @@ interface User {
 interface Props {
   users: User[];
   onEdit: (user: User) => void;
-  onDelete: (userId: number) => void;
+  onDelete: (user: User) => void;
 }
 
 const UserList: React.FC<Props> = ({ users, onEdit, onDelete }) => {
@@ -36,7 +36,7 @@ const UserList: React.FC<Props> = ({ users, onEdit, onDelete }) => {
         </TableHead>
         <TableBody>
           {users.map((user) => (
-            <TableRow key={user.id}>
+            <TableRow key={user.id + user.email}>
               <TableCell>{user.id}</TableCell>
               <TableCell>{user.name}</TableCell>
               <TableCell>{user.email}</TableCell>
@@ -53,7 +53,7 @@ const UserList: React.FC<Props> = ({ users, onEdit, onDelete }) => {
                   size="small"
                   color="error"
                   style={{ marginLeft: 8 }}
-                  onClick={() => onDelete(user.id)}
+                  onClick={() => onDelete(user)}
                 >
                   Delete
                 </Button>
