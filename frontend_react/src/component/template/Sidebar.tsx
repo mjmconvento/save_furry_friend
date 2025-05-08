@@ -2,11 +2,9 @@ import React from 'react';
 import {
   Drawer,
   List,
-  ListItem,
   ListItemButton,
   ListItemIcon,
   ListItemText,
-  Divider,
   Box,
 } from '@mui/material';
 import PeopleIcon from '@mui/icons-material/People';
@@ -52,7 +50,6 @@ const Sidebar = () => {
             </ListItemIcon>
             <ListItemText primary="Heartbreaking Posts" />
           </ListItemButton>
-
           <ListItemButton selected>
             <ListItemIcon>
               <PeopleIcon />
