@@ -12,6 +12,7 @@ import DeleteModal from '../component/user/delete/DeleteModal';
 import UserList from '../component/user/list/UserList';
 import { Button, Container, Stack, Typography } from '@mui/material';
 import Toast from '../component/template/Toast';
+import LoadingIndicator from '../component/template/LoadingIndicator';
 
 interface User {
   id: number;
@@ -176,7 +177,7 @@ const UserPage: React.FC = () => {
   };
 
   if (loading) {
-    return <div>Loading...</div>;
+    return <LoadingIndicator message="Please wait..." />;
   }
 
   if (error) {

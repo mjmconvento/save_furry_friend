@@ -1,7 +1,10 @@
 import React from 'react';
+import UnderConstruction from '../component/template/UnderConstruction';
 
-const HeartBreakingPostPage: React.FC = () => {
-  return <div>Heart Breaking Post Page</div>;
+const HeartbreakingPostPage: React.FC = () => {
+  return (
+    <UnderConstruction message="This section is coming soon! Heartbreaking posts page." />
+  );
 };
 
-export default HeartBreakingPostPage;
+export default HeartbreakingPostPage;

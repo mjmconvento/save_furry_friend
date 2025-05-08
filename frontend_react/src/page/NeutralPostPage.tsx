@@ -1,7 +1,10 @@
 import React from 'react';
+import UnderConstruction from '../component/template/UnderConstruction';
 
 const NeutralPostPage: React.FC = () => {
-  return <div>Neutral Post Page</div>;
+  return (
+    <UnderConstruction message="This section is coming soon! Neutral posts page." />
+  );
 };
 
 export default NeutralPostPage;

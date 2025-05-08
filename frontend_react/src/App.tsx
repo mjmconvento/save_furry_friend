@@ -3,8 +3,14 @@ import LoginForm from './component/login/LoginForm';
 import Topbar from './component/template/Topbar';
 import Sidebar from './component/template/Sidebar';
 import UserPage from './page/UserPage';
-import { Box, Toolbar } from '@mui/material';
+import { Box } from '@mui/material';
 import { getCsrfToken } from './util/csrf';
+import { Routes, Route } from 'react-router-dom';
+import HomePage from './page/HomePage';
+import HappyPostPage from './page/HappyPostPage';
+import NeutralPostPage from './page/NeutralPostPage';
+import { BrowserRouter } from 'react-router-dom';
+import HeartbreakingPostPage from './page/HeartbreakingPostPage';
 
 const App = () => {
   const { isAuthenticated, logout } = useAuth();
@@ -15,15 +21,24 @@ const App = () => {
   if (!isAuthenticated) return <LoginForm />;
 
   return (
-    <>
+    <BrowserRouter>
       <Topbar />
       <Box sx={{ display: 'flex' }}>
         <Sidebar />
         <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
-          <UserPage />
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/happy_posts" element={<HappyPostPage />} />
+            <Route path="/neutral_posts" element={<NeutralPostPage />} />
+            <Route
+              path="/heartbreaking_posts"
+              element={<HeartbreakingPostPage />}
+            />
+            <Route path="/users" element={<UserPage />} />
+          </Routes>
         </Box>
       </Box>
-    </>
+    </BrowserRouter>
   );
 };
 
