@@ -1,8 +1,6 @@
 version: '3.8'
 
-
 services:
-    # Application Service
     app:
         container_name: backend_full_laravel
         build:
@@ -32,6 +30,17 @@ services:
             POSTGRES_USER: root
             POSTGRES_PASSWORD: password
 
+    mongo:
+        image: mongo:7
+        container_name: mongo
+        restart: always
+        ports:
+            - "27017:27017"
+#        volumes:
+#            - ./mongo/data:/data/db
+        environment:
+            MONGO_INITDB_ROOT_USERNAME: admin
+            MONGO_INITDB_ROOT_PASSWORD: password
 
     # Web Server Service
     nginx:
@@ -51,12 +60,12 @@ services:
         container_name: react_app
         build:
             context: ./frontend_react
-            dockerfile: Dockerfile   # Create a Dockerfile in the react directory
+            dockerfile: Dockerfile
         volumes:
             - ./frontend_react:/app
         ports:
-            - "3000:3000"  # Expose React app on port 3000
+            - "3000:3000"
         working_dir: /app
         environment:
-            - CHOKIDAR_USEPOLLING=true  # Ensure live reload works
+            - CHOKIDAR_USEPOLLING=true
 

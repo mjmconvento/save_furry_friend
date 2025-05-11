@@ -6,20 +6,21 @@ use App\Http\Requests\StoreUserRequest;
 use App\Http\Requests\UpdateUserRequest;
 use App\Models\User;
 use App\Services\UserService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class UserController extends Controller
 {
     public function __construct(private readonly UserService $userService) {}
 
-    public function index()
+    public function index(): JsonResponse
     {
         $users = User::all();
 
         return response()->json($users);
     }
 
-    public function show(Request $request, string $id)
+    public function show(string $id): JsonResponse
     {
         $user = User::find($id);
 
@@ -31,14 +32,14 @@ class UserController extends Controller
     }
 
 
-    public function store(StoreUserRequest $request)
+    public function store(StoreUserRequest $request): JsonResponse
     {
         $user = $this->userService->storeUser($request);
 
         return response()->json($user, 201);
     }
 
-    public function update(UpdateUserRequest $request, string $id): \Illuminate\Http\JsonResponse
+    public function update(UpdateUserRequest $request, string $id): JsonResponse
     {
         $user = User::find($id);
         if (!$user) {
@@ -50,7 +51,7 @@ class UserController extends Controller
         return response()->json($user);
     }
 
-    public function destroy($id)
+    public function destroy($id): JsonResponse
     {
         $user = User::find($id);
 

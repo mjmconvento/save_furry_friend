@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -10,7 +10,6 @@ import {
   Typography,
 } from '@mui/material';
 import ErrorList from '../../template/ErrorList';
-import PersonIcon from '@mui/icons-material/Person';
 import EditIcon from '@mui/icons-material/Edit';
 
 interface EditUserDialogProps {

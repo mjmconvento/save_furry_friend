@@ -30,6 +30,13 @@ return [
     */
 
     'connections' => [
+        'mongodb' => [
+            'driver' => 'mongodb',
+            'dsn' => env('MONGODB_URI', 'mongodb://mongo:27017'),
+            'database' => env('MONGODB_DATABASE', 'sff'),
+            'username' => 'admin',
+            'password' => 'password',
+        ],
 
         'sqlite' => [
             'driver' => 'sqlite',
