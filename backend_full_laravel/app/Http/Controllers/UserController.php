@@ -2,12 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\StoreUserRequest;
-use App\Http\Requests\UpdateUserRequest;
+use App\Http\Requests\User\StoreUserRequest;
+use App\Http\Requests\User\UpdateUserRequest;
 use App\Models\User;
 use App\Services\UserService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 class UserController extends Controller
 {
@@ -22,11 +21,7 @@ class UserController extends Controller
 
     public function show(string $id): JsonResponse
     {
-        $user = User::find($id);
-
-        if (!$user) {
-            return response()->json(['message' => 'User not found'], 404);
-        }
+        $user = User::findOneOrFail($id);
 
         return response()->json($user);
     }
@@ -41,26 +36,19 @@ class UserController extends Controller
 
     public function update(UpdateUserRequest $request, string $id): JsonResponse
     {
-        $user = User::find($id);
-        if (!$user) {
-            return response()->json(['message' => 'User not found'], 404);
-        }
+        /** @var User $user */
+        $user = User::findOneOrFail($id);
 
-        $this->userService->updateUser($request, $user, $id);
+        $this->userService->updateUser($request, $user);
 
         return response()->json($user);
     }
 
     public function destroy($id): JsonResponse
     {
-        $user = User::find($id);
-
-        if (!$user) {
-            return response()->json(['message' => 'User not found'], 404);
-        }
-
+        $user = User::findOneOrFail($id);
         $user->delete();
 
-        return response()->json(['message' => 'User deleted successfully'], 200);
+        return response()->json(['message' => 'User deleted successfully']);
     }
 }

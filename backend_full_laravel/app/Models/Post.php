@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\HasFindOneOrFail;
 use Carbon\Carbon;
 use MongoDB\Laravel\Eloquent\Model;
 
@@ -14,6 +15,8 @@ use MongoDB\Laravel\Eloquent\Model;
  */
 class Post extends Model
 {
+    use HasFindOneOrFail;
+
     protected $connection = 'mongodb';
     protected string $collection = 'posts';
 
