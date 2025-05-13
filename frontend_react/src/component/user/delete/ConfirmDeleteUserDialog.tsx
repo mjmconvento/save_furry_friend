@@ -10,14 +10,14 @@ import {
 } from '@mui/material';
 import WarningIcon from '@mui/icons-material/Warning';
 
-interface ConfirmDeleteModalProps {
+interface ConfirmDeleteUserDialogProps {
   open: boolean;
   userName: string;
   onClose: () => void;
   onConfirm: () => void;
 }
 
-const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({
+const ConfirmDeleteUserDialog: React.FC<ConfirmDeleteUserDialogProps> = ({
   open,
   userName,
   onClose,
@@ -83,4 +83,4 @@ const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({
   );
 };
 
-export default ConfirmDeleteModal;
+export default ConfirmDeleteUserDialog;

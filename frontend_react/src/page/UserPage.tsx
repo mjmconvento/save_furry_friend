@@ -6,9 +6,9 @@ import {
   deleteUser as deleteUserApi,
   updateUser as updateUserApi,
 } from '../service/user/userApi';
-import EditUserDialog from '../component/user/edit/EditUserModal';
-import AddUserDialog from '../component/user/add/AddUserModal';
-import DeleteModal from '../component/user/delete/DeleteModal';
+import EditUserDialog from '../component/user/edit/EditUserDialog';
+import AddUserDialog from '../component/user/add/AddUserDialog';
+import ConfirmDeleteUserDialog from '../component/user/delete/ConfirmDeleteUserDialog';
 import UserList from '../component/user/list/UserList';
 import { Button, Container, Stack, Typography } from '@mui/material';
 import Toast from '../component/template/Toast';
@@ -228,7 +228,7 @@ const UserPage: React.FC = () => {
         onDelete={handleOpenDeleteModal}
       />
 
-      <DeleteModal
+      <ConfirmDeleteUserDialog
         open={isDeleteModalOpen}
         userName={userToDelete?.name || ''}
         onClose={handleCloseDeleteModal}
