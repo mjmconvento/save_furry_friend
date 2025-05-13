@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -11,32 +11,84 @@ import {
 } from '@mui/material';
 import ErrorList from '../../template/ErrorList';
 import EditIcon from '@mui/icons-material/Edit';
+import { useAuth } from '../../../AuthContext';
+import { updateUser as updateUserApi } from '../../../service/user/userApi';
+
+interface User {
+  id: number;
+  name: string;
+  email: string;
+}
 
 interface EditUserDialogProps {
   open: boolean;
-  name: string;
-  email: string;
-  onNameChange: (value: string) => void;
-  onEmailChange: (value: string) => void;
-  onClose: () => void;
-  onSave: () => void;
-  formErrorSummary: string[];
+  editingUser: User | null;
+  handleCloseEditDialog: () => void;
+  setToastOpen: (value: boolean) => void;
+  setToastMessage: (message: string) => void;
+  setToastSeverity: (severity: 'success' | 'error') => void;
+  users: User[];
+  setUsers: React.Dispatch<React.SetStateAction<User[]>>;
 }
 
 const EditUserDialog: React.FC<EditUserDialogProps> = ({
   open,
-  name,
-  email,
-  onNameChange,
-  onEmailChange,
-  onClose,
-  onSave,
-  formErrorSummary,
+  editingUser,
+  handleCloseEditDialog,
+  setToastOpen,
+  setToastMessage,
+  setToastSeverity,
+  users,
+  setUsers,
 }) => {
+  const [formErrorSummary, setFormErrorSummary] = useState<string[]>([]);
+  const [updatedName, setUpdatedName] = useState<string>('');
+  const [updatedEmail, setUpdatedEmail] = useState<string>('');
+  const { token } = useAuth()!;
+
+  useEffect(() => {
+    if (editingUser) {
+      setUpdatedName(editingUser.name);
+      setUpdatedEmail(editingUser.email);
+    }
+  }, [editingUser, open]);
+
+  const handleUpdate = async () => {
+    if (!editingUser) return;
+
+    console.log(updatedName, updatedEmail, editingUser);
+    try {
+      const updatedUser = await updateUserApi({
+        id: editingUser.id,
+        name: updatedName,
+        email: updatedEmail,
+        token,
+      });
+
+      setUsers((prevUsers) =>
+        prevUsers.map((user) =>
+          user.id === updatedUser.id ? updatedUser : user
+        )
+      );
+
+      setFormErrorSummary([]);
+      setUpdatedName('');
+      setUpdatedEmail('');
+
+      setToastOpen(true);
+      setToastMessage('Update success.');
+      setToastSeverity('success');
+      handleCloseEditDialog();
+    } catch (error: any) {
+      console.log(error);
+      setFormErrorSummary(Object.values(error.list));
+    }
+  };
+
   return (
     <Dialog
       open={open}
-      onClose={onClose}
+      onClose={handleCloseEditDialog}
       maxWidth="sm"
       fullWidth
       PaperProps={{
@@ -65,20 +117,20 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({
           margin="normal"
           label="Name"
           fullWidth
-          value={name}
-          onChange={(e) => onNameChange(e.target.value)}
+          value={updatedName}
+          onChange={(e) => setUpdatedName(e.target.value)}
         />
         <TextField
           margin="normal"
           label="Email"
           fullWidth
-          value={email}
-          onChange={(e) => onEmailChange(e.target.value)}
+          value={updatedEmail}
+          onChange={(e) => setUpdatedEmail(e.target.value)}
         />
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose}>Cancel</Button>
-        <Button variant="contained" color="primary" onClick={onSave}>
+        <Button onClick={handleCloseEditDialog}>Cancel</Button>
+        <Button variant="contained" color="primary" onClick={handleUpdate}>
           Save
         </Button>
       </DialogActions>

@@ -32,22 +32,14 @@ const UserPage: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [editingUser, setEditingUser] = useState<User | null>(null);
-  const [updatedName, setUpdatedName] = useState<string>('');
-  const [updatedEmail, setUpdatedEmail] = useState<string>('');
   const [newUserName, setNewUserName] = useState<string>('');
   const [newUserEmail, setNewUserEmail] = useState<string>('');
   const [newUserPassword, setNewUserPassword] = useState<string>('');
   const [isAddModalOpen, setAddModalOpen] = useState(false);
-
-  const [isEditModalOpen, setEditModalOpen] = useState(false);
+  const [isEditDialogOpen, setEditDialogOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
   const [isDeleteModalOpen, setDeleteModalOpen] = useState(false);
-  const handleOpenEditModal = (user: User) => {
-    setEditingUser(user);
-    setUpdatedName(user.name);
-    setUpdatedEmail(user.email);
-    setEditModalOpen(true);
-  };
+
   const [formErrorSummary, setFormErrorSummary] = useState<string[]>([]);
 
   const handleOpenAddModal = () => {
@@ -60,9 +52,14 @@ const UserPage: React.FC = () => {
     setFormErrorSummary([]);
   };
 
-  const handleCloseEditModal = () => {
+  const handleOpenEditDialog = (user: User) => {
+    setEditingUser(user);
+    setEditDialogOpen(true);
+  };
+
+  const handleCloseEditDialog = () => {
     setFormErrorSummary([]);
-    setEditModalOpen(false);
+    setEditDialogOpen(false);
     setEditingUser(null);
   };
 
@@ -113,38 +110,6 @@ const UserPage: React.FC = () => {
       setToastSeverity('success');
       handleCloseAddModal();
     } catch (error: any) {
-      setFormErrorSummary(Object.values(error.list));
-    }
-  };
-
-  const handleUpdate = async () => {
-    if (!editingUser) return;
-
-    try {
-      const updatedUser = await updateUserApi({
-        id: editingUser.id,
-        name: updatedName,
-        email: updatedEmail,
-        token,
-      });
-
-      setUsers((prevUsers) =>
-        prevUsers.map((user) =>
-          user.id === updatedUser.id ? updatedUser : user
-        )
-      );
-
-      setFormErrorSummary([]);
-      setEditingUser(null);
-      setUpdatedName('');
-      setUpdatedEmail('');
-
-      setToastOpen(true);
-      setToastMessage('Update success.');
-      setToastSeverity('success');
-      handleCloseEditModal();
-    } catch (error: any) {
-      console.log(error);
       setFormErrorSummary(Object.values(error.list));
     }
   };
@@ -224,7 +189,7 @@ const UserPage: React.FC = () => {
 
       <UserList
         users={users}
-        onEdit={handleOpenEditModal}
+        onEdit={handleOpenEditDialog}
         onDelete={handleOpenDeleteModal}
       />
 
@@ -236,16 +201,14 @@ const UserPage: React.FC = () => {
       />
 
       <EditUserDialog
-        open={isEditModalOpen}
-        name={updatedName}
-        email={updatedEmail}
-        onNameChange={setUpdatedName}
-        onEmailChange={setUpdatedEmail}
-        onClose={handleCloseEditModal}
-        onSave={() => {
-          handleUpdate();
-        }}
-        formErrorSummary={formErrorSummary}
+        open={isEditDialogOpen}
+        handleCloseEditDialog={handleCloseEditDialog}
+        editingUser={editingUser}
+        setToastOpen={setToastOpen}
+        setToastMessage={setToastMessage}
+        setToastSeverity={setToastSeverity}
+        users={users}
+        setUsers={setUsers}
       />
     </Container>
   );
