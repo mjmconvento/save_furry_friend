@@ -11,6 +11,7 @@ import PeopleIcon from '@mui/icons-material/People';
 import MessageIcon from '@mui/icons-material/Message';
 import HeartBrokenIcon from '@mui/icons-material/HeartBroken';
 import MoodIcon from '@mui/icons-material/Mood';
+import HouseIcon from '@mui/icons-material/House';
 import { Link } from 'react-router-dom';
 import { useLocation } from 'react-router-dom';
 
@@ -42,7 +43,7 @@ const Sidebar = () => {
             selected={location.pathname === '/'}
           >
             <ListItemIcon>
-              <MoodIcon />
+              <HouseIcon />
             </ListItemIcon>
             <ListItemText primary="Home" />
           </ListItemButton>

@@ -66,10 +66,10 @@ const ConfirmDeleteUserDialog: React.FC<ConfirmDeleteUserDialogProps> = ({
       open={open}
       onClose={handleCloseDeleteDialog}
       maxWidth="xs"
-      PaperProps={{
-        style: {
+      sx={{
+        '& .MuiPaper-root': {
           borderRadius: 12,
-          padding: 20,
+          padding: 5,
           boxShadow: '0 8px 16px rgba(0,0,0,0.2)',
         },
       }}

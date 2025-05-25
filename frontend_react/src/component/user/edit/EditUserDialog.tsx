@@ -82,11 +82,11 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({
       onClose={handleCloseEditDialog}
       maxWidth="sm"
       fullWidth
-      PaperProps={{
-        style: {
-          borderRadius: 16,
-          padding: 20,
-          boxShadow: '0 8px 20px rgba(0,0,0,0.2)',
+      sx={{
+        '& .MuiPaper-root': {
+          borderRadius: 12,
+          padding: 5,
+          boxShadow: '0 8px 16px rgba(0,0,0,0.2)',
         },
       }}
     >

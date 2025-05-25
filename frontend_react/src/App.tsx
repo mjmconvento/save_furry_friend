@@ -11,6 +11,7 @@ import HappyPostPage from './page/HappyPostPage';
 import NeutralPostPage from './page/NeutralPostPage';
 import { BrowserRouter } from 'react-router-dom';
 import HeartbreakingPostPage from './page/HeartbreakingPostPage';
+import NotFoundPage from './page/NotFoundPage';
 
 const App = () => {
   const { isAuthenticated, logout } = useAuth();
@@ -35,6 +36,7 @@ const App = () => {
               element={<HeartbreakingPostPage />}
             />
             <Route path="/users" element={<UserPage />} />
+            <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </Box>
       </Box>
