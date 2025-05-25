@@ -13,12 +13,7 @@ import ErrorList from '../../template/ErrorList';
 import EditIcon from '@mui/icons-material/Edit';
 import { useAuth } from '../../../AuthContext';
 import { updateUser as updateUserApi } from '../../../service/user/userApi';
-
-interface User {
-  id: number;
-  name: string;
-  email: string;
-}
+import { User } from '../../../interface/User';
 
 interface EditUserDialogProps {
   open: boolean;

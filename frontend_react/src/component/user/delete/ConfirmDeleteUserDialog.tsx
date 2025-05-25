@@ -9,24 +9,62 @@ import {
   Box,
 } from '@mui/material';
 import WarningIcon from '@mui/icons-material/Warning';
+import { deleteUser as deleteUserApi } from '../../../service/user/userApi';
+import { useAuth } from '../../../AuthContext';
+import { User } from '../../../interface/User';
 
 interface ConfirmDeleteUserDialogProps {
   open: boolean;
+  userToDelete: User | null;
   userName: string;
-  onClose: () => void;
-  onConfirm: () => void;
+  setToastOpen: (value: boolean) => void;
+  setToastMessage: (message: string) => void;
+  setToastSeverity: (severity: 'success' | 'error') => void;
+  handleCloseDeleteDialog: () => void;
+  setUsers: React.Dispatch<React.SetStateAction<User[]>>;
 }
 
 const ConfirmDeleteUserDialog: React.FC<ConfirmDeleteUserDialogProps> = ({
   open,
+  userToDelete,
   userName,
-  onClose,
-  onConfirm,
+  handleCloseDeleteDialog,
+  setToastOpen,
+  setToastMessage,
+  setToastSeverity,
+  setUsers,
 }) => {
+  const { token } = useAuth()!;
+
+  const handleConfirmDelete = async () => {
+    if (!userToDelete) return;
+
+    try {
+      await deleteUserApi({
+        id: userToDelete.id,
+        token,
+      });
+
+      setUsers((prevUsers) =>
+        prevUsers.filter((user) => user.id !== userToDelete.id)
+      );
+
+      setToastOpen(true);
+      setToastMessage('Delete success.');
+      setToastSeverity('success');
+    } catch (error) {
+      setToastOpen(true);
+      setToastMessage('Delete error.');
+      setToastSeverity('error');
+    } finally {
+      handleCloseDeleteDialog();
+    }
+  };
+
   return (
     <Dialog
       open={open}
-      onClose={onClose}
+      onClose={handleCloseDeleteDialog}
       maxWidth="xs"
       PaperProps={{
         style: {
@@ -65,13 +103,13 @@ const ConfirmDeleteUserDialog: React.FC<ConfirmDeleteUserDialogProps> = ({
       <DialogActions sx={{ justifyContent: 'space-between', px: 3, pb: 2 }}>
         <Button
           variant="outlined"
-          onClick={onClose}
+          onClick={handleCloseDeleteDialog}
           sx={{ textTransform: 'none' }}
         >
           Cancel
         </Button>
         <Button
-          onClick={onConfirm}
+          onClick={handleConfirmDelete}
           variant="contained"
           color="error"
           sx={{ textTransform: 'none' }}

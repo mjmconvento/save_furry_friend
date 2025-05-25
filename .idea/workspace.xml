@@ -6,7 +6,6 @@
   <component name="ChangeListManager">
     <list default="true" id="c43d1c27-fd16-492a-a025-400e24af1f5e" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend_full_laravel/app/Traits/HasFindOneOrFail.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/app/Traits/HasFindOneOrFail.php" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -475,7 +474,7 @@
       <workItem from="1746710176206" duration="1743000" />
       <workItem from="1746969947696" duration="368000" />
       <workItem from="1747142598364" duration="2503000" />
-      <workItem from="1748159145847" duration="373000" />
+      <workItem from="1748159145847" duration="2162000" />
     </task>
     <servers />
   </component>

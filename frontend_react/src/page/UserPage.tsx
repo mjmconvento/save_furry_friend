@@ -1,11 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../AuthContext';
-import {
-  fetchUsers,
-  addUser as addUserApi,
-  deleteUser as deleteUserApi,
-  updateUser as updateUserApi,
-} from '../service/user/userApi';
+import { fetchUsers } from '../service/user/userApi';
 import EditUserDialog from '../component/user/edit/EditUserDialog';
 import AddUserDialog from '../component/user/add/AddUserDialog';
 import ConfirmDeleteUserDialog from '../component/user/delete/ConfirmDeleteUserDialog';
@@ -13,12 +8,7 @@ import UserList from '../component/user/list/UserList';
 import { Button, Container, Stack, Typography } from '@mui/material';
 import Toast from '../component/template/Toast';
 import LoadingIndicator from '../component/template/LoadingIndicator';
-
-interface User {
-  id: number;
-  name: string;
-  email: string;
-}
+import { User } from '../interface/User';
 
 const UserPage: React.FC = () => {
   const [toastOpen, setToastOpen] = useState(false);
@@ -32,24 +22,17 @@ const UserPage: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [editingUser, setEditingUser] = useState<User | null>(null);
-  const [newUserName, setNewUserName] = useState<string>('');
-  const [newUserEmail, setNewUserEmail] = useState<string>('');
-  const [newUserPassword, setNewUserPassword] = useState<string>('');
-  const [isAddModalOpen, setAddModalOpen] = useState(false);
-  const [isEditDialogOpen, setEditDialogOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
-  const [isDeleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [isAddDialogOpen, setAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setEditDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
-  const [formErrorSummary, setFormErrorSummary] = useState<string[]>([]);
-
-  const handleOpenAddModal = () => {
-    setAddModalOpen(true);
-    setFormErrorSummary([]);
+  const handleOpenAddDialog = () => {
+    setAddDialogOpen(true);
   };
 
-  const handleCloseAddModal = () => {
-    setAddModalOpen(false);
-    setFormErrorSummary([]);
+  const handleCloseAddDialog = () => {
+    setAddDialogOpen(false);
   };
 
   const handleOpenEditDialog = (user: User) => {
@@ -58,19 +41,18 @@ const UserPage: React.FC = () => {
   };
 
   const handleCloseEditDialog = () => {
-    setFormErrorSummary([]);
     setEditDialogOpen(false);
     setEditingUser(null);
   };
 
-  const handleOpenDeleteModal = (user: User) => {
+  const handleOpenDeleteDialog = (user: User) => {
     setUserToDelete(user);
-    setDeleteModalOpen(true);
+    setDeleteDialogOpen(true);
   };
 
-  const handleCloseDeleteModal = () => {
+  const handleCloseDeleteDialog = () => {
     setUserToDelete(null);
-    setDeleteModalOpen(false);
+    setDeleteDialogOpen(false);
   };
 
   useEffect(() => {
@@ -91,56 +73,6 @@ const UserPage: React.FC = () => {
     loadUsers();
   }, [token]);
 
-  const addUser = async () => {
-    try {
-      const newUser = await addUserApi({
-        name: newUserName,
-        email: newUserEmail,
-        password: newUserPassword,
-        token,
-      });
-
-      setUsers((prevUsers) => [...prevUsers, newUser]);
-      setNewUserName('');
-      setNewUserEmail('');
-      setNewUserPassword('');
-
-      setToastOpen(true);
-      setToastMessage('Add new user success.');
-      setToastSeverity('success');
-      handleCloseAddModal();
-    } catch (error: any) {
-      setFormErrorSummary(Object.values(error.list));
-    }
-  };
-
-  const handleConfirmDelete = async () => {
-    if (!userToDelete) return;
-
-    try {
-      await deleteUserApi({
-        id: userToDelete.id,
-        token,
-      });
-
-      setUsers((prevUsers) =>
-        prevUsers.filter((user) => user.id !== userToDelete.id)
-      );
-
-      setToastOpen(true);
-      setToastMessage('Delete success.');
-      setToastSeverity('success');
-    } catch (error) {
-      setToastOpen(true);
-      setToastMessage('Delete error.');
-      setToastSeverity('error');
-      console.error('Error deleting user:', error);
-      setError(error instanceof Error ? error.message : 'Something went wrong');
-    } finally {
-      handleCloseDeleteModal();
-    }
-  };
-
   if (loading) {
     return <LoadingIndicator message="Please wait..." />;
   }
@@ -158,19 +90,6 @@ const UserPage: React.FC = () => {
         severity={toastSeverity}
       />
 
-      <AddUserDialog
-        isAddModalOpen={isAddModalOpen}
-        newUserName={newUserName}
-        newUserEmail={newUserEmail}
-        newUserPassword={newUserPassword}
-        setNewUserName={setNewUserName}
-        setNewUserEmail={setNewUserEmail}
-        setNewUserPassword={setNewUserPassword}
-        handleCloseAddModal={handleCloseAddModal}
-        addUser={addUser}
-        formErrorSummary={formErrorSummary}
-      />
-
       <Typography variant="h4" gutterBottom>
         User List
       </Typography>
@@ -182,7 +101,7 @@ const UserPage: React.FC = () => {
         justifyContent="flex-end"
         mb={3}
       >
-        <Button variant="contained" onClick={handleOpenAddModal}>
+        <Button variant="contained" onClick={handleOpenAddDialog}>
           Add
         </Button>
       </Stack>
@@ -190,14 +109,16 @@ const UserPage: React.FC = () => {
       <UserList
         users={users}
         onEdit={handleOpenEditDialog}
-        onDelete={handleOpenDeleteModal}
+        onDelete={handleOpenDeleteDialog}
       />
 
-      <ConfirmDeleteUserDialog
-        open={isDeleteModalOpen}
-        userName={userToDelete?.name || ''}
-        onClose={handleCloseDeleteModal}
-        onConfirm={handleConfirmDelete}
+      <AddUserDialog
+        open={isAddDialogOpen}
+        handleCloseAddDialog={handleCloseAddDialog}
+        setToastOpen={setToastOpen}
+        setToastMessage={setToastMessage}
+        setToastSeverity={setToastSeverity}
+        setUsers={setUsers}
       />
 
       <EditUserDialog
@@ -208,6 +129,17 @@ const UserPage: React.FC = () => {
         setToastMessage={setToastMessage}
         setToastSeverity={setToastSeverity}
         setUsers={setUsers}
+      />
+
+      <ConfirmDeleteUserDialog
+        open={isDeleteDialogOpen}
+        userName={userToDelete?.name || ''}
+        handleCloseDeleteDialog={handleCloseDeleteDialog}
+        setUsers={setUsers}
+        setToastOpen={setToastOpen}
+        setToastMessage={setToastMessage}
+        setToastSeverity={setToastSeverity}
+        userToDelete={userToDelete}
       />
     </Container>
   );
