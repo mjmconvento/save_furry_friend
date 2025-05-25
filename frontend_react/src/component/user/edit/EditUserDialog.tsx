@@ -27,7 +27,6 @@ interface EditUserDialogProps {
   setToastOpen: (value: boolean) => void;
   setToastMessage: (message: string) => void;
   setToastSeverity: (severity: 'success' | 'error') => void;
-  users: User[];
   setUsers: React.Dispatch<React.SetStateAction<User[]>>;
 }
 
@@ -38,7 +37,6 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({
   setToastOpen,
   setToastMessage,
   setToastSeverity,
-  users,
   setUsers,
 }) => {
   const [formErrorSummary, setFormErrorSummary] = useState<string[]>([]);
@@ -56,7 +54,6 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({
   const handleUpdate = async () => {
     if (!editingUser) return;
 
-    console.log(updatedName, updatedEmail, editingUser);
     try {
       const updatedUser = await updateUserApi({
         id: editingUser.id,
@@ -80,7 +77,6 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({
       setToastSeverity('success');
       handleCloseEditDialog();
     } catch (error: any) {
-      console.log(error);
       setFormErrorSummary(Object.values(error.list));
     }
   };

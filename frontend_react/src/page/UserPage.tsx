@@ -207,7 +207,6 @@ const UserPage: React.FC = () => {
         setToastOpen={setToastOpen}
         setToastMessage={setToastMessage}
         setToastSeverity={setToastSeverity}
-        users={users}
         setUsers={setUsers}
       />
     </Container>

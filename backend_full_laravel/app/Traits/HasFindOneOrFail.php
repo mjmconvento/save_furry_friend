@@ -22,6 +22,7 @@ trait HasFindOneOrFail
         if (!$model) {
             throw new NotFoundHttpException('Resource not found.');
         }
+
         return $model;
     }
 }
