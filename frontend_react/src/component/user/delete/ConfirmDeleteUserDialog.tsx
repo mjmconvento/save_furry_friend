@@ -42,7 +42,7 @@ const ConfirmDeleteUserDialog: React.FC<ConfirmDeleteUserDialogProps> = ({
     try {
       await deleteUserApi({
         id: userToDelete.id,
-        token,
+        token: token,
       });
 
       setUsers((prevUsers) =>

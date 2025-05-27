@@ -16,9 +16,9 @@ class TokenController extends Controller
         ]);
     }
 
-    public function generateUserToken(Request $request): JsonResponse
+    public function generateBearerToken(Request $request): JsonResponse
     {
-        $token = $request->user()->createToken("token_name");
+        $token = $request->user()->createToken("bearerTokenName");
 
         return response()->json([
             'token' => $token->plainTextToken,

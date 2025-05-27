@@ -11,21 +11,21 @@ class AuthController extends Controller
     {
         $credentials = $request->only('email', 'password');
 
+
         if (Auth::attempt($credentials)) {
-            // Authentication passed, return success message
             return response()->json([
                 'message' => 'Login successful',
                 'token' => $request->user()->createToken('token_name')->plainTextToken,
-            ], 200);
+                'user' => Auth::user()->toArray(),
+            ]);
         }
 
-        // Authentication failed, return error
         return response()->json(['message' => 'Unauthorized'], 401);
     }
 
     public function logout(Request $request)
     {
-        Auth::logout(); // Log the user out
-        return response()->json(['message' => 'Logout successful'], 200);
+        Auth::logout();
+        return response()->json(['message' => 'Logout successful']);
     }
 }

@@ -15,7 +15,15 @@ class PostController extends Controller
 
     public function index(): Collection
     {
-        return Post::all();
+        $tags = request()->query('tags');
+
+        if (is_null($tags)) {
+            return Post::all();
+        }
+
+        return Post::whereRaw(['tags' => ['$in' => $tags]])
+            ->orderBy('createdAt', 'desc')
+            ->get();
     }
 
     public function show(string $id): JsonResponse

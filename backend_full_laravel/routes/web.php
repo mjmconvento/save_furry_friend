@@ -17,7 +17,7 @@ Route::post('/api/logout', [AuthController::class, 'logout']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/api/token/csrf', [TokenController::class, 'generateCsrfToken']);
-    Route::get('/api/token/user', [TokenController::class, 'generateUserToken']);
+    Route::get('/api/token/user', [TokenController::class, 'generateBearerToken']);
 
     Route::get('/api/users', [UserController::class, 'index']);
     Route::post('/api/users', [UserController::class, 'store']);

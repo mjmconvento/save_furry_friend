@@ -44,7 +44,7 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({
         name: newUserName,
         email: newUserEmail,
         password: newUserPassword,
-        token,
+        token: token,
       });
 
       setUsers((prevUsers) => [...prevUsers, newUser]);

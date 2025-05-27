@@ -54,7 +54,7 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({
         id: editingUser.id,
         name: updatedName,
         email: updatedEmail,
-        token,
+        token: token,
       });
 
       setUsers((prevUsers) =>
