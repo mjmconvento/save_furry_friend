@@ -6,8 +6,10 @@ namespace App\Models;
 use App\Traits\HasFindOneOrFail;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Str;
 use Laravel\Sanctum\HasApiTokens;
 
 
@@ -44,6 +46,17 @@ class User extends Authenticatable
         'remember_token',
     ];
 
+//    protected static function boot()
+//    {
+//        parent::boot();
+//
+//        static::creating(function (Model $model) {
+//            if (empty($model->id)) {
+//                $model->id = (string) Str::uuid();
+//            }
+//        });
+//    }
+
     /**
      * Get the attributes that should be cast.
      *
@@ -52,6 +65,7 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
+            'id' => 'string',
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];

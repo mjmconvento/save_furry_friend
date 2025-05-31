@@ -5,15 +5,24 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class TestUserSeeder extends Seeder
 {
     public function run(): void
     {
         DB::table('users')->insert([
-            'name' => 'Test User',
+            'id' => (string) Str::uuid(),
+            'name' => 'Test User 1',
             'email' => 'test@user.com',
-            'password' => Hash::make('password'),
+            'password' => Hash::make('password112233'),
+        ]);
+
+        DB::table('users')->insert([
+            'id' => (string) Str::uuid(),
+            'name' => 'Test User 2',
+            'email' => 'test2@user.com',
+            'password' => Hash::make('password112233'),
         ]);
     }
 }

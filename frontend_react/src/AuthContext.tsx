@@ -8,7 +8,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   token: string | null;
-  user: User | null;
+  // loggedInUser: User | null;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -22,10 +22,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [token, setToken] = useState<string | null>(
     localStorage.getItem('token')
   );
-  const [user, setUser] = useState<User | null>(() => {
-    const storedUser = localStorage.getItem('user');
-    return storedUser ? JSON.parse(storedUser) : null;
-  });
+
+  // const [loggedInUser, setLoggedInUser] = useState<User | null>(() => {
+  //   const storedLoggedInUser = localStorage.getItem('loggedInUser');
+
+  //   return storedLoggedInUser ? JSON.parse(storedLoggedInUser) : null;
+  // });
 
   const login = async (email: string, password: string) => {
     const loginBody = { email, password };
@@ -45,8 +47,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const data = await response.json();
     setToken(data.token);
     localStorage.setItem('token', data.token);
-
-    setUser(data.user);
+    localStorage.setItem('loggedInUserId', data.user.id);
 
     setIsAuthenticated(true);
   };
@@ -61,7 +62,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <AuthContext.Provider
-      value={{ isAuthenticated, login, logout, token, user }}
+      // value={{ isAuthenticated, login, logout, token, loggedInUser }}
+      value={{ isAuthenticated, login, logout, token }}
     >
       {children}
     </AuthContext.Provider>

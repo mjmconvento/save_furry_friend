@@ -8,7 +8,13 @@
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backend_full_laravel/app/Http/Controllers/AuthController.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/app/Http/Controllers/AuthController.php" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backend_full_laravel/app/Http/Controllers/PostController.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/app/Http/Controllers/PostController.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend_full_laravel/app/Http/Controllers/TokenController.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/app/Http/Controllers/TokenController.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend_full_laravel/app/Http/Requests/Post/StorePostRequest.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/app/Http/Requests/Post/StorePostRequest.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend_full_laravel/app/Http/Requests/Post/UpdatePostRequest.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/app/Http/Requests/Post/UpdatePostRequest.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend_full_laravel/app/Models/Post.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/app/Models/Post.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend_full_laravel/app/Models/User.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/app/Models/User.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend_full_laravel/app/Services/PostService.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/app/Services/PostService.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend_full_laravel/app/Services/UserService.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/app/Services/UserService.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend_full_laravel/database/seeders/TestUserSeeder.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/database/seeders/TestUserSeeder.php" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backend_full_laravel/routes/web.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/routes/web.php" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -480,7 +486,9 @@
       <workItem from="1747142598364" duration="2503000" />
       <workItem from="1748159145847" duration="3542000" />
       <workItem from="1748260507146" duration="3331000" />
-      <workItem from="1748342637869" duration="3934000" />
+      <workItem from="1748342637869" duration="4553000" />
+      <workItem from="1748516294551" duration="3087000" />
+      <workItem from="1748594987674" duration="6650000" />
     </task>
     <servers />
   </component>

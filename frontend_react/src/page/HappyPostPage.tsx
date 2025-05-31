@@ -18,18 +18,21 @@ import { useAuth } from '../AuthContext';
 import { fetchPosts, addPost as addPostApi } from '../service/post/postApi';
 import Toast from '../component/template/Toast';
 import ErrorList from '../component/template/ErrorList';
+import ConfirmDeletePostDialog from '../component/post/delete/ConfirmDeletePostDialog';
+import LoadingIndicator from '../component/template/LoadingIndicator';
+import EditPostDialog from '../component/post/update/EditPostDialog';
 
 const HappyPostPage: React.FC = () => {
   const [toastOpen, setToastOpen] = useState(false);
-  const [newTitle, setNewTitle] = useState<string>('Title placeholder');
-  const [newAuthor, setNewAuthor] = useState<string>('1');
   const [newContent, setNewContent] = useState<string>('');
   const [newTags, setNewTags] = useState<string[]>(['happy_post']);
-
+  const [editingPost, setEditingPost] = useState<Post | null>(null);
+  const [isDeleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [isEditDialogOpen, setEditDialogOpen] = useState(false);
+  const [postToDelete, setPostToDelete] = useState<Post | null>(null);
+  const loggedInUserId = localStorage.getItem('loggedInUserId');
   const [posts, setPosts] = useState<Post[]>([]);
-  const [newPost, setNewPost] = useState('');
   const [editId, setEditId] = useState(null);
-  const [editContent, setEditContent] = useState('');
   const { token } = useAuth()!;
   const isEditing = editId !== null;
   const [loading, setLoading] = useState<boolean>(true);
@@ -58,42 +61,59 @@ const HappyPostPage: React.FC = () => {
     loadPosts();
   }, [token]);
 
+  const handleOpenEditDialog = (post: Post) => {
+    setEditingPost(post);
+    setEditDialogOpen(true);
+  };
+
+  const handleCloseEditDialog = () => {
+    setEditDialogOpen(false);
+    setEditingPost(null);
+  };
+
+  const handleOpenDeleteDialog = (post: Post) => {
+    setPostToDelete(post);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleCloseDeleteDialog = () => {
+    setPostToDelete(null);
+    setDeleteDialogOpen(false);
+  };
+
   const handleAddPost = async () => {
+    setLoading(true);
+
     try {
       const newPost = await addPostApi({
-        title: newTitle,
-        author: newAuthor,
+        authorId: 1,
+        authorName: 'test',
         content: newContent,
         tags: newTags,
         bearerToken: token,
       });
 
       setPosts((prevPosts) => [newPost, ...prevPosts]);
-      setNewTitle('');
-      setNewAuthor('');
       setNewContent('');
       setNewTags([]);
-      setToastMessage('Add new post success.');
+      setToastOpen(true);
+      setToastMessage('New post success.');
       setToastSeverity('success');
       setFormErrorSummary([]);
     } catch (error: any) {
       setFormErrorSummary(Object.values(error.list));
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleDeletePost = (id: any) => {};
+  if (loading) {
+    return <LoadingIndicator message="Please wait..." />;
+  }
 
-  const handleEditPost = (id: any, content: any) => {};
-
-  const handleSaveEdit = () => {
-    setPosts((prev) =>
-      prev.map((post) =>
-        post.id === editId ? { ...post, content: editContent } : post
-      )
-    );
-    setEditId(null);
-    setEditContent('');
-  };
+  if (error) {
+    return <div>Error: {error}</div>;
+  }
 
   return (
     <Box maxWidth={1000} mx="auto" mt={4} px={2}>
@@ -118,8 +138,9 @@ const HappyPostPage: React.FC = () => {
             value={newContent}
             onChange={(e) => setNewContent(e.target.value)}
             multiline
-            rows={2}
+            rows={4}
           />
+
           <Box mt={2} textAlign="right">
             <Button variant="contained" onClick={handleAddPost}>
               Post
@@ -129,25 +150,26 @@ const HappyPostPage: React.FC = () => {
       </Card>
 
       <Stack spacing={2}>
-        {posts.map(({ id, content, createdAt, author }) => (
+        {posts.map((post) => (
           <Card
             variant="outlined"
             sx={{ borderRadius: 2, mb: 2, boxShadow: 3 }}
+            key={post.id}
           >
             <CardHeader
               avatar={
                 <Avatar sx={{ bgcolor: 'primary.main' }}>
-                  {author?.charAt(0).toUpperCase() || 'U'}
+                  {post.authorName}
                 </Avatar>
               }
               title={
                 <Typography variant="subtitle1" fontWeight="bold">
-                  {author}
+                  {post.authorName}
                 </Typography>
               }
               subheader={
                 <Typography variant="caption" color="text.secondary">
-                  {new Date(createdAt).toLocaleString()}
+                  {new Date(post.createdAt).toLocaleString()}
                 </Typography>
               }
               sx={{ paddingBottom: 0 }}
@@ -155,29 +177,46 @@ const HappyPostPage: React.FC = () => {
 
             <CardContent>
               {isEditing ? (
-                <TextField multiline fullWidth value={content} autoFocus />
+                <TextField multiline fullWidth value={post.content} autoFocus />
               ) : (
-                <Typography variant="body1">{content}</Typography>
+                <Typography variant="body1">{post.content}</Typography>
               )}
             </CardContent>
 
-            <CardActions sx={{ justifyContent: 'flex-end' }}>
-              {isEditing ? (
-                <IconButton color="primary" aria-label="Save">
-                  <Save />
-                </IconButton>
-              ) : (
+            {loggedInUserId == post.authorId ? (
+              <CardActions sx={{ justifyContent: 'flex-end' }}>
                 <IconButton aria-label="Edit">
-                  <Edit />
+                  <Edit onClick={() => handleOpenEditDialog(post)} />
                 </IconButton>
-              )}
-              <IconButton color="error" aria-label="Delete">
-                <Delete />
-              </IconButton>
-            </CardActions>
+                <IconButton color="error" aria-label="Delete">
+                  <Delete onClick={() => handleOpenDeleteDialog(post)} />
+                </IconButton>
+              </CardActions>
+            ) : null}
           </Card>
         ))}
       </Stack>
+
+      <EditPostDialog
+        open={isEditDialogOpen}
+        handleCloseEditDialog={handleCloseEditDialog}
+        editingPost={editingPost}
+        setToastOpen={setToastOpen}
+        setToastMessage={setToastMessage}
+        setToastSeverity={setToastSeverity}
+        setPosts={setPosts}
+      />
+
+      <ConfirmDeletePostDialog
+        open={isDeleteDialogOpen}
+        handleCloseDeleteDialog={handleCloseDeleteDialog}
+        setPosts={setPosts}
+        setLoading={setLoading}
+        setToastOpen={setToastOpen}
+        setToastMessage={setToastMessage}
+        setToastSeverity={setToastSeverity}
+        postToDelete={postToDelete}
+      />
     </Box>
   );
 };

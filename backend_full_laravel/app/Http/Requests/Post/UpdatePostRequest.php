@@ -23,8 +23,6 @@ class UpdatePostRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'title' => 'nullable|string|max:255',
-            'author' => 'nullable|string|max:255',
             'content' => 'nullable|string|max:255',
             'tags' => 'nullable|array',
         ];

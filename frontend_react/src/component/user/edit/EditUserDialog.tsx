@@ -97,12 +97,6 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({
       <DialogTitle sx={{ textAlign: 'center' }}>Edit User</DialogTitle>
       <ErrorList errors={formErrorSummary} />
 
-      <Box mb={2} px={2}>
-        <Typography variant="body2" align="center" color="textSecondary">
-          Fill in the details below to add a new user.
-        </Typography>
-      </Box>
-
       <DialogContent>
         <TextField
           margin="normal"
