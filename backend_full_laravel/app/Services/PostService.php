@@ -14,9 +14,8 @@ class PostService
         $user = Auth::user()->toArray();
 
         $post = new Post;
-        $post->title = $request->get('title');
         $post->authorId = $user['id'];
-        $post->authorName = $user['name'];
+        $post->authorName = $user['first_name'] . ' ' . $user['last_name'];
         $post->content = $request->get('content');
         $post->createdAt = now();
         $post->tags = $request->get('tags');

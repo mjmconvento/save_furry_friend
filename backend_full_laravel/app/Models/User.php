@@ -6,15 +6,15 @@ namespace App\Models;
 use App\Traits\HasFindOneOrFail;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Support\Str;
 use Laravel\Sanctum\HasApiTokens;
 
 
 /**
- * @property string $name
+ * @property string $first_name
+ * @property string $middle_name
+ * @property string $last_name
  * @property string $email
  * @property string $password
  */
@@ -31,7 +31,9 @@ class User extends Authenticatable
      * @var list<string>
      */
     protected $fillable = [
-        'name',
+        'first_name',
+        'middle_name',
+        'last_name',
         'email',
         'password',
     ];
@@ -45,17 +47,6 @@ class User extends Authenticatable
         'password',
         'remember_token',
     ];
-
-//    protected static function boot()
-//    {
-//        parent::boot();
-//
-//        static::creating(function (Model $model) {
-//            if (empty($model->id)) {
-//                $model->id = (string) Str::uuid();
-//            }
-//        });
-//    }
 
     /**
      * Get the attributes that should be cast.

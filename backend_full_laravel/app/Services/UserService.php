@@ -14,7 +14,9 @@ class UserService
     {
         $user = new User;
         $user->id = Str::uuid();
-        $user->name = $request->get('name');
+        $user->first_name = $request->get('firstName');
+        $user->middle_name = $request->get('middleName');
+        $user->last_name = $request->get('lastName');
         $user->email = $request->get('email');
         $user->password = Hash::make($request->get('password'));
         $user->save();
@@ -24,9 +26,18 @@ class UserService
 
     public function updateUser(UpdateUserRequest $request, User $user): void
     {
-        if ($request->has('name')) {
-            $user->name = $request->get('name');
+        if ($request->has('firstName')) {
+            $user->first_name = $request->get('firstName');
         }
+
+        if ($request->has('middleName')) {
+            $user->middle_name = $request->get('middleName');
+        }
+
+        if ($request->has('lastName')) {
+            $user->last_name = $request->get('lastName');
+        }
+
         if ($request->has('email')) {
             $user->email = $request->get('email');
         }

@@ -35,13 +35,17 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({
   setUsers,
 }) => {
   const [formErrorSummary, setFormErrorSummary] = useState<string[]>([]);
-  const [updatedName, setUpdatedName] = useState<string>('');
+  const [updatedFirstName, setUpdatedFirstName] = useState<string>('');
+  const [updatedMiddleName, setUpdatedMiddleName] = useState<string>('');
+  const [updatedLastName, setUpdatedLastName] = useState<string>('');
   const [updatedEmail, setUpdatedEmail] = useState<string>('');
   const { token } = useAuth()!;
 
   useEffect(() => {
     if (editingUser) {
-      setUpdatedName(editingUser.name);
+      setUpdatedFirstName(editingUser.first_name);
+      setUpdatedMiddleName(editingUser.middle_name);
+      setUpdatedLastName(editingUser.last_name);
       setUpdatedEmail(editingUser.email);
     }
   }, [editingUser, open]);
@@ -52,7 +56,9 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({
     try {
       const updatedUser = await updateUserApi({
         id: editingUser.id,
-        name: updatedName,
+        firstName: updatedFirstName,
+        middleName: updatedMiddleName,
+        lastName: updatedLastName,
         email: updatedEmail,
         token: token,
       });
@@ -64,7 +70,9 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({
       );
 
       setFormErrorSummary([]);
-      setUpdatedName('');
+      setUpdatedFirstName('');
+      setUpdatedMiddleName('');
+      setUpdatedLastName('');
       setUpdatedEmail('');
 
       setToastOpen(true);
@@ -100,10 +108,24 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({
       <DialogContent>
         <TextField
           margin="normal"
-          label="Name"
+          label="First Name"
           fullWidth
-          value={updatedName}
-          onChange={(e) => setUpdatedName(e.target.value)}
+          value={updatedFirstName}
+          onChange={(e) => setUpdatedFirstName(e.target.value)}
+        />
+        <TextField
+          margin="normal"
+          label="Middle Name"
+          fullWidth
+          value={updatedMiddleName}
+          onChange={(e) => setUpdatedMiddleName(e.target.value)}
+        />
+        <TextField
+          margin="normal"
+          label="Last Name"
+          fullWidth
+          value={updatedLastName}
+          onChange={(e) => setUpdatedLastName(e.target.value)}
         />
         <TextField
           margin="normal"

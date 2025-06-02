@@ -13,14 +13,17 @@ class TestUserSeeder extends Seeder
     {
         DB::table('users')->insert([
             'id' => (string) Str::uuid(),
-            'name' => 'Test User 1',
+            'first_name' => 'Test',
+            'last_name' => 'User I',
             'email' => 'test@user.com',
             'password' => Hash::make('password112233'),
         ]);
 
         DB::table('users')->insert([
             'id' => (string) Str::uuid(),
-            'name' => 'Test User 2',
+            'first_name' => 'Test',
+            'middle_name' => 'Test',
+            'last_name' => 'User II',
             'email' => 'test2@user.com',
             'password' => Hash::make('password112233'),
         ]);

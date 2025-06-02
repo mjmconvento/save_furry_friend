@@ -18,14 +18,18 @@ export const fetchUsers = async (token: string | null) => {
 };
 
 interface AddUserParams {
-  name: string;
+  firstName: string;
+  middleName: string;
+  lastName: string;
   email: string;
   password: string;
   token: string | null;
 }
 
 export const addUser = async ({
-  name,
+  firstName,
+  middleName,
+  lastName,
   email,
   password,
   token,
@@ -41,7 +45,7 @@ export const addUser = async ({
     method: 'POST',
     headers,
     credentials: 'include',
-    body: JSON.stringify({ name, email, password }),
+    body: JSON.stringify({ firstName, middleName, lastName, email, password }),
   });
 
   const data = await response.json();
@@ -59,14 +63,18 @@ export const addUser = async ({
 
 export interface UpdateUserParams {
   id: number;
-  name: string;
+  firstName: string;
+  middleName: string;
+  lastName: string;
   email: string;
   token: string | null;
 }
 
 export const updateUser = async ({
   id,
-  name,
+  firstName,
+  middleName,
+  lastName,
   email,
   token,
 }: UpdateUserParams) => {
@@ -81,7 +89,7 @@ export const updateUser = async ({
     method: 'PUT',
     headers,
     credentials: 'include',
-    body: JSON.stringify({ id, name, email }),
+    body: JSON.stringify({ id, firstName, middleName, lastName, email }),
   });
 
   const data = await response.json();

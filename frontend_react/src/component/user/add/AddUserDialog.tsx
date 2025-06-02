@@ -32,7 +32,9 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({
   setToastSeverity,
   setUsers,
 }) => {
-  const [newUserName, setNewUserName] = useState<string>('');
+  const [newUserFirstName, setNewUserFirstName] = useState<string>('');
+  const [newUserMiddleName, setNewUserMiddleName] = useState<string>('');
+  const [newUserLastName, setNewUserLastName] = useState<string>('');
   const [newUserEmail, setNewUserEmail] = useState<string>('');
   const [newUserPassword, setNewUserPassword] = useState<string>('');
   const [formErrorSummary, setFormErrorSummary] = useState<string[]>([]);
@@ -41,14 +43,18 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({
   const addUser = async () => {
     try {
       const newUser = await addUserApi({
-        name: newUserName,
+        firstName: newUserFirstName,
+        middleName: newUserMiddleName,
+        lastName: newUserLastName,
         email: newUserEmail,
         password: newUserPassword,
         token: token,
       });
 
       setUsers((prevUsers) => [...prevUsers, newUser]);
-      setNewUserName('');
+      setNewUserFirstName('');
+      setNewUserMiddleName('');
+      setNewUserLastName('');
       setNewUserEmail('');
       setNewUserPassword('');
       setToastOpen(true);
@@ -91,12 +97,30 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({
       <DialogContent sx={{ px: 2 }}>
         <TextField
           margin="normal"
-          label="Name"
+          label="First Name"
           fullWidth
           variant="outlined"
           required
-          value={newUserName}
-          onChange={(e) => setNewUserName(e.target.value)}
+          value={newUserFirstName}
+          onChange={(e) => setNewUserFirstName(e.target.value)}
+        />
+        <TextField
+          margin="normal"
+          label="Middle Name"
+          fullWidth
+          variant="outlined"
+          required
+          value={newUserMiddleName}
+          onChange={(e) => setNewUserMiddleName(e.target.value)}
+        />
+        <TextField
+          margin="normal"
+          label="Last Name"
+          fullWidth
+          variant="outlined"
+          required
+          value={newUserLastName}
+          onChange={(e) => setNewUserLastName(e.target.value)}
         />
         <TextField
           margin="normal"

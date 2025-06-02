@@ -16,7 +16,7 @@ import { User } from '../../../interface/User';
 interface ConfirmDeleteUserDialogProps {
   open: boolean;
   userToDelete: User | null;
-  userName: string;
+  userFullName: string;
   setToastOpen: (value: boolean) => void;
   setToastMessage: (message: string) => void;
   setToastSeverity: (severity: 'success' | 'error') => void;
@@ -27,7 +27,7 @@ interface ConfirmDeleteUserDialogProps {
 const ConfirmDeleteUserDialog: React.FC<ConfirmDeleteUserDialogProps> = ({
   open,
   userToDelete,
-  userName,
+  userFullName,
   handleCloseDeleteDialog,
   setToastOpen,
   setToastMessage,
@@ -93,7 +93,7 @@ const ConfirmDeleteUserDialog: React.FC<ConfirmDeleteUserDialogProps> = ({
           sx={{ px: 2, py: 1 }}
         >
           <Typography variant="body1" align="center" gutterBottom>
-            You're about to delete <strong>{userName}</strong>.
+            You're about to delete <strong>{userFullName}</strong>.
           </Typography>
           <Typography variant="body2" color="textSecondary" align="center">
             This action cannot be undone.

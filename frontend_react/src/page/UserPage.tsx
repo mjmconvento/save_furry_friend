@@ -133,7 +133,7 @@ const UserPage: React.FC = () => {
 
       <ConfirmDeleteUserDialog
         open={isDeleteDialogOpen}
-        userName={userToDelete?.name || ''}
+        userFullName={`${userToDelete?.first_name ?? ''} ${userToDelete?.middle_name ?? ''} ${userToDelete?.last_name ?? ''}`.trim()}
         handleCloseDeleteDialog={handleCloseDeleteDialog}
         setUsers={setUsers}
         setToastOpen={setToastOpen}

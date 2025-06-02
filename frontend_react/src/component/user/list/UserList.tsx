@@ -9,12 +9,7 @@ import {
   Paper,
   Button,
 } from '@mui/material';
-
-interface User {
-  id: number;
-  name: string;
-  email: string;
-}
+import { User } from '../../../interface/User';
 
 interface Props {
   users: User[];
@@ -38,7 +33,9 @@ const UserList: React.FC<Props> = ({ users, onEdit, onDelete }) => {
           {users.map((user) => (
             <TableRow key={user.id + user.email}>
               <TableCell>{user.id}</TableCell>
-              <TableCell>{user.name}</TableCell>
+              <TableCell>
+                {`${user.first_name} ${user.middle_name ?? ''} ${user.last_name}`.trim()}
+              </TableCell>
               <TableCell>{user.email}</TableCell>
               <TableCell align="right">
                 <Button
