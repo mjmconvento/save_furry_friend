@@ -5,15 +5,13 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="c43d1c27-fd16-492a-a025-400e24af1f5e" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/backend_full_laravel/app/Http/Controllers/User/FollowController.php" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend_full_laravel/app/Http/Requests/User/StoreUserRequest.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/app/Http/Requests/User/StoreUserRequest.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend_full_laravel/app/Http/Controllers/PostController.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/app/Http/Controllers/PostController.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend_full_laravel/app/Http/Controllers/UserController.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/app/Http/Controllers/User/UserController.php" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backend_full_laravel/app/Models/User.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/app/Models/User.php" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backend_full_laravel/app/Services/PostService.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/app/Services/PostService.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend_full_laravel/app/Services/UserService.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/app/Services/UserService.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend_full_laravel/database/migrations/2025_04_27_123515_create_personal_access_tokens_table.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/database/migrations/2025_04_27_123515_create_personal_access_tokens_table.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend_full_laravel/database/migrations/2025_05_31_082934_change_users_id_to_uuid.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/database/migrations/2025_05_31_082934_change_users_id_to_uuid.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend_full_laravel/database/migrations/2025_05_31_085625_alter_user_id_on_sessions_table.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/database/migrations/2025_05_31_085625_alter_user_id_on_sessions_table.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend_full_laravel/database/seeders/TestUserSeeder.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/database/seeders/TestUserSeeder.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend_full_laravel/routes/web.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/routes/web.php" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -443,6 +441,9 @@
       <option name="pestRunnerSettings">
         <PestRunner configuration_file="$PROJECT_DIR$/backend_full_laravel/phpunit.xml" scope="ConfigurationFile" use_alternative_configuration_file="true" />
       </option>
+      <option name="runnerSettings">
+        <PhpTestRunnerSettings configuration_file="$PROJECT_DIR$/backend_full_laravel/phpunit.xml" scope="ConfigurationFile" use_alternative_configuration_file="true" />
+      </option>
       <method v="2" />
     </configuration>
   </component>
@@ -493,7 +494,9 @@
       <workItem from="1748516294551" duration="3087000" />
       <workItem from="1748594987674" duration="7334000" />
       <workItem from="1748833598233" duration="761000" />
-      <workItem from="1748862655541" duration="2630000" />
+      <workItem from="1748862655541" duration="2741000" />
+      <workItem from="1749202407927" duration="2969000" />
+      <workItem from="1749287679812" duration="2444000" />
     </task>
     <servers />
   </component>

@@ -12,6 +12,8 @@ import NeutralPostPage from './page/NeutralPostPage';
 import { BrowserRouter } from 'react-router-dom';
 import HeartbreakingPostPage from './page/HeartbreakingPostPage';
 import NotFoundPage from './page/NotFoundPage';
+import ProfilePage from './page/ProfilePage';
+import MyProfilePage from './page/MyProfilePage';
 
 const App = () => {
   const { isAuthenticated, logout } = useAuth();
@@ -31,6 +33,8 @@ const App = () => {
             <Route path="/" element={<HomePage />} />
             <Route path="/happy_posts" element={<HappyPostPage />} />
             <Route path="/neutral_posts" element={<NeutralPostPage />} />
+            <Route path="/my_profile" element={<MyProfilePage />} />
+            <Route path="/profile/:id" element={<ProfilePage />} />
             <Route
               path="/heartbreaking_posts"
               element={<HeartbreakingPostPage />}

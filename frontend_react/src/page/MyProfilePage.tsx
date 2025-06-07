@@ -21,9 +21,8 @@ import ErrorList from '../component/template/ErrorList';
 import ConfirmDeletePostDialog from '../component/post/delete/ConfirmDeletePostDialog';
 import LoadingIndicator from '../component/template/LoadingIndicator';
 import EditPostDialog from '../component/post/update/EditPostDialog';
-import { Link } from 'react-router-dom';
 
-const HappyPostPage: React.FC = () => {
+const ProfilePage: React.FC = () => {
   const [toastOpen, setToastOpen] = useState(false);
   const [newContent, setNewContent] = useState<string>('');
   const [newTags, setNewTags] = useState<string[]>(['happy_post']);
@@ -47,7 +46,11 @@ const HappyPostPage: React.FC = () => {
   useEffect(() => {
     const loadPosts = async () => {
       try {
-        const data: Post[] = await fetchPosts(token, ['happy_post', 'cs']);
+        const data: Post[] = await fetchPosts(
+          token,
+          ['happy_post', 'cs'],
+          loggedInUserId
+        );
         setPosts(data);
       } catch (error) {
         console.error('Error fetching users:', error);
@@ -128,7 +131,7 @@ const HappyPostPage: React.FC = () => {
       <ErrorList errors={formErrorSummary} />
 
       <Typography variant="h5" mb={2} fontWeight="bold">
-        Happy Posts
+        My Posts
       </Typography>
 
       <Card variant="outlined" sx={{ mb: 3 }}>
@@ -160,23 +163,13 @@ const HappyPostPage: React.FC = () => {
             <CardHeader
               avatar={
                 <Avatar sx={{ bgcolor: 'primary.main' }}>
-                  {post.authorName[0]}
+                  {post.authorName}
                 </Avatar>
               }
               title={
-                <Link
-                  to={`/profile/${post.authorId}`}
-                  style={{ textDecoration: 'none' }}
-                >
-                  <Typography
-                    variant="subtitle1"
-                    fontWeight="bold"
-                    color="text.primary"
-                    sx={{ '&:hover': { textDecoration: 'underline' } }}
-                  >
-                    {post.authorName}
-                  </Typography>
-                </Link>
+                <Typography variant="subtitle1" fontWeight="bold">
+                  {post.authorName}
+                </Typography>
               }
               subheader={
                 <Typography variant="caption" color="text.secondary">
@@ -232,4 +225,4 @@ const HappyPostPage: React.FC = () => {
   );
 };
 
-export default HappyPostPage;
+export default ProfilePage;

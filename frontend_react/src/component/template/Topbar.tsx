@@ -1,6 +1,7 @@
 import React from 'react';
 import { AppBar, Toolbar, Typography, Button, Box } from '@mui/material';
 import { useAuth } from '../../AuthContext';
+import { Link } from 'react-router-dom';
 
 const Topbar = () => {
   const { logout } = useAuth()!;
@@ -16,6 +17,10 @@ const Topbar = () => {
           Save A Furry Friend
         </Typography>
         <Box>
+          <Button color="inherit" component={Link} to="/my_profile">
+            My Profile
+          </Button>
+
           <Button color="inherit" onClick={handleLogout}>
             Logout
           </Button>

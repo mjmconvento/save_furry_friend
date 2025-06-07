@@ -3,11 +3,16 @@ import { getCsrfToken } from '../../util/csrf';
 
 export const fetchPosts = async (
   bearerToken: string | null,
-  tags: string[]
+  tags: string[],
+  authorId: string | null = null
 ) => {
   const url = new URL(`${API_BASE_URL}/${POSTS_ENDPOINT}`);
 
   tags.forEach((tag) => url.searchParams.append('tags[]', tag));
+
+  if (authorId) {
+    url.searchParams.append('authorId', authorId || '0');
+  }
 
   const response = await fetch(url.toString(), {
     method: 'GET',

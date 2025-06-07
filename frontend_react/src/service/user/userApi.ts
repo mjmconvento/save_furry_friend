@@ -17,6 +17,24 @@ export const fetchUsers = async (token: string | null) => {
   return await response.json();
 };
 
+export interface GetUserParams {
+  id: string | undefined;
+  token: string | null;
+}
+
+export const getUser = async ({ id, token }: GetUserParams) => {
+  const headers: HeadersInit = {
+    Authorization: `Bearer ${token}`,
+  };
+
+  const response = await fetch(`${API_BASE_URL}/${USERS_ENDPOINT}/${id}`, {
+    method: 'GET',
+    headers,
+  });
+
+  return response.json();
+};
+
 interface AddUserParams {
   firstName: string;
   middleName: string;
