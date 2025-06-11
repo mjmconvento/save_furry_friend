@@ -25,6 +25,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/api/users/{id}', [UserController::class, 'show']);
 
     Route::post('/api/users/follow/{id}', [FollowController::class, 'follow']);
+    Route::post('/api/users/unfollow/{id}', [FollowController::class, 'unfollow']);
 
     Route::get('/api/posts', [PostController::class, 'index']);
     Route::post('/api/posts', [PostController::class, 'store']);

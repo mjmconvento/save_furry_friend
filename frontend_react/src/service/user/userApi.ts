@@ -80,7 +80,7 @@ export const addUser = async ({
 };
 
 export interface UpdateUserParams {
-  id: number;
+  id: string;
   firstName: string;
   middleName: string;
   lastName: string;
@@ -124,7 +124,7 @@ export const updateUser = async ({
 };
 
 export interface DeleteUserParams {
-  id: number;
+  id: string;
   token: string | null;
 }
 

@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\User\StoreUserRequest;
 use App\Http\Requests\User\UpdateUserRequest;
 use App\Models\User;
-use App\Services\UserService;
+use App\Services\User\UserService;
 use Illuminate\Http\JsonResponse;
 
 class UserController extends Controller
@@ -22,11 +22,10 @@ class UserController extends Controller
 
     public function show(string $id): JsonResponse
     {
-        $user = User::findOneOrFail($id);
-
-        return response()->json($user);
+        return response()->json(
+            $this->userService->getUser($id)
+        );
     }
-
 
     public function store(StoreUserRequest $request): JsonResponse
     {

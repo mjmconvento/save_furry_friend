@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Http\Requests\Post\StorePostRequest;
 use App\Http\Requests\Post\UpdatePostRequest;
 use App\Models\Post;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
 
@@ -24,6 +25,19 @@ class PostService
 
         if (!is_null($authorId)) {
             $query->where('authorId', $authorId);
+        } else {
+            /** @var User $user */
+            $user = Auth::user();
+
+            $followingIds = $user
+                ->following()
+                ->pluck('id')
+                ->map(fn ($id) => (string) $id)
+                ->toArray();
+
+            $followingIds[] = Auth::id();
+
+            $query->whereIn('authorId', $followingIds);
         }
 
         return $query->orderBy('createdAt', 'desc')->get();
@@ -31,7 +45,10 @@ class PostService
 
     public function storePost(StorePostRequest $request): Post
     {
-        $user = Auth::user()->toArray();
+        /** @var User $user */
+        $user = Auth::user();
+
+        $user = $user->toArray();
 
         $post = new Post;
         $post->authorId = $user['id'];

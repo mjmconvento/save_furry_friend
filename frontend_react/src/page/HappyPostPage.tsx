@@ -33,9 +33,7 @@ const HappyPostPage: React.FC = () => {
   const [postToDelete, setPostToDelete] = useState<Post | null>(null);
   const loggedInUserId = localStorage.getItem('loggedInUserId');
   const [posts, setPosts] = useState<Post[]>([]);
-  const [editId, setEditId] = useState(null);
   const { token } = useAuth()!;
-  const isEditing = editId !== null;
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState('');
@@ -165,7 +163,11 @@ const HappyPostPage: React.FC = () => {
               }
               title={
                 <Link
-                  to={`/profile/${post.authorId}`}
+                  to={
+                    loggedInUserId == post.authorId
+                      ? `/my_profile`
+                      : `/profile/${post.authorId}`
+                  }
                   style={{ textDecoration: 'none' }}
                 >
                   <Typography
@@ -187,11 +189,7 @@ const HappyPostPage: React.FC = () => {
             />
 
             <CardContent>
-              {isEditing ? (
-                <TextField multiline fullWidth value={post.content} autoFocus />
-              ) : (
-                <Typography variant="body1">{post.content}</Typography>
-              )}
+              <Typography variant="body1">{post.content}</Typography>
             </CardContent>
 
             {loggedInUserId == post.authorId ? (

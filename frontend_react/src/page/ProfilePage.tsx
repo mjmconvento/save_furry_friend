@@ -5,13 +5,18 @@ import {
   CardContent,
   CardHeader,
   Typography,
-  TextField,
   Avatar,
   Stack,
+  Button,
 } from '@mui/material';
 import { Post } from '../interface/Post';
 import { useAuth } from '../AuthContext';
-import { fetchPosts, addPost as addPostApi } from '../service/post/postApi';
+import {
+  followUser as followUserApi,
+  unfollowUser as unfollowUserApi,
+} from '../service/user/userFollowApi';
+
+import { fetchPosts } from '../service/post/postApi';
 import { getUser as getUserApi } from '../service/user/userApi';
 import LoadingIndicator from '../component/template/LoadingIndicator';
 import { useParams } from 'react-router-dom';
@@ -21,17 +26,17 @@ const ProfilePage: React.FC = () => {
   const { id } = useParams();
   const [user, setUser] = useState<User | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
-  const [editId, setEditId] = useState(null);
   const { token } = useAuth()!;
-  const isEditing = editId !== null;
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [isFollowing, setIsFollowing] = useState<boolean>(false);
 
   useEffect(() => {
     const getUser = async () => {
       try {
         const data: User = await getUserApi({ id, token });
         setUser(data);
+        setIsFollowing(data.is_following);
       } catch (error) {
         setError(
           error instanceof Error ? error.message : 'Something went wrong'
@@ -43,6 +48,40 @@ const ProfilePage: React.FC = () => {
 
     getUser();
   }, [token]);
+
+  const handleFollow = async () => {
+    setLoading(true);
+
+    try {
+      await followUserApi({
+        id: user?.id || '',
+        token: token,
+      });
+
+      setIsFollowing(true);
+    } catch (error: any) {
+      console.log(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUnfollow = async () => {
+    setLoading(true);
+
+    try {
+      const newPost = await unfollowUserApi({
+        id: user?.id || '',
+        token: token,
+      });
+
+      setIsFollowing(false);
+    } catch (error: any) {
+      console.log(error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     const loadPosts = async () => {
@@ -75,6 +114,18 @@ const ProfilePage: React.FC = () => {
         {user?.first_name} {user?.last_name}'s Posts
       </Typography>
 
+      <Box display="flex" justifyContent="flex-end" mb={2}>
+        {isFollowing ? (
+          <Button variant="contained" onClick={handleUnfollow}>
+            Unfollow
+          </Button>
+        ) : (
+          <Button variant="contained" onClick={handleFollow}>
+            Follow
+          </Button>
+        )}
+      </Box>
+
       <Stack spacing={2}>
         {posts.map((post) => (
           <Card
@@ -102,11 +153,7 @@ const ProfilePage: React.FC = () => {
             />
 
             <CardContent>
-              {isEditing ? (
-                <TextField multiline fullWidth value={post.content} autoFocus />
-              ) : (
-                <Typography variant="body1">{post.content}</Typography>
-              )}
+              <Typography variant="body1">{post.content}</Typography>
             </CardContent>
           </Card>
         ))}

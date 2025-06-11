@@ -5,12 +5,15 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="c43d1c27-fd16-492a-a025-400e24af1f5e" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/backend_full_laravel/app/Http/Controllers/User/FollowController.php" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/backend_full_laravel/app/Services/User/FollowService.php" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend_full_laravel/app/Http/Controllers/PostController.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/app/Http/Controllers/PostController.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend_full_laravel/app/Http/Controllers/UserController.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/app/Http/Controllers/User/UserController.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend_full_laravel/app/Http/Controllers/User/FollowController.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/app/Http/Controllers/User/FollowController.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend_full_laravel/app/Http/Controllers/User/UserController.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/app/Http/Controllers/User/UserController.php" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backend_full_laravel/app/Models/User.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/app/Models/User.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend_full_laravel/app/Providers/UserServiceProvider.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/app/Providers/UserServiceProvider.php" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backend_full_laravel/app/Services/PostService.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/app/Services/PostService.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend_full_laravel/app/Services/UserService.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/app/Services/User/UserService.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend_full_laravel/app/Traits/HasFindOneOrFail.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/app/Traits/HasFindOneOrFail.php" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backend_full_laravel/routes/web.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/routes/web.php" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -450,8 +453,8 @@
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-js-predefined-d6986cc7102b-6a121458b545-JavaScript-PS-251.25410.148" />
-        <option value="bundled-php-predefined-a98d8de5180a-c5828cf854d9-com.jetbrains.php.sharedIndexes-PS-251.25410.148" />
+        <option value="bundled-js-predefined-d6986cc7102b-b26f3e71634d-JavaScript-PS-251.26094.133" />
+        <option value="bundled-php-predefined-a98d8de5180a-c5828cf854d9-com.jetbrains.php.sharedIndexes-PS-251.26094.133" />
         <option value="php-dragonmantank_cron_expression-88dc7a6578bb-8edadc28" />
         <option value="php-league_commonmark-88dc7a6578bb-eed7f18a" />
         <option value="php-mockery_mockery-88dc7a6578bb-4ab6fb81" />
@@ -496,7 +499,9 @@
       <workItem from="1748833598233" duration="761000" />
       <workItem from="1748862655541" duration="2741000" />
       <workItem from="1749202407927" duration="2969000" />
-      <workItem from="1749287679812" duration="2444000" />
+      <workItem from="1749287679812" duration="2770000" />
+      <workItem from="1749290490526" duration="3358000" />
+      <workItem from="1749644469555" duration="2396000" />
     </task>
     <servers />
   </component>
