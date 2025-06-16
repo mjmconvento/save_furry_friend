@@ -5,16 +5,15 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="c43d1c27-fd16-492a-a025-400e24af1f5e" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/backend_full_laravel/app/Services/User/FollowService.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/php.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/php.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend_full_laravel/app/Http/Controllers/User/FollowController.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/app/Http/Controllers/User/FollowController.php" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backend_full_laravel/app/Http/Controllers/User/UserController.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/app/Http/Controllers/User/UserController.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend_full_laravel/app/Models/User.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/app/Models/User.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend_full_laravel/app/Providers/UserServiceProvider.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/app/Providers/UserServiceProvider.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend_full_laravel/app/Models/Post.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/app/Models/Post.php" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backend_full_laravel/app/Services/PostService.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/app/Services/PostService.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend_full_laravel/app/Services/UserService.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/app/Services/User/UserService.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend_full_laravel/app/Traits/HasFindOneOrFail.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/app/Traits/HasFindOneOrFail.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend_full_laravel/composer.json" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/composer.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend_full_laravel/composer.lock" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/composer.lock" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backend_full_laravel/routes/web.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/routes/web.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docker-compose.yml" beforeDir="false" afterPath="$PROJECT_DIR$/docker-compose.yml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -397,6 +396,10 @@
       <path value="$PROJECT_DIR$/backend_full_laravel/vendor/phpdocumentor/type-resolver" />
       <path value="$PROJECT_DIR$/backend_full_laravel/vendor/mongodb/laravel-mongodb" />
       <path value="$PROJECT_DIR$/backend_full_laravel/vendor/mongodb/mongodb" />
+      <path value="$PROJECT_DIR$/backend_full_laravel/vendor/aws/aws-crt-php" />
+      <path value="$PROJECT_DIR$/backend_full_laravel/vendor/aws/aws-sdk-php" />
+      <path value="$PROJECT_DIR$/backend_full_laravel/vendor/mtdowling/jmespath.php" />
+      <path value="$PROJECT_DIR$/backend_full_laravel/vendor/league/flysystem-aws-s3-v3" />
     </include_path>
   </component>
   <component name="ProjectColorInfo">{
@@ -502,6 +505,8 @@
       <workItem from="1749287679812" duration="2770000" />
       <workItem from="1749290490526" duration="3358000" />
       <workItem from="1749644469555" duration="2396000" />
+      <workItem from="1749890879867" duration="2625000" />
+      <workItem from="1750071764043" duration="3115000" />
     </task>
     <servers />
   </component>

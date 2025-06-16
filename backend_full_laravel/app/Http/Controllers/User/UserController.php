@@ -51,4 +51,26 @@ class UserController extends Controller
 
         return response()->json(['message' => 'User deleted successfully']);
     }
+
+    public function search(string $keyword): JsonResponse
+    {
+        $authUser = auth()->user();
+
+        $users = User::query()
+            ->leftJoin('user_followers as uf', function ($join) use ($authUser) {
+                $join->on('users.id', '=', 'uf.followed_id')
+                    ->where('uf.follower_id', '=', $authUser->id);
+            })
+            ->where('users.id', '!=', $authUser->id) // 👈 exclude self
+            ->where(function ($query) use ($keyword) {
+                $query->whereRaw('LOWER(first_name) LIKE ?', ["%" . strtolower($keyword) . "%"])
+                    ->orWhereRaw('LOWER(middle_name) LIKE ?', ["%" . strtolower($keyword) . "%"])
+                    ->orWhereRaw('LOWER(last_name) LIKE ?', ["%" . strtolower($keyword) . "%"]);
+            })
+            ->orderByRaw('uf.follower_id IS NULL')
+            ->select('users.*')
+            ->get();
+
+        return response()->json($users);
+    }
 }

@@ -47,7 +47,24 @@ const ProfilePage: React.FC = () => {
     };
 
     getUser();
-  }, [token]);
+  }, [id, token]);
+
+  useEffect(() => {
+    const loadPosts = async () => {
+      try {
+        const data: Post[] = await fetchPosts(token, ['happy_post', 'cs'], id);
+        setPosts(data);
+      } catch (error) {
+        setError(
+          error instanceof Error ? error.message : 'Something went wrong'
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadPosts();
+  }, [id, token]);
 
   const handleFollow = async () => {
     setLoading(true);
@@ -70,7 +87,7 @@ const ProfilePage: React.FC = () => {
     setLoading(true);
 
     try {
-      const newPost = await unfollowUserApi({
+      await unfollowUserApi({
         id: user?.id || '',
         token: token,
       });
@@ -82,23 +99,6 @@ const ProfilePage: React.FC = () => {
       setLoading(false);
     }
   };
-
-  useEffect(() => {
-    const loadPosts = async () => {
-      try {
-        const data: Post[] = await fetchPosts(token, ['happy_post', 'cs'], id);
-        setPosts(data);
-      } catch (error) {
-        setError(
-          error instanceof Error ? error.message : 'Something went wrong'
-        );
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadPosts();
-  }, [token]);
 
   if (loading) {
     return <LoadingIndicator message="Please wait..." />;

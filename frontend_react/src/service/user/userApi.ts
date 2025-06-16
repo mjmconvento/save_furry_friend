@@ -17,6 +17,25 @@ export const fetchUsers = async (token: string | null) => {
   return await response.json();
 };
 
+export const searchUsers = async (token: string | null, keyword: string) => {
+  const response = await fetch(
+    `${API_BASE_URL}/${USERS_ENDPOINT}/search/${keyword}`,
+    {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch users');
+  }
+
+  return await response.json();
+};
+
 export interface GetUserParams {
   id: string | undefined;
   token: string | null;

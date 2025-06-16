@@ -12,6 +12,7 @@ use MongoDB\Laravel\Eloquent\Model;
  * @property string $content
  * @property Carbon $createdAt
  * @property array $tags
+ * @property array $images
  */
 class Post extends Model
 {
@@ -20,5 +21,5 @@ class Post extends Model
     protected $connection = 'mongodb';
     protected string $collection = 'posts';
 
-    protected $fillable = ['authorId', 'authorName', 'content', 'createdAt', 'tags'];
+    protected $fillable = ['authorId', 'authorName', 'content', 'createdAt', 'tags', 'images'];
 }

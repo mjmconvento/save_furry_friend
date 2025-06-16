@@ -34,7 +34,10 @@ const App = () => {
             <Route path="/happy_posts" element={<HappyPostPage />} />
             <Route path="/neutral_posts" element={<NeutralPostPage />} />
             <Route path="/my_profile" element={<MyProfilePage />} />
-            <Route path="/profile/:id" element={<ProfilePage />} />
+            <Route
+              path="/profile/:id"
+              element={<ProfilePage key={window.location.pathname} />}
+            />
             <Route
               path="/heartbreaking_posts"
               element={<HeartbreakingPostPage />}

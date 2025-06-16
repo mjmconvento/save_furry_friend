@@ -23,6 +23,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/api/users/{id}', [UserController::class, 'update']);
     Route::delete('/api/users/{id}', [UserController::class, 'destroy']);
     Route::get('/api/users/{id}', [UserController::class, 'show']);
+    Route::get('/api/users/search/{keyword}', [UserController::class, 'search']);
 
     Route::post('/api/users/follow/{id}', [FollowController::class, 'follow']);
     Route::post('/api/users/unfollow/{id}', [FollowController::class, 'unfollow']);

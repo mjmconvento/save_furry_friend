@@ -8,7 +8,6 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   token: string | null;
-  // loggedInUser: User | null;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -22,12 +21,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [token, setToken] = useState<string | null>(
     localStorage.getItem('token')
   );
-
-  // const [loggedInUser, setLoggedInUser] = useState<User | null>(() => {
-  //   const storedLoggedInUser = localStorage.getItem('loggedInUser');
-
-  //   return storedLoggedInUser ? JSON.parse(storedLoggedInUser) : null;
-  // });
 
   const login = async (email: string, password: string) => {
     const loginBody = { email, password };
@@ -61,10 +54,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {}, []);
 
   return (
-    <AuthContext.Provider
-      // value={{ isAuthenticated, login, logout, token, loggedInUser }}
-      value={{ isAuthenticated, login, logout, token }}
-    >
+    <AuthContext.Provider value={{ isAuthenticated, login, logout, token }}>
       {children}
     </AuthContext.Provider>
   );

@@ -8,6 +8,7 @@ use App\Models\Post;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 
 class PostService
 {
@@ -56,6 +57,20 @@ class PostService
         $post->content = $request->get('content');
         $post->createdAt = now();
         $post->tags = $request->get('tags');
+
+        if ($request->hasFile('image')) {
+            $urls = [];
+
+            foreach ($request->file('image') as $file) {
+                $path = $file->store($user['id'], 's3');
+                Storage::disk('s3')->setVisibility($path, 'public');
+                $url = Storage::disk('s3')->url($path);
+                $urls[] = $url;
+            }
+
+            $post->images = $urls;
+        }
+
         $post->save();
 
         return $post;
