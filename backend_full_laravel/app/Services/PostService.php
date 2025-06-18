@@ -58,17 +58,24 @@ class PostService
         $post->createdAt = now();
         $post->tags = $request->get('tags');
 
-        if ($request->hasFile('image')) {
+        if (isset($request->all()["medias"])) {
             $urls = [];
 
-            foreach ($request->file('image') as $file) {
+            foreach ($request->file('medias') as $file) {
+                if (!$file->isValid()) {
+                    logger('Invalid file upload: ' . $file->getClientOriginalName());
+                }
+
                 $path = $file->store($user['id'], 's3');
                 Storage::disk('s3')->setVisibility($path, 'public');
                 $url = Storage::disk('s3')->url($path);
+
+                $url = str_replace('http://minio:9000', 'http://localhost:9001', $url);
+
                 $urls[] = $url;
             }
 
-            $post->images = $urls;
+            $post->medias = $urls;
         }
 
         $post->save();

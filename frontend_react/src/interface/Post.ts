@@ -6,4 +6,5 @@ export interface Post {
   tags: string[];
   createdAt: string;
   updatedAt: string;
+  medias: string[];
 }

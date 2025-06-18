@@ -33,7 +33,9 @@ const HappyPostPage: React.FC = () => {
   const [postToDelete, setPostToDelete] = useState<Post | null>(null);
   const loggedInUserId = localStorage.getItem('loggedInUserId');
   const [posts, setPosts] = useState<Post[]>([]);
+  const [editId, setEditId] = useState(null);
   const { token } = useAuth()!;
+  const isEditing = editId !== null;
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState('');
@@ -189,7 +191,61 @@ const HappyPostPage: React.FC = () => {
             />
 
             <CardContent>
-              <Typography variant="body1">{post.content}</Typography>
+              {isEditing ? (
+                <TextField multiline fullWidth value={post.content} autoFocus />
+              ) : (
+                <>
+                  <Typography variant="body1" mb={2}>
+                    {post.content}
+                  </Typography>
+
+                  {post.medias?.length === 1 && (
+                    <Box
+                      component="img"
+                      src={post.medias[0]}
+                      alt="Post media"
+                      sx={{
+                        width: '100%',
+                        maxHeight: 400,
+                        objectFit: 'cover',
+                        borderRadius: 2,
+                      }}
+                    />
+                  )}
+
+                  {post.medias?.length > 1 && (
+                    <Box>
+                      <Typography variant="caption" color="text.secondary">
+                        {post.medias.length} photos
+                      </Typography>
+                      <Box
+                        sx={{
+                          display: 'grid',
+                          gridTemplateColumns:
+                            'repeat(auto-fill, minmax(120px, 1fr))',
+                          gap: 1,
+                          mt: 1,
+                        }}
+                      >
+                        {post.medias.map((url, idx) => (
+                          <Box
+                            key={idx}
+                            component="img"
+                            src={url}
+                            alt={`Media ${idx + 1}`}
+                            sx={{
+                              width: '100%',
+                              height: 100,
+                              objectFit: 'cover',
+                              borderRadius: 1,
+                            }}
+                          />
+                        ))}
+                      </Box>
+                    </Box>
+                  )}
+                </>
+              )}
             </CardContent>
 
             {loggedInUserId == post.authorId ? (
