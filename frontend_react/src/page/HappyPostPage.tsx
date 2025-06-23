@@ -24,6 +24,7 @@ import EditPostDialog from '../component/post/update/EditPostDialog';
 import { Link } from 'react-router-dom';
 import { Gallery, Item } from 'react-photoswipe-gallery';
 import 'photoswipe/dist/photoswipe.css';
+import { useDropzone } from 'react-dropzone';
 
 const HappyPostPage: React.FC = () => {
   const [toastOpen, setToastOpen] = useState(false);
@@ -45,9 +46,18 @@ const HappyPostPage: React.FC = () => {
   const [toastSeverity, setToastSeverity] = useState<'success' | 'error'>(
     'success'
   );
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    accept: { 'image/*': [] },
+    multiple: true,
+    onDrop: (acceptedFiles) => {
+      setSelectedFiles((prev) => [...prev, ...acceptedFiles]);
+    },
+  });
+
   const [imageSizes, setImageSizes] = useState<
     Record<string, { width: number; height: number }>
   >({});
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
   const getImageDimensions = (
     url: string
@@ -125,12 +135,14 @@ const HappyPostPage: React.FC = () => {
         authorName: 'test',
         content: newContent,
         tags: newTags,
+        medias: selectedFiles,
         bearerToken: token,
       });
 
       setPosts((prevPosts) => [newPost, ...prevPosts]);
       setNewContent('');
       setNewTags([]);
+      setSelectedFiles([]);
       setToastOpen(true);
       setToastMessage('New post success.');
       setToastSeverity('success');
@@ -175,6 +187,47 @@ const HappyPostPage: React.FC = () => {
             multiline
             rows={4}
           />
+
+          <Box
+            {...getRootProps()}
+            sx={{
+              border: '2px dashed #ccc',
+              borderRadius: 2,
+              p: 2,
+              mt: 2,
+              textAlign: 'center',
+              cursor: 'pointer',
+              backgroundColor: '#f9f9f9',
+              '&:hover': { backgroundColor: '#f1f1f1' },
+            }}
+          >
+            <input {...getInputProps()} />
+            <Typography variant="body2">
+              {isDragActive
+                ? 'Drop the files here...'
+                : 'Drag and drop images here, or click to select'}
+            </Typography>
+          </Box>
+
+          {selectedFiles.length > 0 && (
+            <Stack direction="row" spacing={1} mt={2} flexWrap="wrap">
+              {selectedFiles.map((file, idx) => (
+                <Box
+                  key={idx}
+                  component="img"
+                  src={URL.createObjectURL(file)}
+                  alt={`preview-${idx}`}
+                  sx={{
+                    width: 100,
+                    height: 100,
+                    objectFit: 'cover',
+                    borderRadius: 1,
+                    boxShadow: 1,
+                  }}
+                />
+              ))}
+            </Stack>
+          )}
 
           <Box mt={2} textAlign="right">
             <Button variant="contained" onClick={handleAddPost}>
@@ -233,44 +286,46 @@ const HappyPostPage: React.FC = () => {
                     {post.content}
                   </Typography>
 
-                  {post.medias?.length > 1 && (
-                    <Box
-                      sx={{
-                        display: 'grid',
-                        gridTemplateColumns:
-                          'repeat(auto-fill, minmax(120px, 1fr))',
-                        gap: 1,
-                        mt: 1,
-                      }}
-                    >
-                      <Gallery>
-                        {post.medias.map((url, idx) => (
-                          <Item
-                            original={url}
-                            thumbnail={url}
-                            width={imageSizes[url]?.width || 1024}
-                            height={imageSizes[url]?.height || 768}
-                            key={idx}
-                          >
-                            {({ ref, open }) => (
-                              <Box
-                                component="img"
-                                ref={ref}
-                                onClick={open}
-                                src={url}
-                                sx={{
-                                  width: '100%',
-                                  height: '100px',
-                                  objectFit: 'cover',
-                                  borderRadius: 1,
-                                  cursor: 'pointer',
-                                }}
-                              />
-                            )}
-                          </Item>
-                        ))}
-                      </Gallery>
-                    </Box>
+                  {post.medias?.length > 0 && (
+                    <>
+                      <Box
+                        sx={{
+                          display: 'grid',
+                          gridTemplateColumns:
+                            'repeat(auto-fill, minmax(120px, 1fr))',
+                          gap: 1,
+                          mt: 1,
+                        }}
+                      >
+                        <Gallery>
+                          {post.medias.map((url, idx) => (
+                            <Item
+                              original={url}
+                              thumbnail={url}
+                              width={imageSizes[url]?.width || 1024}
+                              height={imageSizes[url]?.height || 768}
+                              key={idx}
+                            >
+                              {({ ref, open }) => (
+                                <Box
+                                  component="img"
+                                  ref={ref}
+                                  onClick={open}
+                                  src={url}
+                                  sx={{
+                                    width: '100%',
+                                    height: '100px',
+                                    objectFit: 'cover',
+                                    borderRadius: 1,
+                                    cursor: 'pointer',
+                                  }}
+                                />
+                              )}
+                            </Item>
+                          ))}
+                        </Gallery>
+                      </Box>
+                    </>
                   )}
                 </>
               )}

@@ -34,6 +34,7 @@ interface AddUserParams {
   authorName: string | undefined;
   content: string;
   tags: string[];
+  medias?: File[];
   bearerToken: string | null;
 }
 
@@ -42,20 +43,30 @@ export const addPost = async ({
   authorName,
   content,
   tags,
+  medias,
   bearerToken,
 }: AddUserParams) => {
   const headers: HeadersInit = {
-    'Content-Type': 'application/json',
     Authorization: `Bearer ${bearerToken}`,
     'X-XSRF-Token': getCsrfToken() || '',
     accept: 'application/json',
   };
 
+  const formData = new FormData();
+  formData.append('content', content);
+  tags.forEach((tag) => formData.append('tags[]', tag));
+  formData.append('authorId', authorId?.toString() || '');
+  formData.append('authorName', authorName || '');
+
+  if (medias && medias.length > 0) {
+    medias.forEach((file) => formData.append('medias[]', file));
+  }
+
   const response = await fetch(`${API_BASE_URL}/${POSTS_ENDPOINT}`, {
     method: 'POST',
     headers,
     credentials: 'include',
-    body: JSON.stringify({ authorId, authorName, content, tags }),
+    body: formData,
   });
 
   const data = await response.json();
