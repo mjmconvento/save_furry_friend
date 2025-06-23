@@ -6,8 +6,6 @@
   <component name="ChangeListManager">
     <list default="true" id="c43d1c27-fd16-492a-a025-400e24af1f5e" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend_full_laravel/app/Models/Post.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/app/Models/Post.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend_full_laravel/app/Services/PostService.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/app/Services/PostService.php" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -502,7 +500,7 @@
       <workItem from="1749890879867" duration="2625000" />
       <workItem from="1750071764043" duration="3283000" />
       <workItem from="1750160936697" duration="2997000" />
-      <workItem from="1750245559903" duration="332000" />
+      <workItem from="1750245559903" duration="1807000" />
     </task>
     <servers />
   </component>

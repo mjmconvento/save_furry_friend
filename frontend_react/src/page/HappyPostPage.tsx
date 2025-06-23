@@ -22,6 +22,8 @@ import ConfirmDeletePostDialog from '../component/post/delete/ConfirmDeletePostD
 import LoadingIndicator from '../component/template/LoadingIndicator';
 import EditPostDialog from '../component/post/update/EditPostDialog';
 import { Link } from 'react-router-dom';
+import { Gallery, Item } from 'react-photoswipe-gallery';
+import 'photoswipe/dist/photoswipe.css';
 
 const HappyPostPage: React.FC = () => {
   const [toastOpen, setToastOpen] = useState(false);
@@ -43,6 +45,38 @@ const HappyPostPage: React.FC = () => {
   const [toastSeverity, setToastSeverity] = useState<'success' | 'error'>(
     'success'
   );
+  const [imageSizes, setImageSizes] = useState<
+    Record<string, { width: number; height: number }>
+  >({});
+
+  const getImageDimensions = (
+    url: string
+  ): Promise<{ width: number; height: number }> =>
+    new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () =>
+        resolve({ width: img.naturalWidth, height: img.naturalHeight });
+      img.src = url;
+    });
+
+  useEffect(() => {
+    const loadSizes = async () => {
+      const sizes: Record<string, { width: number; height: number }> = {};
+
+      for (const post of posts) {
+        for (const url of post.medias ?? []) {
+          if (!sizes[url]) {
+            const size = await getImageDimensions(url);
+            sizes[url] = size;
+          }
+        }
+      }
+
+      setImageSizes(sizes);
+    };
+
+    if (posts.length > 0) loadSizes();
+  }, [posts]);
 
   useEffect(() => {
     const loadPosts = async () => {
@@ -199,49 +233,43 @@ const HappyPostPage: React.FC = () => {
                     {post.content}
                   </Typography>
 
-                  {post.medias?.length === 1 && (
-                    <Box
-                      component="img"
-                      src={post.medias[0]}
-                      alt="Post media"
-                      sx={{
-                        width: '100%',
-                        maxHeight: 400,
-                        objectFit: 'cover',
-                        borderRadius: 2,
-                      }}
-                    />
-                  )}
-
                   {post.medias?.length > 1 && (
-                    <Box>
-                      <Typography variant="caption" color="text.secondary">
-                        {post.medias.length} photos
-                      </Typography>
-                      <Box
-                        sx={{
-                          display: 'grid',
-                          gridTemplateColumns:
-                            'repeat(auto-fill, minmax(120px, 1fr))',
-                          gap: 1,
-                          mt: 1,
-                        }}
-                      >
+                    <Box
+                      sx={{
+                        display: 'grid',
+                        gridTemplateColumns:
+                          'repeat(auto-fill, minmax(120px, 1fr))',
+                        gap: 1,
+                        mt: 1,
+                      }}
+                    >
+                      <Gallery>
                         {post.medias.map((url, idx) => (
-                          <Box
+                          <Item
+                            original={url}
+                            thumbnail={url}
+                            width={imageSizes[url]?.width || 1024}
+                            height={imageSizes[url]?.height || 768}
                             key={idx}
-                            component="img"
-                            src={url}
-                            alt={`Media ${idx + 1}`}
-                            sx={{
-                              width: '100%',
-                              height: 100,
-                              objectFit: 'cover',
-                              borderRadius: 1,
-                            }}
-                          />
+                          >
+                            {({ ref, open }) => (
+                              <Box
+                                component="img"
+                                ref={ref}
+                                onClick={open}
+                                src={url}
+                                sx={{
+                                  width: '100%',
+                                  height: '100px',
+                                  objectFit: 'cover',
+                                  borderRadius: 1,
+                                  cursor: 'pointer',
+                                }}
+                              />
+                            )}
+                          </Item>
                         ))}
-                      </Box>
+                      </Gallery>
                     </Box>
                   )}
                 </>
