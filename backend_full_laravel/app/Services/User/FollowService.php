@@ -2,7 +2,7 @@
 
 namespace App\Services\User;
 
-use App\Models\User;
+use App\Models\Eloquent\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
@@ -21,8 +21,7 @@ class FollowService
             ]);
         }
 
-        /** @var User $userToFollow */
-        $userToFollow = User::findOrFail($id);
+        $userToFollow = User::findOneOrFail($id);
 
         /** @var User $userLoggedIn */
         $userLoggedIn = Auth::user();
@@ -60,7 +59,7 @@ class FollowService
             ]);
         }
 
-        $userToUnfollow = User::findOrFail($id);
+        $userToUnfollow = User::findOneOrFail($id);
 
         /** @var User $userLoggedIn */
         $userLoggedIn = Auth::user();

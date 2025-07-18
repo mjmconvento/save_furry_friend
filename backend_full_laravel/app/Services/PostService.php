@@ -4,10 +4,11 @@ namespace App\Services;
 
 use App\Http\Requests\Post\StorePostRequest;
 use App\Http\Requests\Post\UpdatePostRequest;
-use App\Models\Post;
-use App\Models\User;
-use Illuminate\Database\Eloquent\Collection;
+use App\Models\Eloquent\User;
+use App\Models\Mongo\Post;
+use Illuminate\Filesystem\AwsS3V3Adapter;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 
 class PostService
@@ -67,8 +68,11 @@ class PostService
                 }
 
                 $path = $file->store($user['id'], 's3');
-                Storage::disk('s3')->setVisibility($path, 'public');
-                $url = Storage::disk('s3')->url($path);
+
+                /** @var AwsS3V3Adapter $filesystem */
+                $filesystem = Storage::disk('s3');
+                $filesystem->setVisibility($path, 'public');
+                $url = $filesystem->url($path);
 
                 /**
                  * TODO: This is a workaround for the MinIO URL. Remove this when using a real S3 service.

@@ -4,16 +4,25 @@ namespace App\Services\User;
 
 use App\Http\Requests\User\StoreUserRequest;
 use App\Http\Requests\User\UpdateUserRequest;
-use App\Models\User;
+use App\Models\Eloquent\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
 class UserService
 {
+    /**
+     * @return array{
+     *     id: string,
+     *     first_name: string,
+     *     middle_name: ?string,
+     *     last_name: string,
+     *     email: string,
+     *     is_following: bool
+     * }
+     */
     public function getUser(string $id): array
     {
-        /** @var User $user */
         $user = User::findOneOrFail($id);
 
         /** @var User $authUser */

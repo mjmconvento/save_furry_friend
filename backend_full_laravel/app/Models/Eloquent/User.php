@@ -1,15 +1,15 @@
 <?php
 
-namespace App\Models;
+namespace App\Models\Eloquent;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
-use App\Traits\HasFindOneOrFail;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
  * @property string $id
@@ -18,11 +18,11 @@ use Laravel\Sanctum\HasApiTokens;
  * @property string $last_name
  * @property string $email
  * @property string $password
- * @method static static findOneOrFail(string $id, array $columns = ['*'])
+ *
+ * @method static ?User find(string $id)
  */
 class User extends Authenticatable
 {
-    use HasFindOneOrFail;
 
     /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, Notifiable;
@@ -49,6 +49,17 @@ class User extends Authenticatable
         'password',
         'remember_token',
     ];
+
+    public static function findOneOrFail(string $id): User
+    {
+        $user = static::find($id);
+
+        if (!$user) {
+            throw new NotFoundHttpException('User not found.');
+        }
+
+        return $user;
+    }
 
     /**
      * Get the attributes that should be cast.

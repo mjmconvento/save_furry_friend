@@ -1,11 +1,11 @@
 <?php
 
-namespace App\Models;
+namespace App\Models\Mongo;
 
-use App\Traits\HasFindOneOrFail;
 use Carbon\Carbon;
 use Illuminate\Support\Str;
 use MongoDB\Laravel\Eloquent\Model;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
  * @property string $id
@@ -13,13 +13,13 @@ use MongoDB\Laravel\Eloquent\Model;
  * @property string $authorName
  * @property string $content
  * @property Carbon $createdAt
- * @property array $tags
- * @property array $medias
+ * @property array<string> $tags
+ * @property array<string> $medias
+ *
+ * @method static ?Post find(string $id)
  */
 class Post extends Model
 {
-    use HasFindOneOrFail;
-
     protected $connection = 'mongodb';
     protected string $collection = 'posts';
 
@@ -28,7 +28,7 @@ class Post extends Model
     public $incrementing = false;
     protected $keyType = 'string';
 
-    protected static function boot()
+    protected static function boot(): void
     {
         parent::boot();
 
@@ -37,5 +37,16 @@ class Post extends Model
                 $model->{$model->getKeyName()} = (string) Str::uuid();
             }
         });
+    }
+
+    public static function findOneOrFail(string $id): Post
+    {
+        $post = static::find($id);
+
+        if (!$post) {
+            throw new NotFoundHttpException('Resource not found.');
+        }
+
+        return $post;
     }
 }

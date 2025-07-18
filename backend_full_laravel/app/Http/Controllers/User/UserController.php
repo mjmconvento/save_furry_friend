@@ -5,8 +5,10 @@ namespace App\Http\Controllers\User;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\User\StoreUserRequest;
 use App\Http\Requests\User\UpdateUserRequest;
-use App\Models\User;
+use App\Models\Eloquent\User;
 use App\Services\User\UserService;
+use Illuminate\Auth\AuthManager;
+use Illuminate\Auth\TokenGuard;
 use Illuminate\Http\JsonResponse;
 
 class UserController extends Controller
@@ -38,7 +40,6 @@ class UserController extends Controller
 
     public function update(UpdateUserRequest $request, string $id): JsonResponse
     {
-        /** @var User $user */
         $user = User::findOneOrFail($id);
 
         $this->userService->updateUser($request, $user);
@@ -46,7 +47,7 @@ class UserController extends Controller
         return response()->json($user);
     }
 
-    public function destroy($id): JsonResponse
+    public function destroy(string $id): JsonResponse
     {
         $user = User::findOneOrFail($id);
         $user->delete();
@@ -56,14 +57,18 @@ class UserController extends Controller
 
     public function search(string $keyword): JsonResponse
     {
-        $authUser = auth()->user();
+        /** @var AuthManager $auth */
+        $auth = auth();
+
+        /** @var User $authUser */
+        $authUser = $auth->user();
 
         $users = User::query()
             ->leftJoin('user_followers as uf', function ($join) use ($authUser) {
                 $join->on('users.id', '=', 'uf.followed_id')
                     ->where('uf.follower_id', '=', $authUser->id);
             })
-            ->where('users.id', '!=', $authUser->id) // 👈 exclude self
+            ->where('users.id', '!=', $authUser->id)
             ->where(function ($query) use ($keyword) {
                 $query->whereRaw('LOWER(first_name) LIKE ?', ["%" . strtolower($keyword) . "%"])
                     ->orWhereRaw('LOWER(middle_name) LIKE ?', ["%" . strtolower($keyword) . "%"])
