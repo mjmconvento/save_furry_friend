@@ -51,7 +51,7 @@ class PostService
 
         $user = $user->toArray();
 
-        $post = new Post;
+        $post = new Post();
         $post->authorId = $user['id'];
         $post->authorName = $user['first_name'] . ' ' . $user['last_name'];
         $post->content = $request->get('content');

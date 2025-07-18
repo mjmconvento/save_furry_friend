@@ -9,7 +9,9 @@ use Illuminate\Validation\ValidationException;
 
 class FollowController extends Controller
 {
-    public function __construct(private readonly FollowService $followService) {}
+    public function __construct(private readonly FollowService $followService)
+    {
+    }
 
     /**
      * @throws ValidationException

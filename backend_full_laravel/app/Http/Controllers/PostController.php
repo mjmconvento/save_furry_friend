@@ -13,7 +13,9 @@ use Illuminate\Support\Str;
 
 class PostController extends Controller
 {
-    public function __construct(private readonly PostService $postService) {}
+    public function __construct(private readonly PostService $postService)
+    {
+    }
 
     public function index(): Collection
     {
@@ -29,7 +31,7 @@ class PostController extends Controller
 
     public function store(StorePostRequest $request): JsonResponse
     {
-        $post =  $this->postService->storePost($request);
+        $post = $this->postService->storePost($request);
 
         return response()->json($post);
     }

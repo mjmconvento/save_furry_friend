@@ -33,7 +33,7 @@ class UserService
 
     public function storeUser(StoreUserRequest $request): User
     {
-        $user = new User;
+        $user = new User();
         $user->id = Str::uuid();
         $user->first_name = $request->get('firstName');
         $user->middle_name = $request->get('middleName');

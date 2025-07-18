@@ -5,11 +5,10 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="c43d1c27-fd16-492a-a025-400e24af1f5e" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/php.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/php.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend_full_laravel/app/Http/Controllers/PostController.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/app/Http/Controllers/PostController.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend_full_laravel/app/Models/Post.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/app/Models/Post.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend_full_laravel/app/Services/PostService.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/app/Services/PostService.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend_full_laravel/config/filesystems.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/config/filesystems.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend_full_laravel/composer.json" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/composer.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend_full_laravel/composer.lock" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/composer.lock" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -396,6 +395,7 @@
       <path value="$PROJECT_DIR$/backend_full_laravel/vendor/aws/aws-sdk-php" />
       <path value="$PROJECT_DIR$/backend_full_laravel/vendor/mtdowling/jmespath.php" />
       <path value="$PROJECT_DIR$/backend_full_laravel/vendor/league/flysystem-aws-s3-v3" />
+      <path value="$PROJECT_DIR$/backend_full_laravel/vendor/symplify/easy-coding-standard" />
     </include_path>
   </component>
   <component name="ProjectColorInfo">{
@@ -452,8 +452,8 @@
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-js-predefined-d6986cc7102b-b26f3e71634d-JavaScript-PS-251.26094.133" />
-        <option value="bundled-php-predefined-a98d8de5180a-c5828cf854d9-com.jetbrains.php.sharedIndexes-PS-251.26094.133" />
+        <option value="bundled-js-predefined-d6986cc7102b-09060db00ec0-JavaScript-PS-251.26927.60" />
+        <option value="bundled-php-predefined-a98d8de5180a-e5747d4f5a45-com.jetbrains.php.sharedIndexes-PS-251.26927.60" />
         <option value="php-dragonmantank_cron_expression-88dc7a6578bb-8edadc28" />
         <option value="php-league_commonmark-88dc7a6578bb-eed7f18a" />
         <option value="php-mockery_mockery-88dc7a6578bb-4ab6fb81" />
@@ -507,6 +507,7 @@
       <workItem from="1750245559903" duration="1807000" />
       <workItem from="1750679845296" duration="3205000" />
       <workItem from="1750853127739" duration="3012000" />
+      <workItem from="1752849266933" duration="432000" />
     </task>
     <servers />
   </component>
