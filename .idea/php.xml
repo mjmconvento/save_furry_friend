@@ -379,6 +379,7 @@
       <path value="$PROJECT_DIR$/backend_full_laravel/vendor/mtdowling/jmespath.php" />
       <path value="$PROJECT_DIR$/backend_full_laravel/vendor/league/flysystem-aws-s3-v3" />
       <path value="$PROJECT_DIR$/backend_full_laravel/vendor/symplify/easy-coding-standard" />
+      <path value="$PROJECT_DIR$/backend_full_laravel/vendor/phpstan/phpstan" />
     </include_path>
   </component>
   <component name="PhpProjectSharedConfiguration" php_language_level="8.2" />

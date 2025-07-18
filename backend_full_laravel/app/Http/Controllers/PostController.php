@@ -46,7 +46,7 @@ class PostController extends Controller
         return response()->json($post);
     }
 
-    public function destroy($id): JsonResponse
+    public function destroy(string $id): JsonResponse
     {
         $post = Post::findOneOrFail($id);
 

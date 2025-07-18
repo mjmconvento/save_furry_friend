@@ -18,6 +18,7 @@ use Laravel\Sanctum\HasApiTokens;
  * @property string $last_name
  * @property string $email
  * @property string $password
+ * @method static static findOneOrFail(string $id, array $columns = ['*'])
  */
 class User extends Authenticatable
 {
