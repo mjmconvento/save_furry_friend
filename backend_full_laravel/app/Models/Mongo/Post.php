@@ -32,7 +32,7 @@ class Post extends Model
     {
         parent::boot();
 
-        static::creating(function ($model) {
+        static::creating(function ($model): void {
             if (!$model->getKey()) {
                 $model->{$model->getKeyName()} = (string) Str::uuid();
             }

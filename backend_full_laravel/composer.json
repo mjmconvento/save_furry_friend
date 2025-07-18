@@ -26,6 +26,7 @@
         "pestphp/pest": "^3.8",
         "pestphp/pest-plugin-laravel": "^3.2",
         "phpstan/phpstan": "^2.1",
+        "rector/rector": "^2.1",
         "symplify/easy-coding-standard": "^12.5"
     },
     "autoload": {
@@ -65,6 +66,12 @@
         ],
         "phpstan": [
             "@php vendor/bin/phpstan analyse -l 5 app --memory-limit=512M"
+        ],
+        "rector": [
+            "@php vendor/bin/rector --dry-run"
+        ],
+        "rector-fix": [
+            "@php vendor/bin/rector"
         ],
         "test": [
             "@php artisan config:clear --ansi",

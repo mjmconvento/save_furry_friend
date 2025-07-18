@@ -5,24 +5,18 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="c43d1c27-fd16-492a-a025-400e24af1f5e" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/backend_full_laravel/rector.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/php.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/php.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend_full_laravel/app/Http/Controllers/AuthController.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/app/Http/Controllers/AuthController.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend_full_laravel/app/Http/Controllers/PostController.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/app/Http/Controllers/PostController.php" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backend_full_laravel/app/Http/Controllers/User/UserController.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/app/Http/Controllers/User/UserController.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend_full_laravel/app/Http/Requests/Post/StorePostRequest.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/app/Http/Requests/Post/StorePostRequest.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend_full_laravel/app/Http/Requests/Post/UpdatePostRequest.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/app/Http/Requests/Post/UpdatePostRequest.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend_full_laravel/app/Http/Requests/User/StoreUserRequest.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/app/Http/Requests/User/StoreUserRequest.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend_full_laravel/app/Http/Requests/User/UpdateUserRequest.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/app/Http/Requests/User/UpdateUserRequest.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend_full_laravel/app/Models/AbstractModel.php" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend_full_laravel/app/Models/Post.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/app/Models/Mongo/Post.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend_full_laravel/app/Models/User.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/app/Models/Eloquent/User.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend_full_laravel/app/Services/PostService.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/app/Services/PostService.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend_full_laravel/app/Services/User/FollowService.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/app/Services/User/FollowService.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend_full_laravel/app/Services/User/UserService.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/app/Services/User/UserService.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend_full_laravel/app/Traits/HasFindOneOrFail.php" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend_full_laravel/app/Models/Mongo/Post.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/app/Models/Mongo/Post.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend_full_laravel/bootstrap/app.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/bootstrap/app.php" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backend_full_laravel/composer.json" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/composer.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend_full_laravel/config/auth.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/config/auth.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend_full_laravel/database/factories/UserFactory.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/database/factories/UserFactory.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend_full_laravel/composer.lock" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/composer.lock" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend_full_laravel/routes/console.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/routes/console.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend_full_laravel/routes/web.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/routes/web.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend_full_laravel/tests/Feature/ExampleTest.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/tests/Feature/ExampleTest.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend_full_laravel/tests/Unit/ExampleTest.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend_full_laravel/tests/Unit/ExampleTest.php" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -411,6 +405,7 @@
       <path value="$PROJECT_DIR$/backend_full_laravel/vendor/league/flysystem-aws-s3-v3" />
       <path value="$PROJECT_DIR$/backend_full_laravel/vendor/symplify/easy-coding-standard" />
       <path value="$PROJECT_DIR$/backend_full_laravel/vendor/phpstan/phpstan" />
+      <path value="$PROJECT_DIR$/backend_full_laravel/vendor/rector/rector" />
     </include_path>
   </component>
   <component name="ProjectColorInfo">{
@@ -523,7 +518,7 @@
       <workItem from="1750245559903" duration="1807000" />
       <workItem from="1750679845296" duration="3205000" />
       <workItem from="1750853127739" duration="3012000" />
-      <workItem from="1752849266933" duration="5325000" />
+      <workItem from="1752849266933" duration="5554000" />
     </task>
     <servers />
   </component>

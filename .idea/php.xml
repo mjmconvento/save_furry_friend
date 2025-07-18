@@ -380,15 +380,18 @@
       <path value="$PROJECT_DIR$/backend_full_laravel/vendor/league/flysystem-aws-s3-v3" />
       <path value="$PROJECT_DIR$/backend_full_laravel/vendor/symplify/easy-coding-standard" />
       <path value="$PROJECT_DIR$/backend_full_laravel/vendor/phpstan/phpstan" />
+      <path value="$PROJECT_DIR$/backend_full_laravel/vendor/rector/rector" />
     </include_path>
   </component>
   <component name="PhpProjectSharedConfiguration" php_language_level="8.2" />
   <component name="PhpStan">
     <PhpStan_settings>
       <phpstan_by_interpreter asDefaultInterpreter="true" interpreter_id="40516211-ee05-4c82-a21b-230f4fe4b11a" timeout="60000" />
+      <PhpStanConfiguration tool_path="$PROJECT_DIR$/backend_full_laravel/vendor/bin/phpstan" />
     </PhpStan_settings>
   </component>
   <component name="PhpStanOptionsConfiguration">
+    <option name="memoryLimit" value="512M" />
     <option name="transferred" value="true" />
   </component>
   <component name="PhpUnit">
