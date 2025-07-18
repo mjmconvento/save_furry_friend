@@ -70,8 +70,10 @@ class PostService
                 Storage::disk('s3')->setVisibility($path, 'public');
                 $url = Storage::disk('s3')->url($path);
 
+                /**
+                 * TODO: This is a workaround for the MinIO URL. Remove this when using a real S3 service.
+                 */
                 $url = str_replace('http://minio:9000', 'http://localhost:9001', $url);
-
                 $urls[] = $url;
             }
 

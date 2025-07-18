@@ -4,9 +4,11 @@ namespace App\Models;
 
 use App\Traits\HasFindOneOrFail;
 use Carbon\Carbon;
+use Illuminate\Support\Str;
 use MongoDB\Laravel\Eloquent\Model;
 
 /**
+ * @property string $id
  * @property int $authorId
  * @property string $authorName
  * @property string $content
@@ -22,4 +24,18 @@ class Post extends Model
     protected string $collection = 'posts';
 
     protected $fillable = ['authorId', 'authorName', 'content', 'createdAt', 'tags', 'medias'];
+
+    public $incrementing = false;
+    protected $keyType = 'string';
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($model) {
+            if (!$model->getKey()) {
+                $model->{$model->getKeyName()} = (string) Str::uuid();
+            }
+        });
+    }
 }

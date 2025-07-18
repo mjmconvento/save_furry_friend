@@ -8,6 +8,8 @@ use App\Models\Post;
 use App\Services\PostService;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class PostController extends Controller
 {
@@ -45,6 +47,15 @@ class PostController extends Controller
     public function destroy($id): JsonResponse
     {
         $post = Post::findOneOrFail($id);
+
+        foreach ($post->medias ?? [] as $url) {
+            $path = parse_url($url, PHP_URL_PATH);
+            $path = ltrim($path, '/');
+
+            $path = Str::remove("uploads/", $path);
+            Storage::disk('s3')->delete($path);
+        }
+
         $post->delete();
 
         return response()->json(['message' => 'Post deleted successfully']);
