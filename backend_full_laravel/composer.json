@@ -65,7 +65,7 @@
             "@php vendor/bin/ecs --fix"
         ],
         "phpstan": [
-            "@php vendor/bin/phpstan analyse -l 5 app --memory-limit=512M"
+            "@php vendor/bin/phpstan analyse --configuration=phpstan.neon --memory-limit=512M"
         ],
         "rector": [
             "@php vendor/bin/rector --dry-run"

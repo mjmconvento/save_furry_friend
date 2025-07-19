@@ -6,8 +6,8 @@ use App\Http\Requests\Post\StorePostRequest;
 use App\Http\Requests\Post\UpdatePostRequest;
 use App\Models\Mongo\Post;
 use App\Services\PostService;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -17,6 +17,9 @@ class PostController extends Controller
     {
     }
 
+    /**
+     * @return Collection<int, Post>
+     */
     public function index(): Collection
     {
         return $this->postService->getPosts();
@@ -38,7 +41,6 @@ class PostController extends Controller
 
     public function update(UpdatePostRequest $request, string $id): JsonResponse
     {
-        /** @var Post $post */
         $post = Post::findOneOrFail($id);
 
         $this->postService->updatePost($request, $post);
@@ -51,6 +53,7 @@ class PostController extends Controller
         $post = Post::findOneOrFail($id);
 
         foreach ($post->medias ?? [] as $url) {
+            /** @var string $path */
             $path = parse_url($url, PHP_URL_PATH);
             $path = ltrim($path, '/');
 

@@ -3,6 +3,7 @@
 namespace App\Models\Mongo;
 
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Str;
 use MongoDB\Laravel\Eloquent\Model;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -34,7 +35,7 @@ class Post extends Model
 
         static::creating(function ($model): void {
             if (!$model->getKey()) {
-                $model->{$model->getKeyName()} = (string) Str::uuid();
+                $model->{(string) $model->getKeyName()} = (string) Str::uuid();
             }
         });
     }

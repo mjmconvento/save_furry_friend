@@ -7,19 +7,26 @@ use App\Http\Requests\Post\UpdatePostRequest;
 use App\Models\Eloquent\User;
 use App\Models\Mongo\Post;
 use Illuminate\Filesystem\AwsS3V3Adapter;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Database\Eloquent\Collection;
 
 class PostService
 {
+    /**
+     * @return Collection<int, Post>
+     */
     public function getPosts(): Collection
     {
         $tags = request()->query('tags');
         $authorId = request()->query('authorId');
 
         if (is_null($tags)) {
-            return Post::all();
+            /** @var Collection<int, Post> $returnPost */
+            $returnPost = Post::all();
+
+            return $returnPost;
         }
 
         $query = Post::query()
@@ -34,7 +41,11 @@ class PostService
             $followingIds = $user
                 ->following()
                 ->pluck('id')
-                ->map(fn ($id) => (string) $id)
+                ->map(function ($id): string {
+                    assert(is_scalar($id));
+
+                    return (string) $id;
+                })
                 ->toArray();
 
             $followingIds[] = Auth::id();
@@ -42,7 +53,10 @@ class PostService
             $query->whereIn('authorId', $followingIds);
         }
 
-        return $query->orderBy('createdAt', 'desc')->get();
+        /** @var Collection<int, Post> $returnPost */
+        $returnPost = $query->orderBy('createdAt', 'desc')->get();
+
+        return $returnPost;
     }
 
     public function storePost(StorePostRequest $request): Post
@@ -55,18 +69,28 @@ class PostService
         $post = new Post();
         $post->authorId = $user['id'];
         $post->authorName = $user['first_name'] . ' ' . $user['last_name'];
-        $post->content = $request->get('content');
+
+        /** @var string $content */
+        $content = $request->get('content');
+        $post->content = $content;
         $post->createdAt = now();
-        $post->tags = $request->get('tags');
+
+        /** @var array<string> $tags */
+        $tags = $request->get('tags');
+        $post->tags = $tags;
 
         if (isset($request->all()["medias"])) {
             $urls = [];
 
-            foreach ($request->file('medias') as $file) {
+            /** @var array<UploadedFile> $medias */
+            $medias = $request->file('medias');
+
+            foreach ($medias as $file) {
                 if (!$file->isValid()) {
                     logger('Invalid file upload: ' . $file->getClientOriginalName());
                 }
 
+                /** @var string $path */
                 $path = $file->store($user['id'], 's3');
 
                 /** @var AwsS3V3Adapter $filesystem */

@@ -22,9 +22,12 @@ class UpdateUserRequest extends FormRequest
      */
     public function rules(): array
     {
+        /** @var string $routeId */
+        $routeId = $this->route('id');
+
         return [
             'name' => 'nullable|string|max:255',
-            'email' => 'nullable|string|email|unique:users,email,' . $this->route('id'),
+            'email' => 'nullable|string|email|unique:users,email,' . $routeId,
             'password' => 'nullable|string|min:8',
         ];
     }

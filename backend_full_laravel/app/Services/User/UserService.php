@@ -34,21 +34,41 @@ class UserService
             $isFollowing = $authUser->following()->where('followed_id', $user->id)->exists();
         }
 
-        $userData = $user->toArray();
-        $userData['is_following'] = $isFollowing;
-
-        return $userData;
+        return [
+            'id' => $user->id,
+            'first_name' => $user->first_name,
+            'middle_name' => $user->middle_name,
+            'last_name' => $user->last_name,
+            'email' => $user->email,
+            'is_following' => $isFollowing,
+        ];
     }
 
     public function storeUser(StoreUserRequest $request): User
     {
         $user = new User();
         $user->id = Str::uuid();
-        $user->first_name = $request->get('firstName');
-        $user->middle_name = $request->get('middleName');
-        $user->last_name = $request->get('lastName');
-        $user->email = $request->get('email');
-        $user->password = Hash::make($request->get('password'));
+
+        /** @var string $firstName */
+        $firstName = $request->get('firstName');
+
+        /** @var string $middleName */
+        $middleName = $request->get('middleName');
+
+        /** @var string $lastName */
+        $lastName = $request->get('lastName');
+
+        /** @var string $email */
+        $email = $request->get('email');
+
+        /** @var string $password */
+        $password = $request->get('password');
+
+        $user->first_name = $firstName;
+        $user->middle_name = $middleName;
+        $user->last_name = $lastName;
+        $user->email = $email;
+        $user->password = Hash::make($password);
         $user->save();
 
         return $user;
@@ -57,22 +77,38 @@ class UserService
     public function updateUser(UpdateUserRequest $request, User $user): void
     {
         if ($request->has('firstName')) {
-            $user->first_name = $request->get('firstName');
+            /** @var string $firstName */
+            $firstName = $request->get('firstName');
+
+            $user->first_name = $firstName;
         }
 
         if ($request->has('middleName')) {
-            $user->middle_name = $request->get('middleName');
+            /** @var string $middleName */
+            $middleName = $request->get('middleName');
+
+            $user->middle_name = $middleName;
         }
 
         if ($request->has('lastName')) {
-            $user->last_name = $request->get('lastName');
+            /** @var string $lastName */
+            $lastName = $request->get('lastName');
+
+            $user->last_name = $lastName;
         }
 
         if ($request->has('email')) {
-            $user->email = $request->get('email');
+            /** @var string $email */
+            $email = $request->get('email');
+
+            $user->email = $email;
         }
+
         if ($request->has('password')) {
-            $user->password = Hash::make($request->get('password'));
+            /** @var string $password */
+            $password = $request->get('password');
+
+            $user->password = Hash::make($password);
         }
 
         $user->save();

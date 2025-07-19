@@ -75,13 +75,25 @@ class User extends Authenticatable
         ];
     }
 
+    /**
+     * @return BelongsToMany<User, User>
+     */
     public function followers(): BelongsToMany
     {
-        return $this->belongsToMany(User::class, 'user_followers', 'followed_id', 'follower_id');
+        /** @var BelongsToMany<User, User> $relation */
+        $relation = $this->belongsToMany(User::class, 'user_followers', 'followed_id', 'follower_id');
+
+        return $relation;
     }
 
+    /**
+     * @return BelongsToMany<User, User>
+     */
     public function following(): BelongsToMany
     {
-        return $this->belongsToMany(User::class, 'user_followers', 'follower_id', 'followed_id');
+        /** @var BelongsToMany<User, User> $relation */
+        $relation = $this->belongsToMany(User::class, 'user_followers', 'follower_id', 'followed_id');
+
+        return $relation;
     }
 }
