@@ -3,14 +3,13 @@
 namespace App\Models\Mongo;
 
 use Carbon\Carbon;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Str;
 use MongoDB\Laravel\Eloquent\Model;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
  * @property string $id
- * @property int $authorId
+ * @property string $authorId
  * @property string $authorName
  * @property string $content
  * @property Carbon $createdAt
@@ -33,9 +32,9 @@ class Post extends Model
     {
         parent::boot();
 
-        static::creating(function ($model): void {
+        static::creating(function (self $model): void {
             if (!$model->getKey()) {
-                $model->{(string) $model->getKeyName()} = (string) Str::uuid();
+                $model->{$model->getKeyName()} = (string) Str::uuid();
             }
         });
     }

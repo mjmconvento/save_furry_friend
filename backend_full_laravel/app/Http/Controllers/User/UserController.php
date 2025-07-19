@@ -9,6 +9,8 @@ use App\Models\Eloquent\User;
 use App\Services\User\UserService;
 use Illuminate\Auth\AuthManager;
 use Illuminate\Auth\TokenGuard;
+use Illuminate\Database\Query\Builder;
+use Illuminate\Database\Query\JoinClause;
 use Illuminate\Http\JsonResponse;
 
 class UserController extends Controller
@@ -64,12 +66,12 @@ class UserController extends Controller
         $authUser = $auth->user();
 
         $users = User::query()
-            ->leftJoin('user_followers as uf', function ($join) use ($authUser): void {
+            ->leftJoin('user_followers as uf', function (JoinClause $join) use ($authUser): void {
                 $join->on('users.id', '=', 'uf.followed_id')
                     ->where('uf.follower_id', '=', $authUser->id);
             })
             ->where('users.id', '!=', $authUser->id)
-            ->where(function ($query) use ($keyword): void {
+            ->where(function (Builder $query) use ($keyword): void {
                 $query->whereRaw('LOWER(first_name) LIKE ?', ["%" . strtolower($keyword) . "%"])
                     ->orWhereRaw('LOWER(middle_name) LIKE ?', ["%" . strtolower($keyword) . "%"])
                     ->orWhereRaw('LOWER(last_name) LIKE ?', ["%" . strtolower($keyword) . "%"]);

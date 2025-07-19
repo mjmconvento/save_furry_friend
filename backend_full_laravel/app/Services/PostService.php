@@ -67,8 +67,18 @@ class PostService
         $user = $user->toArray();
 
         $post = new Post();
-        $post->authorId = $user['id'];
-        $post->authorName = $user['first_name'] . ' ' . $user['last_name'];
+
+        /** @var string $userId */
+        $userId = $user['id'];
+        $post->authorId = $userId;
+
+        /** @var string $userFirstName */
+        $userFirstName = $user['first_name'];
+
+        /** @var string $userLastName */
+        $userLastName = $user['last_name'];
+
+        $post->authorName = $userFirstName . ' ' . $userLastName;
 
         /** @var string $content */
         $content = $request->get('content');
@@ -91,7 +101,7 @@ class PostService
                 }
 
                 /** @var string $path */
-                $path = $file->store($user['id'], 's3');
+                $path = $file->store($userId, 's3');
 
                 /** @var AwsS3V3Adapter $filesystem */
                 $filesystem = Storage::disk('s3');
