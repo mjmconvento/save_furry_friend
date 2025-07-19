@@ -8,7 +8,6 @@ use App\Http\Requests\User\UpdateUserRequest;
 use App\Models\Eloquent\User;
 use App\Services\User\UserService;
 use Illuminate\Auth\AuthManager;
-use Illuminate\Auth\TokenGuard;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Database\Query\JoinClause;
 use Illuminate\Http\JsonResponse;
