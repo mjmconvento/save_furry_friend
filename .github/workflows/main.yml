@@ -1,0 +1,37 @@
+name: main.yml
+on: [push, pull_request]
+
+jobs:
+    code-quality:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Setup PHP
+              uses: shivammathur/setup-php@v2
+              with:
+                  php-version: '8.2'
+                  extensions: mbstring, pdo, pdo_pgsql
+                  coverage: none
+
+            - name: Change to backend directory
+              run: cd backend_full_laravel
+              shell: bash
+
+            - name: Install dependencies
+              run: composer install --no-progress --prefer-dist
+              working-directory: backend_full_laravel
+
+            - name: Run PHPStan
+              run: vendor/bin/phpstan analyse
+              working-directory: backend_full_laravel
+
+            - name: Run EasyCodingStandard (ECS)
+              run: vendor/bin/ecs check
+              working-directory: backend_full_laravel
+
+            - name: Run Rector (dry-run)
+              run: vendor/bin/rector process --dry-run
+              working-directory: backend_full_laravel
