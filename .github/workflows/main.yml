@@ -35,3 +35,7 @@ jobs:
             - name: Run Rector (dry-run)
               run: vendor/bin/rector process --dry-run
               working-directory: backend_full_laravel
+
+            - name: Run Pest tests
+              run: vendor/bin/pest
+              working-directory: backend_full_laravel
