@@ -6,6 +6,7 @@ use App\Http\Requests\Post\StorePostRequest;
 use App\Http\Requests\Post\UpdatePostRequest;
 use App\Models\Eloquent\User;
 use App\Models\Mongo\Post;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Filesystem\AwsS3V3Adapter;
 use Illuminate\Http\UploadedFile;
@@ -83,7 +84,7 @@ class PostService
         /** @var string $content */
         $content = $request->get('content');
         $post->content = $content;
-        $post->createdAt = now();
+        $post->createdAt = Carbon::now();
 
         /** @var array<string> $tags */
         $tags = $request->get('tags');
@@ -125,6 +126,9 @@ class PostService
 
     public function updatePost(UpdatePostRequest $request, Post $post): void
     {
-        $post->update($request->only(['title', 'content', 'tags']));
+        /** @var array<string, mixed> $attributes */
+        $attributes = $request->only(['title', 'content', 'tags']);
+
+        $post->update($attributes);
     }
 }

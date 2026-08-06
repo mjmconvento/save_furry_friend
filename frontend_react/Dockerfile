@@ -5,11 +5,11 @@ FROM node:23
 # Set the working directory
 WORKDIR /app
 
-# Copy package.json and package-lock.json for npm install
-COPY package*.json ./
+# Install dependencies from the committed lockfile. yarn.lock must be copied
+# here, or the cached install layer silently ignores dependency updates.
+COPY package.json yarn.lock ./
 
-# Install dependencies
-RUN yarn install
+RUN yarn install --frozen-lockfile
 
 # Copy the rest of the application files
 COPY . .
@@ -18,4 +18,4 @@ COPY . .
 EXPOSE 3000
 
 # Start the React application
-CMD ["npm", "start"]
+CMD ["yarn", "start"]
