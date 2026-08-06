@@ -1,0 +1,71 @@
+# Dependabot version updates.
+# Dependabot is built into GitHub — this file is all that is needed to get
+# update pull requests. Security-only updates additionally require the
+# "Dependabot security updates" toggle in the repository settings.
+version: 2
+updates:
+  # Laravel API (composer.json / composer.lock).
+  - package-ecosystem: composer
+    directory: /backend_full_laravel
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      backend-runtime:
+        dependency-type: production
+        update-types: [minor, patch]
+      backend-tooling:
+        dependency-type: development
+        update-types: [minor, patch]
+
+  # React SPA. The npm ecosystem covers yarn.lock as well.
+  - package-ecosystem: npm
+    directory: /frontend_react
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      frontend-runtime:
+        dependency-type: production
+        update-types: [minor, patch]
+      frontend-tooling:
+        dependency-type: development
+        update-types: [minor, patch]
+
+  # Base images in php/Dockerfile and frontend_react/Dockerfile.
+  - package-ecosystem: docker
+    directories:
+      - /php
+      - /frontend_react
+    schedule:
+      interval: monthly
+    groups:
+      base-images:
+        patterns: ["*"]
+        update-types: [minor, patch]
+
+  # Service images in docker-compose.yml.
+  - package-ecosystem: docker-compose
+    directory: /
+    schedule:
+      interval: monthly
+    ignore:
+      # postgres is pinned to 16 on purpose: 18 moved its data directory and
+      # refuses to start against the existing pgdata volume.
+      - dependency-name: postgres
+        update-types: ["version-update:semver-major"]
+    groups:
+      service-images:
+        patterns: ["*"]
+        update-types: [minor, patch]
+
+  # Actions used by .github/workflows/main.yml.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      github-actions:
+        patterns: ["*"]
