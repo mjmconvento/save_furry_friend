@@ -1,6 +1,7 @@
 # Dockerfile for React
-# Use an appropriate Node.js version
-FROM node:23
+# Node 24 "Krypton" is the Active LTS line (EOL 2028-04-30). Do not follow
+# odd-numbered majors here - they go end-of-life six months after release.
+FROM node:24
 
 # Set the working directory
 WORKDIR /app
