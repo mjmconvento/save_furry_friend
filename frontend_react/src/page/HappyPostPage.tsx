@@ -49,8 +49,19 @@ const HappyPostPage: React.FC = () => {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     accept: { 'image/*': [] },
     multiple: true,
-    onDrop: (acceptedFiles) => {
+    onDrop: (acceptedFiles, fileRejections) => {
       setSelectedFiles((prev) => [...prev, ...acceptedFiles]);
+
+      // react-dropzone 18 dropped the bundled extension-to-MIME table, so a
+      // file the browser hands over with an empty type (.heic is the common
+      // one) no longer matches 'image/*'. Report rejections instead of
+      // dropping them silently.
+      setFormErrorSummary(
+        fileRejections.map(
+          ({ file, errors }) =>
+            `${file.name}: ${errors.map((e) => e.message).join(', ')}`
+        )
+      );
     },
   });
 
