@@ -48,10 +48,12 @@ updates:
     schedule:
       interval: monthly
     ignore:
-      # Stay on even-numbered (LTS) Node majors. Odd majors go end-of-life six
-      # months after release - 23 and 25 were both already dead when proposed.
+      # Skip odd-numbered Node lines only: they go end-of-life six months after
+      # release (23 and 25 were both already dead when Dependabot proposed
+      # them). Even majors are LTS and should still be offered - node 26 becomes
+      # Active LTS on 2026-10-28, and 24 is supported until 2028-04-30.
       - dependency-name: node
-        update-types: ["version-update:semver-major"]
+        versions: ["25.x", "27.x"]
     groups:
       base-images:
         patterns: ["*"]
