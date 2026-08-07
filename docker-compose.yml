@@ -25,9 +25,11 @@ services:
             POSTGRES_PASSWORD: password
 
     mongo:
-        image: mongo:7
+        image: mongo:8.0
         container_name: mongo
         restart: always
+        volumes:
+            - mongodata:/data/db
         ports:
             - "27017:27017"
         environment:
@@ -77,3 +79,4 @@ services:
 volumes:
     minio-data:
     pgdata:
+    mongodata:

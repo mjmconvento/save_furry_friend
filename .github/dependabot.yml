@@ -56,6 +56,13 @@ updates:
       # refuses to start against the existing pgdata volume.
       - dependency-name: postgres
         update-types: ["version-update:semver-major"]
+      # mongo is pinned to the 8.0 line (the tag still tracks 8.0.x patches).
+      # Every 8.0 -> 8.x or 9.x jump refuses to start until
+      # setFeatureCompatibilityVersion is raised first, so those bumps are a
+      # manual, staged operation - not something to merge from a PR.
+      - dependency-name: mongo
+        update-types:
+          ["version-update:semver-major", "version-update:semver-minor"]
     groups:
       service-images:
         patterns: ["*"]
