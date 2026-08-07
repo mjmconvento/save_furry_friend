@@ -26,6 +26,12 @@ updates:
       interval: weekly
       day: monday
     open-pull-requests-limit: 5
+    ignore:
+      # TypeScript 7 is the native rewrite. react-scripts 5.0.1 pins TypeScript
+      # through fork-ts-checker-webpack-plugin and is unmaintained, so a major
+      # here is a CRA-to-Vite migration, not a dependency bump.
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
     groups:
       frontend-runtime:
         dependency-type: production
@@ -41,6 +47,11 @@ updates:
       - /frontend_react
     schedule:
       interval: monthly
+    ignore:
+      # Stay on even-numbered (LTS) Node majors. Odd majors go end-of-life six
+      # months after release - 23 and 25 were both already dead when proposed.
+      - dependency-name: node
+        update-types: ["version-update:semver-major"]
     groups:
       base-images:
         patterns: ["*"]
