@@ -1,7 +1,46 @@
 includes:
+    - vendor/larastan/larastan/extension.neon
     - vendor/phpstan/phpstan/conf/bleedingEdge.neon
 
 parameters:
     level: 10
     paths:
         - app
+        - config
+        - database
+        - routes
+        - tests
+    excludePaths:
+        analyseAndScan:
+            # Generated for the IDE; references packages this app does not install.
+            - config/ide-helper.php
+    # Larastan can see through Eloquent magic, so a property that does not exist
+    # on the model is an error rather than something a hand-written @var
+    # annotation quietly asserted away.
+    checkModelProperties: true
+    ignoreErrors:
+        # Pest binds $this in a test closure to Tests\TestCase at runtime, but
+        # PHPStan only sees PHPUnit\Framework\TestCase. So every $this->postJson(),
+        # every $this->app and every expect()->toBe() chain reads as undefined or
+        # mixed, and Pest additionally marks its Expectation class @internal.
+        # There is no official Pest extension that models this.
+        #
+        # These are scoped to tests/ by identifier rather than dropping tests/
+        # from `paths`, so real problems there - unknown classes, wrong argument
+        # types, bad return types - are still reported.
+        - identifier: method.notFound
+          path: tests/*
+        - identifier: method.nonObject
+          path: tests/*
+        - identifier: method.internalClass
+          path: tests/*
+        - identifier: property.notFound
+          path: tests/*
+        - identifier: property.nonObject
+          path: tests/*
+        - identifier: offsetAccess.nonOffsetAccessible
+          path: tests/*
+        - identifier: encapsedStringPart.nonString
+          path: tests/*
+        - identifier: variable.undefined
+          path: tests/Pest.php
