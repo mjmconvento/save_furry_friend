@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useAuth } from './AuthContext';
 import LoginForm from './component/login/LoginForm';
 import Topbar from './component/template/Topbar';
@@ -17,6 +18,9 @@ import MyProfilePage from './page/MyProfilePage';
 
 const App = () => {
   const { isAuthenticated, logout } = useAuth();
+  // The nav drawer is only ever open below `md`; the permanent sidebar at
+  // `md` and up ignores this flag.
+  const [navOpen, setNavOpen] = useState(false);
   if (getCsrfToken() === undefined) {
     logout();
   }
@@ -25,10 +29,13 @@ const App = () => {
 
   return (
     <BrowserRouter>
-      <Topbar />
+      <Topbar onMenuClick={() => setNavOpen(true)} />
       <Box sx={{ display: 'flex' }}>
-        <Sidebar />
-        <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
+        <Sidebar open={navOpen} onClose={() => setNavOpen(false)} />
+        <Box
+          component="main"
+          sx={{ flexGrow: 1, minWidth: 0, p: { xs: 2, md: 3 } }}
+        >
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/happy_posts" element={<HappyPostPage />} />
