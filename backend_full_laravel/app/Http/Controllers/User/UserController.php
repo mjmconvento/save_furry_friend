@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\User\IndexUserRequest;
 use App\Http\Requests\User\StoreUserRequest;
 use App\Http\Requests\User\UpdateUserRequest;
 use App\Http\Resources\UserResource;
@@ -23,9 +24,13 @@ class UserController extends Controller
     ) {
     }
 
-    public function index(): AnonymousResourceCollection
+    public function index(IndexUserRequest $request): AnonymousResourceCollection
     {
-        return UserResource::collection(User::all());
+        $perPage = $request->integer('per_page') ?: 20;
+
+        return UserResource::collection(
+            User::query()->orderBy('first_name')->paginate($perPage)
+        );
     }
 
     public function show(User $user): UserResource
