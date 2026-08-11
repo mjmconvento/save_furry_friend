@@ -20,6 +20,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import { useAuth } from '../../../AuthContext';
 import { Post } from '../../../interface/Post';
 import { updatePost as updatePostApi } from '../../../service/post/postApi';
+import { POST_TONE_BY_TAG } from '../PostCard';
 
 interface EditPostDialogProps {
   open: boolean;
@@ -45,7 +46,10 @@ const EditPostDialog: React.FC<EditPostDialogProps> = ({
   const [updatedTags, setUpdatedTags] = useState<string[]>([]);
   const { token } = useAuth()!;
 
-  const tagOptions = ['happy_post', 'hearthbreaking_post', 'neutral_post'];
+  // Derived from the tone table rather than a second hand-written list. The
+  // literal that used to live here read 'hearthbreaking_post', which matched
+  // no feed filter and no badge, so tagging a post that way hid it everywhere.
+  const tagOptions = Object.keys(POST_TONE_BY_TAG);
 
   const handleChange = (event: SelectChangeEvent<string[]>) => {
     const {

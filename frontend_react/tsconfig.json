@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "target": "es6",
+    "lib": ["dom", "dom.iterable", "es2024"],
     "module": "commonjs",
     "jsx": "react-jsx", // For React 17 and above
     "strict": true,
