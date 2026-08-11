@@ -1,16 +1,25 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { ReactNode } from 'react';
 import { API_BASE_URL } from './config/api';
-import { User } from './interface/User';
+
+export interface CurrentUser {
+  id: string;
+  name: string;
+}
 
 interface AuthContextType {
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   token: string | null;
+  /** Author identity for anything the user creates. Null only mid-logout. */
+  currentUser: CurrentUser | null;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
+
+const USER_ID_KEY = 'loggedInUserId';
+const USER_NAME_KEY = 'loggedInUserName';
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
@@ -21,6 +30,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [token, setToken] = useState<string | null>(
     localStorage.getItem('token')
   );
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(() => {
+    const id = localStorage.getItem(USER_ID_KEY);
+    const name = localStorage.getItem(USER_NAME_KEY);
+    return id && name ? { id, name } : null;
+  });
 
   const login = async (email: string, password: string) => {
     const loginBody = { email, password };
@@ -38,23 +52,43 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
 
     const data = await response.json();
+    const name = [data.user.first_name, data.user.last_name]
+      .filter(Boolean)
+      .join(' ');
+
     setToken(data.token);
     localStorage.setItem('token', data.token);
-    localStorage.setItem('loggedInUserId', data.user.id);
+    localStorage.setItem(USER_ID_KEY, data.user.id);
+    localStorage.setItem(USER_NAME_KEY, name);
 
+    setCurrentUser({ id: data.user.id, name });
     setIsAuthenticated(true);
   };
 
   const logout = () => {
     setToken(null);
+    setCurrentUser(null);
     localStorage.removeItem('token');
+    localStorage.removeItem(USER_ID_KEY);
+    localStorage.removeItem(USER_NAME_KEY);
     setIsAuthenticated(false);
   };
 
-  useEffect(() => {}, []);
+  // The login response is the only source of the user's identity - there is no
+  // "current user" endpoint (`/api/token/user` returns a token, not a user). A
+  // session carrying a token but no cached identity therefore predates this and
+  // cannot author a post correctly, so send it back through login. Mirrors how
+  // App.tsx handles a missing CSRF cookie.
+  useEffect(() => {
+    if (isAuthenticated && !currentUser) {
+      logout();
+    }
+  }, [isAuthenticated, currentUser]);
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, login, logout, token }}>
+    <AuthContext.Provider
+      value={{ isAuthenticated, login, logout, token, currentUser }}
+    >
       {children}
     </AuthContext.Provider>
   );

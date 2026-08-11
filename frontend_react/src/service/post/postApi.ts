@@ -29,8 +29,9 @@ export const fetchPosts = async (
   return await response.json();
 };
 
-interface AddUserParams {
-  authorId: number | undefined;
+interface AddPostParams {
+  // Author ids are UUID strings from Postgres, not integers.
+  authorId: string | number | undefined;
   authorName: string | undefined;
   content: string;
   tags: string[];
@@ -45,7 +46,7 @@ export const addPost = async ({
   tags,
   medias,
   bearerToken,
-}: AddUserParams) => {
+}: AddPostParams) => {
   const headers: HeadersInit = {
     Authorization: `Bearer ${bearerToken}`,
     'X-XSRF-Token': getCsrfToken() || '',
