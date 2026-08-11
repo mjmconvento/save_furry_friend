@@ -1,123 +1,59 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Http\Requests\Post\StorePostRequest;
 use App\Http\Requests\Post\UpdatePostRequest;
 use App\Models\Eloquent\User;
 use App\Models\Mongo\Post;
-use Carbon\Carbon;
-use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Filesystem\AwsS3V3Adapter;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Throwable;
 
 class PostService
 {
     /**
-     * @return Collection<int, Post>
+     * @param ?array<string> $tags
+     * @return LengthAwarePaginator<int, Post>
      */
-    public function getPosts(): Collection
+    public function getPosts(User $viewer, ?array $tags, ?string $authorId, int $perPage = 20): LengthAwarePaginator
     {
-        $tags = request()->query('tags');
-        $authorId = request()->query('authorId');
+        $query = Post::query();
 
-        if (is_null($tags)) {
-            /** @var Collection<int, Post> $returnPost */
-            $returnPost = Post::all();
-
-            return $returnPost;
+        if ($tags !== null) {
+            $query->whereIn('tags', $tags);
         }
 
-        $query = Post::query()
-            ->whereIn('tags', $tags);
+        $query->whereIn('authorId', $authorId !== null
+            ? [$authorId]
+            : $this->visibleAuthorIds($viewer));
 
-        if (!is_null($authorId)) {
-            $query->where('authorId', $authorId);
-        } else {
-            /** @var User $user */
-            $user = Auth::user();
+        /** @var LengthAwarePaginator<int, Post> $paginator */
+        $paginator = $query->orderBy('createdAt', 'desc')
+            ->paginate($perPage);
 
-            $followingIds = $user
-                ->following()
-                ->pluck('id')
-                ->map(function ($id): string {
-                    assert(is_scalar($id));
-
-                    return (string) $id;
-                })
-                ->toArray();
-
-            $followingIds[] = Auth::id();
-
-            $query->whereIn('authorId', $followingIds);
-        }
-
-        /** @var Collection<int, Post> $returnPost */
-        $returnPost = $query->orderBy('createdAt', 'desc')->get();
-
-        return $returnPost;
+        return $paginator;
     }
 
-    public function storePost(StorePostRequest $request): Post
+    public function storePost(StorePostRequest $request, User $author): Post
     {
-        /** @var User $user */
-        $user = Auth::user();
-
-        $user = $user->toArray();
-
         $post = new Post();
 
-        /** @var string $userId */
-        $userId = $user['id'];
-        $post->authorId = $userId;
-
-        /** @var string $userFirstName */
-        $userFirstName = $user['first_name'];
-
-        /** @var string $userLastName */
-        $userLastName = $user['last_name'];
-
-        $post->authorName = $userFirstName . ' ' . $userLastName;
+        $post->authorId = $author->id;
+        $post->authorName = $author->first_name . ' ' . $author->last_name;
 
         /** @var string $content */
-        $content = $request->get('content');
+        $content = $request->validated('content');
         $post->content = $content;
-        $post->createdAt = Carbon::now();
 
         /** @var array<string> $tags */
-        $tags = $request->get('tags');
+        $tags = $request->validated('tags', []);
         $post->tags = $tags;
 
-        if (isset($request->all()["medias"])) {
-            $urls = [];
-
-            /** @var array<UploadedFile> $medias */
-            $medias = $request->file('medias');
-
-            foreach ($medias as $file) {
-                if (!$file->isValid()) {
-                    logger('Invalid file upload: ' . $file->getClientOriginalName());
-                }
-
-                /** @var string $path */
-                $path = $file->store($userId, 's3');
-
-                /** @var AwsS3V3Adapter $filesystem */
-                $filesystem = Storage::disk('s3');
-                $filesystem->setVisibility($path, 'public');
-                $url = $filesystem->url($path);
-
-                /**
-                 * TODO: This is a workaround for the MinIO URL. Remove this when using a real S3 service.
-                 */
-                $url = str_replace('http://minio:9000', 'http://localhost:9001', $url);
-                $urls[] = $url;
-            }
-
-            $post->medias = $urls;
-        }
+        $post->medias = $this->storeMedias($request, $author->id);
 
         $post->save();
 
@@ -126,9 +62,104 @@ class PostService
 
     public function updatePost(UpdatePostRequest $request, Post $post): void
     {
-        /** @var array<string, mixed> $attributes */
-        $attributes = $request->only(['title', 'content', 'tags']);
+        $post->update($request->validated());
+    }
 
-        $post->update($attributes);
+    public function deletePost(Post $post): void
+    {
+        $keys = $post->medias ?? [];
+
+        // The document is the source of truth: drop it first, then make a
+        // best-effort attempt at the objects it referenced.
+        $post->delete();
+
+        $this->deleteMedias($keys);
+    }
+
+    /**
+     * Deletes every post authored by the given user together with its media objects.
+     */
+    public function deletePostsByAuthor(string $authorId): void
+    {
+        /** @var array<int, ?array<string>> $medias */
+        $medias = Post::query()
+            ->where('authorId', $authorId)
+            ->pluck('medias')
+            ->all();
+
+        Post::query()->where('authorId', $authorId)->delete();
+
+        $this->deleteMedias(array_merge(...array_map(
+            static fn (?array $keys): array => $keys ?? [],
+            $medias,
+        )));
+    }
+
+    /**
+     * The follow graph the viewer is allowed to read, including their own posts.
+     *
+     * @return array<string>
+     */
+    private function visibleAuthorIds(User $viewer): array
+    {
+        $followingIds = $viewer
+            ->following()
+            ->pluck('id')
+            ->map(function ($id): string {
+                assert(is_scalar($id));
+
+                return (string) $id;
+            })
+            ->all();
+
+        $followingIds[] = $viewer->id;
+
+        return $followingIds;
+    }
+
+    /**
+     * @return array<string>
+     */
+    private function storeMedias(StorePostRequest $request, string $userId): array
+    {
+        $medias = $request->file('medias', []);
+
+        if ($medias instanceof UploadedFile) {
+            $medias = [$medias];
+        }
+
+        $keys = [];
+
+        /** @var UploadedFile $file */
+        foreach ((array) $medias as $file) {
+            /** @var string $key */
+            $key = $file->storePublicly($userId, 's3');
+
+            $keys[] = $key;
+        }
+
+        return $keys;
+    }
+
+    /**
+     * Best-effort: the `s3` disk runs with `throw => true`, so a failed delete
+     * must not take down a request whose document is already gone.
+     *
+     * @param array<string> $keys
+     */
+    private function deleteMedias(array $keys): void
+    {
+        if ($keys === []) {
+            return;
+        }
+
+        try {
+            Storage::disk('s3')->delete($keys);
+        } catch (Throwable $e) {
+            logger()->warning('Failed to delete post media objects.', [
+                'keys' => $keys,
+                'exception' => $e->getMessage(),
+            ]);
+        }
     }
 }

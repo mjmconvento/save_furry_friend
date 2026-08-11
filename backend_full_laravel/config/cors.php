@@ -1,7 +1,6 @@
 <?php
 
 return [
-
     /*
     |--------------------------------------------------------------------------
     | Cross-Origin Resource Sharing (CORS) Configuration
@@ -15,7 +14,7 @@ return [
     |
     */
 
-    'paths' => ['api/*', 'sanctum/csrf-cookie'],
+    'paths' => ['api/*'],
 
     'allowed_methods' => ['*'],
 
@@ -29,6 +28,7 @@ return [
 
     'max_age' => 0,
 
-    'supports_credentials' => true,
-
+    // Auth is a bearer token, not a cookie, so the browser never needs to send
+    // credentials cross-origin. `sanctum/csrf-cookie` is gone for the same reason.
+    'supports_credentials' => false,
 ];

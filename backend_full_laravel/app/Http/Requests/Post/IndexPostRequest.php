@@ -6,7 +6,7 @@ namespace App\Http\Requests\Post;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class UpdatePostRequest extends FormRequest
+class IndexPostRequest extends FormRequest
 {
     /**
      * Get the validation rules that apply to the request.
@@ -16,9 +16,10 @@ class UpdatePostRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'content' => ['sometimes', 'string', 'max:255'],
-            'tags' => ['sometimes', 'array', 'max:10'],
-            'tags.*' => ['string', 'max:30'],
+            'tags' => ['array'],
+            'tags.*' => ['string'],
+            'authorId' => ['uuid'],
+            'per_page' => ['integer', 'min:1', 'max:50'],
         ];
     }
 }

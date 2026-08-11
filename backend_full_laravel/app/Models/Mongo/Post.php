@@ -1,18 +1,20 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models\Mongo;
 
 use Carbon\Carbon;
 use Illuminate\Support\Str;
 use MongoDB\Laravel\Eloquent\Model;
-use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
  * @property string $id
  * @property string $authorId
  * @property string $authorName
  * @property string $content
- * @property Carbon $createdAt
+ * @property ?Carbon $createdAt
+ * @property ?Carbon $updatedAt
  * @property array<string> $tags
  * @property array<string> $medias
  *
@@ -20,33 +22,36 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
  */
 class Post extends Model
 {
-    protected $connection = 'mongodb';
-    protected string $collection = 'posts';
+    public const CREATED_AT = 'createdAt';
 
-    protected $fillable = ['authorId', 'authorName', 'content', 'createdAt', 'tags', 'medias'];
+    public const UPDATED_AT = 'updatedAt';
+
+    protected $connection = 'mongodb';
+
+    protected $table = 'posts';
+
+    protected $fillable = ['authorId', 'authorName', 'content', 'tags', 'medias'];
 
     public $incrementing = false;
+
     protected $keyType = 'string';
+
+    /**
+     * @var array<string, string>
+     */
+    protected $casts = [
+        'createdAt' => 'datetime',
+        'updatedAt' => 'datetime',
+    ];
 
     protected static function boot(): void
     {
         parent::boot();
 
         static::creating(function (self $model): void {
-            if (!$model->getKey()) {
+            if (! $model->getKey()) {
                 $model->{$model->getKeyName()} = (string) Str::uuid();
             }
         });
-    }
-
-    public static function findOneOrFail(string $id): Post
-    {
-        $post = static::find($id);
-
-        if (!$post) {
-            throw new NotFoundHttpException('Resource not found.');
-        }
-
-        return $post;
     }
 }

@@ -1,0 +1,55 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Http\Resources;
+
+use App\Models\Eloquent\User;
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\JsonResource;
+
+/**
+ * Wire shape for a user. Keys are snake_case on purpose — the React client's
+ * `interface/User.ts` reads exactly these.
+ *
+ * `is_following` is viewer-relative and therefore not derivable from the model
+ * alone, so the caller passes it through the constructor:
+ *
+ *     new UserResource($user, $isFollowing);
+ *
+ * It defaults to `false`, which is what `UserResource::collection()` yields
+ * (Laravel instantiates collection members with the resource argument only, so
+ * there is no way to thread a per-item flag through it). `false` is also the
+ * correct answer when the resource *is* the viewer.
+ */
+class UserResource extends JsonResource
+{
+    public function __construct(
+        private readonly User $user,
+        private readonly bool $isFollowing = false,
+    ) {
+        parent::__construct($user);
+    }
+
+    /**
+     * @return array{
+     *     id: string,
+     *     first_name: string,
+     *     middle_name: ?string,
+     *     last_name: string,
+     *     email: string,
+     *     is_following: bool
+     * }
+     */
+    public function toArray(Request $request): array
+    {
+        return [
+            'id' => $this->user->id,
+            'first_name' => $this->user->first_name,
+            'middle_name' => $this->user->middle_name,
+            'last_name' => $this->user->last_name,
+            'email' => $this->user->email,
+            'is_following' => $this->isFollowing,
+        ];
+    }
+}

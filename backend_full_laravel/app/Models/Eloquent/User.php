@@ -1,30 +1,32 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models\Eloquent;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
-use Database\Factories\UserFactory;
+use Database\Factories\Eloquent\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Str;
 use Laravel\Sanctum\HasApiTokens;
-use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
  * @property string $id
  * @property string $first_name
- * @property string $middle_name
+ * @property ?string $middle_name
  * @property string $last_name
  * @property string $email
  * @property string $password
- *
- * @method static ?User find(string $id)
  */
 class User extends Authenticatable
 {
+    use HasApiTokens;
     /** @use HasFactory<UserFactory> */
-    use HasApiTokens, HasFactory, Notifiable;
+    use HasFactory;
+    use Notifiable;
 
     /**
      * The attributes that are mass assignable.
@@ -49,15 +51,22 @@ class User extends Authenticatable
         'remember_token',
     ];
 
-    public static function findOneOrFail(string $id): User
+    /**
+     * The primary key is a Postgres `uuid` column, so a malformed route value
+     * makes the lookup itself fail (SQLSTATE 22P02 — "invalid input syntax for
+     * type uuid") and surfaces as a 500. Treat it as "not found" instead.
+     *
+     * @param mixed $value
+     * @param ?string $field
+     */
+    public function resolveRouteBinding($value, $field = null): ?Model
     {
-        $user = static::find($id);
-
-        if (!$user) {
-            throw new NotFoundHttpException('User not found.');
+        if (($field ?? $this->getRouteKeyName()) === $this->getKeyName()
+            && (! is_string($value) || ! Str::isUuid($value))) {
+            return null;
         }
 
-        return $user;
+        return parent::resolveRouteBinding($value, $field);
     }
 
     /**

@@ -1,31 +1,45 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
+use App\Models\Eloquent\User;
 use App\Services\User\FollowService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Validation\ValidationException;
 
 class FollowController extends Controller
 {
-    public function __construct(private readonly FollowService $followService)
-    {
+    public function __construct(
+        private readonly FollowService $followService
+    ) {
     }
 
     /**
      * @throws ValidationException
      */
-    public function follow(string $id): JsonResponse
+    public function follow(User $user): JsonResponse
     {
-        return $this->followService->follow($id);
+        $this->followService->follow($user);
+
+        return response()->json([
+            'message' => 'Followed successfully.',
+            'following_id' => $user->id,
+        ]);
     }
 
     /**
      * @throws ValidationException
      */
-    public function unfollow(string $id): JsonResponse
+    public function unfollow(User $user): JsonResponse
     {
-        return $this->followService->unfollow($id);
+        $this->followService->unfollow($user);
+
+        return response()->json([
+            'message' => 'Unfollowed successfully.',
+            'unfollowed_id' => $user->id,
+        ]);
     }
 }

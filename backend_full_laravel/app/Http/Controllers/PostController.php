@@ -1,68 +1,77 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Post\IndexPostRequest;
 use App\Http\Requests\Post\StorePostRequest;
 use App\Http\Requests\Post\UpdatePostRequest;
+use App\Http\Resources\PostResource;
+use App\Models\Eloquent\User;
 use App\Models\Mongo\Post;
 use App\Services\PostService;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class PostController extends Controller
 {
-    public function __construct(private readonly PostService $postService)
-    {
+    public function __construct(
+        private readonly PostService $postService
+    ) {
     }
 
-    /**
-     * @return Collection<int, Post>
-     */
-    public function index(): Collection
+    public function index(IndexPostRequest $request): AnonymousResourceCollection
     {
-        return $this->postService->getPosts();
+        /** @var User $viewer */
+        $viewer = $request->user();
+
+        /** @var array{tags?: array<string>, authorId?: string, per_page?: numeric-string|int} $filters */
+        $filters = $request->validated();
+
+        $posts = $this->postService->getPosts(
+            $viewer,
+            $filters['tags'] ?? null,
+            $filters['authorId'] ?? null,
+            // Query-string input stays a string even after the `integer` rule.
+            (int) ($filters['per_page'] ?? 20),
+        );
+
+        // Without this the `links.next` URL drops the filters and page 2 is a
+        // different query than page 1.
+        return PostResource::collection($posts->appends($filters));
     }
 
-    public function show(string $id): JsonResponse
+    public function show(Post $post): PostResource
     {
-        $post = Post::findOneOrFail($id);
-
-        return response()->json($post);
+        return new PostResource($post);
     }
 
-    public function store(StorePostRequest $request): JsonResponse
+    public function store(StorePostRequest $request): PostResource
     {
-        $post = $this->postService->storePost($request);
+        /** @var User $author */
+        $author = $request->user();
 
-        return response()->json($post);
+        return new PostResource($this->postService->storePost($request, $author));
     }
 
-    public function update(UpdatePostRequest $request, string $id): JsonResponse
+    public function update(UpdatePostRequest $request, Post $post): PostResource
     {
-        $post = Post::findOneOrFail($id);
+        $this->authorize('update', $post);
 
         $this->postService->updatePost($request, $post);
 
-        return response()->json($post);
+        return new PostResource($post);
     }
 
-    public function destroy(string $id): JsonResponse
+    public function destroy(Post $post): JsonResponse
     {
-        $post = Post::findOneOrFail($id);
+        $this->authorize('delete', $post);
 
-        foreach ($post->medias ?? [] as $url) {
-            /** @var string $path */
-            $path = parse_url($url, PHP_URL_PATH);
-            $path = ltrim($path, '/');
+        $this->postService->deletePost($post);
 
-            $path = Str::remove("uploads/", $path);
-            Storage::disk('s3')->delete($path);
-        }
-
-        $post->delete();
-
-        return response()->json(['message' => 'Post deleted successfully']);
+        return response()->json([
+            'message' => 'Post deleted successfully',
+        ]);
     }
 }

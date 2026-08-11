@@ -1,58 +1,47 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services\User;
 
 use App\Http\Requests\User\StoreUserRequest;
 use App\Http\Requests\User\UpdateUserRequest;
+use App\Jobs\SyncAuthorName;
 use App\Models\Eloquent\User;
-use Illuminate\Support\Facades\Auth;
+use App\Services\PostService;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
 class UserService
 {
+    public function __construct(
+        private readonly PostService $postService
+    ) {
+    }
+
     /**
-     * @return array{
-     *     id: string,
-     *     first_name: string,
-     *     middle_name: ?string,
-     *     last_name: string,
-     *     email: string,
-     *     is_following: bool
-     * }
+     * Whether $viewer follows $user. Always false for the viewer themselves.
      */
-    public function getUser(string $id): array
+    public function isFollowing(User $viewer, User $user): bool
     {
-        $user = User::findOneOrFail($id);
-
-        /** @var User $authUser */
-        $authUser = Auth::user();
-
-        $isFollowing = false;
-
-        if ($authUser->id !== $user->id) {
-            $isFollowing = $authUser->following()->where('followed_id', $user->id)->exists();
+        if ($viewer->id === $user->id) {
+            return false;
         }
 
-        return [
-            'id' => $user->id,
-            'first_name' => $user->first_name,
-            'middle_name' => $user->middle_name,
-            'last_name' => $user->last_name,
-            'email' => $user->email,
-            'is_following' => $isFollowing,
-        ];
+        return $viewer->following()
+            ->wherePivot('followed_id', $user->id)
+            ->exists();
     }
 
     public function storeUser(StoreUserRequest $request): User
     {
         $user = new User();
-        $user->id = Str::uuid();
+        $user->id = (string) Str::uuid();
 
         /** @var string $firstName */
         $firstName = $request->get('firstName');
 
-        /** @var string $middleName */
+        /** @var ?string $middleName */
         $middleName = $request->get('middleName');
 
         /** @var string $lastName */
@@ -84,7 +73,7 @@ class UserService
         }
 
         if ($request->has('middleName')) {
-            /** @var string $middleName */
+            /** @var ?string $middleName */
             $middleName = $request->get('middleName');
 
             $user->middle_name = $middleName;
@@ -112,5 +101,26 @@ class UserService
         }
 
         $user->save();
+
+        // `authorName` is denormalized into every Mongo post, so a rename has
+        // to fan out to the documents that already carry the old name.
+        if ($user->wasChanged(['first_name', 'last_name'])) {
+            SyncAuthorName::dispatch($user->id, $user->first_name . ' ' . $user->last_name);
+        }
+    }
+
+    /**
+     * Deleting the Postgres row cascades the follow graph, but nothing else:
+     * the user's Mongo posts would be left behind with a dangling `authorId`
+     * (their S3 objects orphaned forever) and `personal_access_tokens` has no
+     * foreign key, so its rows would survive too.
+     */
+    public function destroyUser(User $user): void
+    {
+        $this->postService->deletePostsByAuthor($user->id);
+        $user->tokens()
+            ->delete();
+
+        $user->delete();
     }
 }

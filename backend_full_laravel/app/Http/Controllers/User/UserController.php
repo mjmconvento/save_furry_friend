@@ -1,34 +1,38 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\User\StoreUserRequest;
 use App\Http\Requests\User\UpdateUserRequest;
+use App\Http\Resources\UserResource;
 use App\Models\Eloquent\User;
 use App\Services\User\UserService;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthManager;
-use Illuminate\Database\Query\Builder;
 use Illuminate\Database\Query\JoinClause;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class UserController extends Controller
 {
-    public function __construct(private readonly UserService $userService)
-    {
+    public function __construct(
+        private readonly UserService $userService
+    ) {
     }
 
-    public function index(): JsonResponse
+    public function index(): AnonymousResourceCollection
     {
-        $users = User::all();
-
-        return response()->json($users);
+        return UserResource::collection(User::all());
     }
 
-    public function show(string $id): JsonResponse
+    public function show(User $user): UserResource
     {
-        return response()->json(
-            $this->userService->getUser($id)
+        return new UserResource(
+            $user,
+            $this->userService->isFollowing($this->authUser(), $user)
         );
     }
 
@@ -36,33 +40,40 @@ class UserController extends Controller
     {
         $user = $this->userService->storeUser($request);
 
-        return response()->json($user, 201);
+        return (new UserResource($user))
+            ->response()
+            ->setStatusCode(201);
     }
 
-    public function update(UpdateUserRequest $request, string $id): JsonResponse
+    /**
+     * @throws AuthorizationException
+     */
+    public function update(UpdateUserRequest $request, User $user): UserResource
     {
-        $user = User::findOneOrFail($id);
+        $this->authorize('update', $user);
 
         $this->userService->updateUser($request, $user);
 
-        return response()->json($user);
+        return new UserResource($user);
     }
 
-    public function destroy(string $id): JsonResponse
+    /**
+     * @throws AuthorizationException
+     */
+    public function destroy(User $user): JsonResponse
     {
-        $user = User::findOneOrFail($id);
-        $user->delete();
+        $this->authorize('delete', $user);
 
-        return response()->json(['message' => 'User deleted successfully']);
+        $this->userService->destroyUser($user);
+
+        return response()->json([
+            'message' => 'User deleted successfully',
+        ]);
     }
 
-    public function search(string $keyword): JsonResponse
+    public function search(string $keyword): AnonymousResourceCollection
     {
-        /** @var AuthManager $auth */
-        $auth = auth();
-
-        /** @var User $authUser */
-        $authUser = $auth->user();
+        $authUser = $this->authUser();
 
         $users = User::query()
             ->leftJoin('user_followers as uf', function (JoinClause $join) use ($authUser): void {
@@ -70,15 +81,25 @@ class UserController extends Controller
                     ->where('uf.follower_id', '=', $authUser->id);
             })
             ->where('users.id', '!=', $authUser->id)
-            ->where(function (Builder $query) use ($keyword): void {
-                $query->whereRaw('LOWER(first_name) LIKE ?', ["%" . strtolower($keyword) . "%"])
-                    ->orWhereRaw('LOWER(middle_name) LIKE ?', ["%" . strtolower($keyword) . "%"])
-                    ->orWhereRaw('LOWER(last_name) LIKE ?', ["%" . strtolower($keyword) . "%"]);
-            })
+            ->whereRaw(
+                "(first_name || ' ' || coalesce(middle_name, '') || ' ' || last_name) ILIKE ?",
+                ['%' . $keyword . '%']
+            )
             ->orderByRaw('uf.follower_id IS NULL')
             ->select('users.*')
             ->get();
 
-        return response()->json($users);
+        return UserResource::collection($users);
+    }
+
+    private function authUser(): User
+    {
+        /** @var AuthManager $auth */
+        $auth = auth();
+
+        /** @var User $user */
+        $user = $auth->user();
+
+        return $user;
     }
 }
