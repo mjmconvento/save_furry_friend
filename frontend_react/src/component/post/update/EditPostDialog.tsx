@@ -22,7 +22,7 @@ import { useAuth } from '../../../AuthContext';
 import { Post } from '../../../interface/Post';
 import { updatePost as updatePostApi } from '../../../service/post/postApi';
 import { errorSummary } from '../../../service/apiClient';
-import { POST_TONE_BY_TAG } from '../PostCard';
+import { POST_TONE_BY_TAG } from '../../../config/tags';
 
 interface EditPostDialogProps {
   open: boolean;

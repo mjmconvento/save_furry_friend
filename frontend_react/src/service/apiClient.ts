@@ -125,7 +125,8 @@ export const apiRequest = async <T>(
       notifyUnauthorized();
     }
 
-    const detail = payload !== null && typeof payload === 'object' ? payload : {};
+    const detail =
+      payload !== null && typeof payload === 'object' ? payload : {};
 
     throw new ApiError(
       readMessage(detail, response.status),

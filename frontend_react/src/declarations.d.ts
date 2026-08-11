@@ -1,26 +1,6 @@
-// src/declarations.d.ts
+/// <reference types="vite/client" />
 
-declare module '*.svg' {
-    const content: any; // Or you can specify an appropriate type
-    export default content;
-}
-
-declare module '*.png' {
-    const content: any; // Add other image types as necessary
-    export default content;
-}
-
-declare module '*.jpg' {
-    const content: any;
-    export default content;
-}
-
-declare module '*.gif' {
-    const content: any;
-    export default content;
-}
-
-declare module '*.css' {
-    const content: any;
-    export default content;
-}
+// Vite's client types already declare every asset import (`*.svg`, `*.png`,
+// `*.css`, …) as a URL string, and they type `import.meta.env`. The five
+// hand-written `declare module` blocks that used to live here typed those as
+// `any`, which was strictly worse than the types Vite ships.

@@ -11,7 +11,7 @@ attachments. Split into a Laravel API and a React SPA, with a polyglot data laye
 
 ```mermaid
 graph LR
-  Browser -->|":3000"| React[react_app CRA dev server]
+  Browser -->|":3000"| React[react_app Vite dev server]
   React -->|"http://localhost:8081"| Nginx[nginx]
   Nginx -->|"fastcgi app:9000"| App[php-fpm / Laravel]
   App --> PG[(postgres:5432)]
@@ -24,7 +24,7 @@ graph LR
 
 ```
 backend_full_laravel/   Laravel 12 API (PHP 8.2, Sanctum, mongodb/laravel-mongodb, Pest)
-frontend_react/         React 19 SPA (CRA 5 + TypeScript 5.8, MUI 7, react-router 7)
+frontend_react/         React 19 SPA (Vite 7 + TypeScript 5.8, MUI 7, react-router 7, Vitest)
 php/Dockerfile          php-fpm 8.2 image used by the `app` service
 nginx/conf.d/           vhost that fronts php-fpm on :8081
 docker-compose.yml      app, db, mongo, nginx, react, minio
@@ -156,10 +156,19 @@ docker compose exec db createdb -U root testing
 Frontend:
 
 ```bash
-docker compose logs -f react                 # CRA compile output lives here
+docker compose logs -f react                 # Vite dev server output
 docker compose exec react yarn add <pkg>
+docker compose exec react yarn typecheck     # tsc --noEmit
+docker compose exec react yarn lint          # eslint, --max-warnings 0
+docker compose exec react yarn format:check  # prettier
+docker compose exec react yarn test          # vitest
 docker compose exec react yarn build         # production bundle into frontend_react/build
 ```
+
+The build tool is **Vite 7** with **Vitest**; `react-scripts` is gone. `src/config/api.ts` reads
+`VITE_API_BASE_URL` and *throws* when it is unset, so every build needs it — the `react` service
+supplies it in `docker-compose.yml`, and `frontend_react/.env.example` documents it for host-side
+builds (`cp .env.example .env`).
 
 The frontend is **yarn only** — `yarn.lock` is the single lockfile and the image installs with
 `yarn install --frozen-lockfile`. After changing `package.json`/`yarn.lock`, rebuild *and* discard
@@ -170,14 +179,13 @@ docker compose up -d --build --force-recreate --renew-anon-volumes react
 ```
 
 The React container mounts the source and keeps its own `node_modules` (anonymous volume), so
-host-side `yarn install` is optional. Host edits hot-reload — the `react` service sets
-`WATCHPACK_POLLING=true`, which is the variable react-scripts 5 / webpack 5 actually reads (the
-`CHOKIDAR_USEPOLLING` it replaced was a CRA 4 setting and did nothing). Polling costs some CPU;
-drop it if native file watching works on your machine.
+host-side `yarn install` is optional. Host edits hot-reload: `vite.config.ts` sets
+`server.watch.usePolling` because inotify events are not delivered reliably over a Docker bind
+mount. Polling costs some CPU; drop it if native file watching works on your machine.
 
-`CI=true yarn build` (what a CI runner does) still **fails** on pre-existing lint warnings in
-`MyProfilePage.tsx` (`eqeqeq`, an unused `setEditId`, `react-hooks/exhaustive-deps`) and an unused
-import in `EditUserDialog.tsx`. Plain `yarn build` succeeds.
+`yarn lint` runs at `--max-warnings 0` and `yarn build` runs `tsc --noEmit` first, so both fail on
+anything CI would fail on. The lint warnings this project used to carry (`eqeqeq`, unused
+`setEditId`, `react-hooks/exhaustive-deps`) are fixed, and those three rules are now errors.
 
 ## API surface
 
@@ -256,7 +264,7 @@ if Postgres exited, check `docker logs postgres`.
 purpose. Postgres 18 changed its data directory layout and will not start against the existing
 `pgdata` volume. Wiping local DB data is `docker compose down -v` followed by migrate + seed again.
 
-**`react-scripts: not found` in the react container** — the `/app/node_modules` anonymous volume is
+**`vite: not found` in the react container** — the `/app/node_modules` anonymous volume is
 missing or was removed. Rebuild: `docker compose up -d --build --force-recreate react`.
 
 **Uploads fail with a bucket error** — the `uploads` bucket does not exist yet; see step 4.

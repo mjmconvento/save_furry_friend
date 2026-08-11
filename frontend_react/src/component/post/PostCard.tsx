@@ -7,32 +7,12 @@ import {
   IconButton,
   Typography,
 } from '@mui/material';
-import { Theme } from '@mui/material/styles';
 import { Delete, Edit } from '@mui/icons-material';
 import { Link } from 'react-router-dom';
 import { Gallery, Item } from 'react-photoswipe-gallery';
 import 'photoswipe/dist/photoswipe.css';
 import { Post } from '../../interface/Post';
-import { POST_TAGS } from '../../config/tags';
-
-type ToneKey = keyof Theme['palette']['tone'];
-
-/**
- * A post's tone comes from its tags, and the tone key indexes `palette.tone`,
- * so a new category is one entry here plus one hue in the theme. A post whose
- * tags match nothing here gets no badge at all.
- */
-export const POST_TONE_BY_TAG: Record<
-  string,
-  { tone: ToneKey; label: string }
-> = {
-  [POST_TAGS.happy]: { tone: 'happy', label: 'Happy' },
-  [POST_TAGS.neutral]: { tone: 'neutral', label: 'Neutral' },
-  [POST_TAGS.heartbreaking]: {
-    tone: 'heartbreaking',
-    label: 'Heartbreaking',
-  },
-};
+import { POST_TONE_BY_TAG, ToneKey } from '../../config/tags';
 
 /**
  * `subtitle2` supplies the uppercase eyebrow treatment; `component="span"` stops

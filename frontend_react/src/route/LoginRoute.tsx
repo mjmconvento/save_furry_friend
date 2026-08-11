@@ -26,8 +26,7 @@ const resolveRedirect = (state: unknown): string => {
 
   const search =
     'search' in from && typeof from.search === 'string' ? from.search : '';
-  const hash =
-    'hash' in from && typeof from.hash === 'string' ? from.hash : '';
+  const hash = 'hash' in from && typeof from.hash === 'string' ? from.hash : '';
 
   return `${pathname}${search}${hash}`;
 };

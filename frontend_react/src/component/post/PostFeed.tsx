@@ -44,8 +44,10 @@ interface PostFeedProps {
  * lightbox opens at a guessed aspect ratio and snaps to the real one.
  */
 const getImageDimensions = (url: string) => {
-  const { promise, resolve } =
-    Promise.withResolvers<{ width: number; height: number }>();
+  const { promise, resolve } = Promise.withResolvers<{
+    width: number;
+    height: number;
+  }>();
   const img = new Image();
   img.onload = () =>
     resolve({ width: img.naturalWidth, height: img.naturalHeight });
@@ -112,8 +114,7 @@ const PostFeed: React.FC<PostFeedProps> = ({
   );
 
   useEffect(
-    () => () =>
-      previews.forEach((preview) => URL.revokeObjectURL(preview.url)),
+    () => () => previews.forEach((preview) => URL.revokeObjectURL(preview.url)),
     [previews]
   );
 
@@ -233,7 +234,12 @@ const PostFeed: React.FC<PostFeedProps> = ({
   }
 
   return (
-    <Box maxWidth={1000} mx="auto" mt={{ xs: 2, sm: 4 }} px={{ xs: 1.5, sm: 2 }}>
+    <Box
+      maxWidth={1000}
+      mx="auto"
+      mt={{ xs: 2, sm: 4 }}
+      px={{ xs: 1.5, sm: 2 }}
+    >
       <ErrorList errors={formErrorSummary} />
 
       <Typography

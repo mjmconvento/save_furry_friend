@@ -1,17 +1,24 @@
 {
   "compilerOptions": {
-    "target": "es6",
+    "target": "es2020",
     "lib": ["dom", "dom.iterable", "es2024"],
-    "module": "commonjs",
-    "jsx": "react-jsx", // For React 17 and above
+    "jsx": "react-jsx",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "types": ["vite/client", "vitest/globals", "@testing-library/jest-dom"],
     "strict": true,
-    "moduleResolution": "node",
+    "noUncheckedIndexedAccess": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitOverride": true,
+    "noEmit": true,
+    "isolatedModules": true,
+    "allowJs": false,
     "esModuleInterop": true,
+    "resolveJsonModule": true,
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "outDir": "./dist",
-    "rootDir": "./src"
+    "forceConsistentCasingInFileNames": true
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules"]
+  "include": ["src", "vite.config.ts"]
 }

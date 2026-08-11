@@ -81,3 +81,44 @@ jobs:
             - name: Run Pest tests
               run: vendor/bin/pest
               working-directory: backend_full_laravel
+
+    frontend:
+        runs-on: ubuntu-latest
+
+        defaults:
+            run:
+                working-directory: frontend_react
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v7
+
+            - name: Setup Node
+              uses: actions/setup-node@v4
+              with:
+                  node-version: '24'
+                  cache: yarn
+                  cache-dependency-path: frontend_react/yarn.lock
+
+            - name: Install dependencies
+              run: yarn install --frozen-lockfile
+
+            - name: Typecheck
+              run: yarn typecheck
+
+            - name: Lint
+              run: yarn lint
+
+            - name: Check formatting
+              run: yarn format:check
+
+            - name: Run tests
+              run: yarn test
+
+            # src/config/api.ts throws when VITE_API_BASE_URL is unset, on
+            # purpose: a bundle that silently falls back to localhost is worse
+            # than a build that refuses.
+            - name: Build
+              run: yarn build
+              env:
+                  VITE_API_BASE_URL: http://localhost:8081
