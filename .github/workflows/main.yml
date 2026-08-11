@@ -5,6 +5,44 @@ jobs:
     code-quality:
         runs-on: ubuntu-latest
 
+        # The suite runs against real Postgres and MongoDB rather than sqlite:
+        # uuid primary keys, the user_followers composite cascade and ILIKE are
+        # all things sqlite gets wrong or silently permits.
+        services:
+            postgres:
+                image: postgres:16
+                env:
+                    POSTGRES_DB: testing
+                    POSTGRES_USER: root
+                    POSTGRES_PASSWORD: password
+                ports:
+                    - 5432:5432
+                options: >-
+                    --health-cmd "pg_isready -U root"
+                    --health-interval 10s
+                    --health-timeout 5s
+                    --health-retries 10
+
+            mongo:
+                image: mongo:8.0
+                env:
+                    MONGO_INITDB_ROOT_USERNAME: admin
+                    MONGO_INITDB_ROOT_PASSWORD: password
+                ports:
+                    - 27017:27017
+                options: >-
+                    --health-cmd "mongosh --quiet --eval 'db.adminCommand({ ping: 1 })'"
+                    --health-interval 10s
+                    --health-timeout 5s
+                    --health-retries 10
+
+        env:
+            # PHPUnit does not overwrite variables that already exist in the
+            # environment, so these override the Docker hostnames in phpunit.xml.
+            DB_HOST: 127.0.0.1
+            DB_PORT: 5432
+            MONGODB_URI: mongodb://127.0.0.1:27017
+
         steps:
             - name: Checkout code
               uses: actions/checkout@v7
@@ -13,19 +51,23 @@ jobs:
               uses: shivammathur/setup-php@v2
               with:
                   php-version: '8.2'
-                  extensions: mbstring, pdo, pdo_pgsql
+                  # mongodb is required: the Post model and three migrations
+                  # talk to MongoDB, so the suite cannot boot without it.
+                  extensions: mbstring, pdo, pdo_pgsql, mongodb
                   coverage: none
-
-            - name: Change to backend directory
-              run: cd backend_full_laravel
-              shell: bash
 
             - name: Install dependencies
               run: composer install --no-progress --prefer-dist
               working-directory: backend_full_laravel
 
+            - name: Prepare environment
+              run: |
+                  cp .env.example .env
+                  php artisan key:generate
+              working-directory: backend_full_laravel
+
             - name: Run PHPStan
-              run: vendor/bin/phpstan analyse
+              run: vendor/bin/phpstan analyse --configuration=phpstan.neon --memory-limit=512M
               working-directory: backend_full_laravel
 
             - name: Run EasyCodingStandard (ECS)

@@ -1,47 +1,64 @@
 <?php
 
+declare(strict_types=1);
+
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
+
 /*
 |--------------------------------------------------------------------------
 | Test Case
 |--------------------------------------------------------------------------
 |
-| The closure you provide to your test functions is always bound to a specific PHPUnit test
-| case class. By default, that class is "PHPUnit\Framework\TestCase". Of course, you may
-| need to change it using the "pest()" function to bind a different classes or traits.
+| Feature tests get the application container and a migrated Postgres
+| database. Unit tests get the container too, so they can resolve services
+| without hand-building dependencies.
 |
 */
 
-pest()->extend(Tests\TestCase::class)
- // ->use(Illuminate\Foundation\Testing\RefreshDatabase::class)
+pest()
+    ->extend(Tests\TestCase::class)
+    ->use(RefreshDatabase::class)
     ->in('Feature');
+
+pest()
+    ->extend(Tests\TestCase::class)
+    ->in('Unit');
+
+/*
+|--------------------------------------------------------------------------
+| MongoDB isolation
+|--------------------------------------------------------------------------
+|
+| RefreshDatabase only migrates and transacts the DEFAULT connection, so it
+| does nothing for MongoDB: documents a test creates are never rolled back.
+| Mongo transactions are not an option either - they require a replica set and
+| the container runs standalone. So the collection is wiped per test.
+|
+| The name guard is the important part: pointed at the real `sff` database this
+| beforeEach would delete production data. Fail loudly instead.
+|
+*/
+
+pest()
+    ->beforeEach(function (): void {
+        $database = config('database.connections.mongodb.database');
+
+        if (! is_string($database) || ! str_ends_with($database, '_testing')) {
+            throw new RuntimeException(sprintf(
+                'Refusing to run: MongoDB database is "%s". Tests wipe collections, so it must be a dedicated database ending in "_testing". Set MONGODB_DATABASE in phpunit.xml.',
+                is_string($database) ? $database : gettype($database)
+            ));
+        }
+
+        DB::connection('mongodb')->table('posts')->truncate();
+    })->in('Feature');
 
 /*
 |--------------------------------------------------------------------------
 | Expectations
 |--------------------------------------------------------------------------
-|
-| When you're writing tests, you often need to check that values meet certain conditions. The
-| "expect()" function gives you access to a set of "expectations" methods that you can use
-| to assert different things. Of course, you may extend the Expectation API at any time.
-|
 */
 
-expect()->extend('toBeOne', function () {
-    return $this->toBe(1);
-});
-
-/*
-|--------------------------------------------------------------------------
-| Functions
-|--------------------------------------------------------------------------
-|
-| While Pest is very powerful out-of-the-box, you may have some testing code specific to your
-| project that you don't want to repeat in every file. Here you can also expose helpers as
-| global functions to help you to reduce the number of lines of code in your test files.
-|
-*/
-
-function something()
-{
-    // ..
-}
+expect()
+    ->extend('toBeOne', fn () => $this->toBe(1));

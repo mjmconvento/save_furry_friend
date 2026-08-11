@@ -22,12 +22,43 @@
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="CACHE_STORE" value="array"/>
-        <env name="DB_CONNECTION" value="sqlite"/>
-        <env name="DB_DATABASE" value=":memory:"/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
+
+        <!--
+            Production is Postgres + MongoDB, so the suite runs against both
+            rather than sqlite: uuid primary keys, the user_followers composite
+            cascade and ILIKE are all things sqlite gets wrong or permits.
+            PHPUnit does not overwrite variables that already exist in the
+            environment, so CI can point these at its own service containers by
+            exporting DB_HOST / MONGODB_URI before invoking pest.
+        -->
+        <env name="DB_CONNECTION" value="pgsql"/>
+        <env name="DB_HOST" value="db"/>
+        <env name="DB_PORT" value="5432"/>
+        <env name="DB_DATABASE" value="testing"/>
+        <env name="DB_USERNAME" value="root"/>
+        <env name="DB_PASSWORD" value="password"/>
+
+        <!--
+            MUST stay a dedicated database. RefreshDatabase does not touch
+            MongoDB, so the Feature suite truncates collections itself; pointed
+            at `sff` that would delete real data. tests/Pest.php asserts the
+            name ends in `_testing` before truncating anything.
+        -->
+        <env name="MONGODB_URI" value="mongodb://mongo:27017"/>
+        <env name="MONGODB_DATABASE" value="sff_testing"/>
+        <env name="MONGODB_USERNAME" value="admin"/>
+        <env name="MONGODB_PASSWORD" value="password"/>
+
+        <env name="AWS_ACCESS_KEY_ID" value="testing"/>
+        <env name="AWS_SECRET_ACCESS_KEY" value="testing"/>
+        <env name="AWS_DEFAULT_REGION" value="us-east-1"/>
+        <env name="AWS_BUCKET" value="uploads"/>
+        <env name="AWS_URL" value="http://localhost:9001/uploads"/>
+        <env name="AWS_ENDPOINT" value="http://minio:9000"/>
     </php>
 </phpunit>
