@@ -1,7 +1,8 @@
 export interface Post {
-  id: number;
+  // Mongo document ids are UUID strings, not integers.
+  id: string;
   content: string;
-  authorId: number | string;
+  authorId: string;
   authorName: string;
   tags: string[];
   createdAt: string;

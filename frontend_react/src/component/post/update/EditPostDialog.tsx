@@ -20,6 +20,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import { useAuth } from '../../../AuthContext';
 import { Post } from '../../../interface/Post';
 import { updatePost as updatePostApi } from '../../../service/post/postApi';
+import { errorSummary } from '../../../service/apiClient';
 import { POST_TONE_BY_TAG } from '../PostCard';
 
 interface EditPostDialogProps {
@@ -91,8 +92,8 @@ const EditPostDialog: React.FC<EditPostDialogProps> = ({
       setToastMessage('Update success.');
       setToastSeverity('success');
       handleCloseEditDialog();
-    } catch (error: any) {
-      setFormErrorSummary(Object.values(error.list));
+    } catch (error: unknown) {
+      setFormErrorSummary(errorSummary(error));
     }
   };
 

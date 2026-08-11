@@ -16,6 +16,7 @@ import { Delete, Edit } from '@mui/icons-material';
 import { Post } from '../interface/Post';
 import { useAuth } from '../AuthContext';
 import { fetchPosts, addPost as addPostApi } from '../service/post/postApi';
+import { errorSummary } from '../service/apiClient';
 import Toast from '../component/template/Toast';
 import ErrorList from '../component/template/ErrorList';
 import ConfirmDeletePostDialog from '../component/post/delete/ConfirmDeletePostDialog';
@@ -104,8 +105,8 @@ const ProfilePage: React.FC = () => {
       setToastMessage('New post success.');
       setToastSeverity('success');
       setFormErrorSummary([]);
-    } catch (error: any) {
-      setFormErrorSummary(Object.values(error.list));
+    } catch (error: unknown) {
+      setFormErrorSummary(errorSummary(error));
     } finally {
       setLoading(false);
     }

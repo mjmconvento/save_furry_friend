@@ -1,67 +1,31 @@
-import { getCsrfToken } from '../../util/csrf';
-import { API_BASE_URL, USERS_ENDPOINT } from '../../config/api';
+import { USERS_ENDPOINT } from '../../config/api';
+import { apiRequest } from '../apiClient';
 
-interface followUserParams {
+interface FollowUserParams {
   id: string;
   token: string | null;
 }
 
-export const followUser = async ({ id, token }: followUserParams) => {
-  const headers: HeadersInit = {
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${token}`,
-    'X-XSRF-Token': getCsrfToken() || '',
-    accept: 'application/json',
-  };
+interface FollowResponse {
+  message: string;
+}
 
-  const response = await fetch(
-    `${API_BASE_URL}/${USERS_ENDPOINT}/follow/${id}`,
-    {
-      method: 'POST',
-      headers,
-      credentials: 'include',
-    }
-  );
+// RESTful nesting: the API moved from /users/follow/{id} to /users/{id}/follow
+// when the routes became an apiResource.
+export const followUser = async ({
+  id,
+  token,
+}: FollowUserParams): Promise<FollowResponse> =>
+  apiRequest<FollowResponse>(`${USERS_ENDPOINT}/${id}/follow`, {
+    method: 'POST',
+    token,
+  });
 
-  const data = await response.json();
-
-  if (!response.ok) {
-    const error: any = new Error(data.message);
-    error.status = response.status;
-    error.list = data.errors;
-
-    throw error;
-  }
-
-  return data;
-};
-
-export const unfollowUser = async ({ id, token }: followUserParams) => {
-  const headers: HeadersInit = {
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${token}`,
-    'X-XSRF-Token': getCsrfToken() || '',
-    accept: 'application/json',
-  };
-
-  const response = await fetch(
-    `${API_BASE_URL}/${USERS_ENDPOINT}/unfollow/${id}`,
-    {
-      method: 'POST',
-      headers,
-      credentials: 'include',
-    }
-  );
-
-  const data = await response.json();
-
-  if (!response.ok) {
-    const error: any = new Error(data.message);
-    error.status = response.status;
-    error.list = data.errors;
-
-    throw error;
-  }
-
-  return data;
-};
+export const unfollowUser = async ({
+  id,
+  token,
+}: FollowUserParams): Promise<FollowResponse> =>
+  apiRequest<FollowResponse>(`${USERS_ENDPOINT}/${id}/unfollow`, {
+    method: 'POST',
+    token,
+  });

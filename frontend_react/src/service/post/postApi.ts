@@ -1,33 +1,16 @@
-import { API_BASE_URL, POSTS_ENDPOINT } from '../../config/api';
-import { getCsrfToken } from '../../util/csrf';
+import { POSTS_ENDPOINT } from '../../config/api';
+import { Post } from '../../interface/Post';
+import { apiRequest } from '../apiClient';
 
 export const fetchPosts = async (
   bearerToken: string | null,
   tags: string[],
   authorId: string | null = null
-) => {
-  const url = new URL(`${API_BASE_URL}/${POSTS_ENDPOINT}`);
-
-  tags.forEach((tag) => url.searchParams.append('tags[]', tag));
-
-  if (authorId) {
-    url.searchParams.append('authorId', authorId || '0');
-  }
-
-  const response = await fetch(url.toString(), {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${bearerToken}`,
-    },
+): Promise<Post[]> =>
+  apiRequest<Post[]>(POSTS_ENDPOINT, {
+    token: bearerToken,
+    query: { tags, authorId },
   });
-
-  if (!response.ok) {
-    throw new Error('Failed to fetch posts');
-  }
-
-  return await response.json();
-};
 
 interface AddPostParams {
   // Author ids are UUID strings from Postgres, not integers.
@@ -46,45 +29,24 @@ export const addPost = async ({
   tags,
   medias,
   bearerToken,
-}: AddPostParams) => {
-  const headers: HeadersInit = {
-    Authorization: `Bearer ${bearerToken}`,
-    'X-XSRF-Token': getCsrfToken() || '',
-    accept: 'application/json',
-  };
+}: AddPostParams): Promise<Post> => {
+  const form = new FormData();
+  form.append('content', content);
+  tags.forEach((tag) => form.append('tags[]', tag));
+  form.append('authorId', authorId?.toString() || '');
+  form.append('authorName', authorName || '');
+  medias?.forEach((file) => form.append('medias[]', file));
 
-  const formData = new FormData();
-  formData.append('content', content);
-  tags.forEach((tag) => formData.append('tags[]', tag));
-  formData.append('authorId', authorId?.toString() || '');
-  formData.append('authorName', authorName || '');
-
-  if (medias && medias.length > 0) {
-    medias.forEach((file) => formData.append('medias[]', file));
-  }
-
-  const response = await fetch(`${API_BASE_URL}/${POSTS_ENDPOINT}`, {
+  return apiRequest<Post>(POSTS_ENDPOINT, {
     method: 'POST',
-    headers,
-    credentials: 'include',
-    body: formData,
+    token: bearerToken,
+    form,
   });
-
-  const data = await response.json();
-
-  if (!response.ok) {
-    const error: any = new Error(data.message);
-    error.status = response.status;
-    error.list = data.errors;
-
-    throw error;
-  }
-
-  return data;
 };
 
 export interface UpdatePostParams {
-  id: number;
+  // Post ids are Mongo UUID strings.
+  id: string;
   content: string;
   tags: string[];
   token: string | null;
@@ -95,58 +57,26 @@ export const updatePost = async ({
   content,
   tags,
   token,
-}: UpdatePostParams) => {
-  const headers: HeadersInit = {
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${token}`,
-    'X-XSRF-Token': getCsrfToken() || '',
-    accept: 'application/json',
-  };
-
-  const response = await fetch(`${API_BASE_URL}/${POSTS_ENDPOINT}/${id}`, {
+}: UpdatePostParams): Promise<Post> =>
+  apiRequest<Post>(`${POSTS_ENDPOINT}/${id}`, {
     method: 'PUT',
-    headers,
-    credentials: 'include',
-    body: JSON.stringify({
-      id,
-      content,
-      tags,
-    }),
+    token,
+    json: { content, tags },
   });
 
-  const data = await response.json();
-
-  if (!response.ok) {
-    const error: any = new Error(data.message);
-    error.status = response.status;
-    error.list = data.errors;
-
-    throw error;
-  }
-
-  return data;
-};
-
 export interface DeletePostParams {
-  id: number;
+  id: string;
   token: string | null;
 }
 
-export const deletePost = async ({ id, token }: DeletePostParams) => {
-  const headers: HeadersInit = {
-    Authorization: `Bearer ${token}`,
-    'X-XSRF-Token': getCsrfToken() || '',
-  };
-
-  const response = await fetch(`${API_BASE_URL}/${POSTS_ENDPOINT}/${id}`, {
+export const deletePost = async ({
+  id,
+  token,
+}: DeletePostParams): Promise<true> => {
+  await apiRequest<unknown>(`${POSTS_ENDPOINT}/${id}`, {
     method: 'DELETE',
-    headers,
-    credentials: 'include',
+    token,
   });
-
-  if (!response.ok) {
-    throw new Error('Failed to delete post');
-  }
 
   return true;
 };

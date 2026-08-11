@@ -76,7 +76,7 @@ const ProfilePage: React.FC = () => {
       });
 
       setIsFollowing(true);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.log(error);
     } finally {
       setLoading(false);
@@ -93,7 +93,7 @@ const ProfilePage: React.FC = () => {
       });
 
       setIsFollowing(false);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.log(error);
     } finally {
       setLoading(false);

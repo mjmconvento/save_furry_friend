@@ -11,6 +11,7 @@ import {
 import { Post } from '../../interface/Post';
 import { useAuth } from '../../AuthContext';
 import { fetchPosts, addPost as addPostApi } from '../../service/post/postApi';
+import { errorSummary } from '../../service/apiClient';
 import Toast from '../template/Toast';
 import ErrorList from '../template/ErrorList';
 import ConfirmDeletePostDialog from './delete/ConfirmDeletePostDialog';
@@ -166,19 +167,7 @@ const PostFeed: React.FC<PostFeedProps> = ({ tag, title, subtitle }) => {
       setToastSeverity('success');
       setFormErrorSummary([]);
     } catch (error: unknown) {
-      // The API layer rejects with a `list` map of field -> message. Anything
-      // else (network failure, thrown Error) has no per-field detail, so it
-      // surfaces as a single line rather than being swallowed.
-      const list =
-        error && typeof error === 'object' && 'list' in error
-          ? error.list
-          : undefined;
-
-      setFormErrorSummary(
-        list && typeof list === 'object'
-          ? Object.values(list).map(String)
-          : [error instanceof Error ? error.message : 'Could not add the post.']
-      );
+      setFormErrorSummary(errorSummary(error));
     } finally {
       setLoading(false);
     }

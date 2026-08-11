@@ -5,7 +5,6 @@ import Topbar from './component/template/Topbar';
 import Sidebar from './component/template/Sidebar';
 import UserPage from './page/UserPage';
 import { Box } from '@mui/material';
-import { getCsrfToken } from './util/csrf';
 import { Routes, Route } from 'react-router-dom';
 import HomePage from './page/HomePage';
 import HappyPostPage from './page/HappyPostPage';
@@ -17,13 +16,10 @@ import ProfilePage from './page/ProfilePage';
 import MyProfilePage from './page/MyProfilePage';
 
 const App = () => {
-  const { isAuthenticated, logout } = useAuth();
+  const { isAuthenticated } = useAuth();
   // The nav drawer is only ever open below `md`; the permanent sidebar at
   // `md` and up ignores this flag.
   const [navOpen, setNavOpen] = useState(false);
-  if (getCsrfToken() === undefined) {
-    logout();
-  }
 
   if (!isAuthenticated) return <LoginForm />;
 

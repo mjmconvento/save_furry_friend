@@ -13,6 +13,7 @@ import ErrorList from '../../template/ErrorList';
 import EditIcon from '@mui/icons-material/Edit';
 import { useAuth } from '../../../AuthContext';
 import { updateUser as updateUserApi } from '../../../service/user/userApi';
+import { errorSummary } from '../../../service/apiClient';
 import { User } from '../../../interface/User';
 
 interface EditUserDialogProps {
@@ -79,8 +80,8 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({
       setToastMessage('Update success.');
       setToastSeverity('success');
       handleCloseEditDialog();
-    } catch (error: any) {
-      setFormErrorSummary(Object.values(error.list));
+    } catch (error: unknown) {
+      setFormErrorSummary(errorSummary(error));
     }
   };
 

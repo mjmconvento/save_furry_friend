@@ -12,6 +12,7 @@ import {
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import ErrorList from '../../template/ErrorList';
 import { addUser as addUserApi } from '../../../service/user/userApi';
+import { errorSummary } from '../../../service/apiClient';
 import { useAuth } from '../../../AuthContext';
 import { User } from '../../../interface/User';
 
@@ -62,8 +63,8 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({
       setToastSeverity('success');
       handleCloseAddDialog();
       setFormErrorSummary([]);
-    } catch (error: any) {
-      setFormErrorSummary(Object.values(error.list));
+    } catch (error: unknown) {
+      setFormErrorSummary(errorSummary(error));
     }
   };
 
