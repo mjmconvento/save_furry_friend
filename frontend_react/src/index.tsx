@@ -5,6 +5,7 @@ import CssBaseline from '@mui/material/CssBaseline';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
 import { AuthProvider } from './AuthContext';
+import { ToastProvider } from './component/template/ToastProvider';
 import theme from './theme';
 
 const rootElement = document.getElementById('root');
@@ -13,9 +14,11 @@ if (rootElement) {
   root.render(
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <AuthProvider>
-        <App />
-      </AuthProvider>
+      <ToastProvider>
+        <AuthProvider>
+          <App />
+        </AuthProvider>
+      </ToastProvider>
     </ThemeProvider>
   );
 }

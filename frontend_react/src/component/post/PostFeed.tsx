@@ -1,54 +1,88 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
+  Alert,
   Box,
+  Button,
   Card,
   CardContent,
-  Typography,
-  TextField,
-  Button,
   Stack,
+  TextField,
+  Typography,
 } from '@mui/material';
+import { useDropzone } from 'react-dropzone';
 import { Post } from '../../interface/Post';
+import { PostTag } from '../../config/tags';
 import { useAuth } from '../../AuthContext';
 import { fetchPosts, addPost as addPostApi } from '../../service/post/postApi';
-import { errorSummary } from '../../service/apiClient';
-import Toast from '../template/Toast';
+import { errorSummary, isAbort } from '../../service/apiClient';
+import { useNotify } from '../template/ToastProvider';
 import ErrorList from '../template/ErrorList';
 import ConfirmDeletePostDialog from './delete/ConfirmDeletePostDialog';
 import LoadingIndicator from '../template/LoadingIndicator';
 import EditPostDialog from './update/EditPostDialog';
 import PostCard from './PostCard';
-import { useDropzone } from 'react-dropzone';
 
 interface PostFeedProps {
-  /** The single tag this feed reads and writes, e.g. `happy_post`. */
-  tag: string;
   title: string;
   subtitle: string;
+  /**
+   * The single tag this feed reads and writes, e.g. `happy_post`. Omitted means
+   * no tag filter: every post the other filters allow.
+   */
+  tag?: PostTag;
+  /** Restrict the feed to one author's posts. */
+  authorId?: string;
+  /**
+   * Composers write this feed's `tag`, so a feed without one cannot offer a
+   * composer: an untagged post appears in no category feed at all.
+   */
+  composer?: boolean;
 }
 
 /**
- * One category feed: composer plus the posts carrying `tag`. The three category
- * routes differ only by these props, so they are three-line wrappers around this
- * component rather than three copies of it.
+ * Photoswipe needs the intrinsic size of every image up front, otherwise the
+ * lightbox opens at a guessed aspect ratio and snaps to the real one.
  */
-const PostFeed: React.FC<PostFeedProps> = ({ tag, title, subtitle }) => {
-  const [toastOpen, setToastOpen] = useState(false);
+const getImageDimensions = (url: string) => {
+  const { promise, resolve } =
+    Promise.withResolvers<{ width: number; height: number }>();
+  const img = new Image();
+  img.onload = () =>
+    resolve({ width: img.naturalWidth, height: img.naturalHeight });
+  img.src = url;
+  return promise;
+};
+
+/**
+ * Every post surface in the app: the three category feeds, the signed-in user's
+ * profile and another user's profile differ only by `tag`, `authorId` and
+ * whether they compose, so they are wrappers around this component rather than
+ * copies of it.
+ */
+const PostFeed: React.FC<PostFeedProps> = ({
+  title,
+  subtitle,
+  tag,
+  authorId,
+  composer = true,
+}) => {
   const [newContent, setNewContent] = useState<string>('');
-  const [newTags, setNewTags] = useState<string[]>([tag]);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [editingPost, setEditingPost] = useState<Post | null>(null);
   const [isDeleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isEditDialogOpen, setEditDialogOpen] = useState(false);
   const [postToDelete, setPostToDelete] = useState<Post | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
-  const { token, currentUser } = useAuth()!;
+  const { token, currentUser } = useAuth();
+  const notify = useNotify();
   const [loading, setLoading] = useState<boolean>(true);
+  const [submitting, setSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [toastMessage, setToastMessage] = useState('');
   const [formErrorSummary, setFormErrorSummary] = useState<string[]>([]);
-  const [toastSeverity, setToastSeverity] = useState<'success' | 'error'>(
-    'success'
-  );
+  const [imageSizes, setImageSizes] = useState<
+    Record<string, { width: number; height: number }>
+  >({});
+
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     accept: { 'image/*': [] },
     multiple: true,
@@ -68,20 +102,20 @@ const PostFeed: React.FC<PostFeedProps> = ({ tag, title, subtitle }) => {
     },
   });
 
-  const [imageSizes, setImageSizes] = useState<
-    Record<string, { width: number; height: number }>
-  >({});
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  // A blob URL minted during render leaks one URL per selected file on every
+  // keystroke in the composer. Mint them once per file list and revoke them
+  // when that list is replaced or the feed unmounts.
+  const previews = useMemo(
+    () =>
+      selectedFiles.map((file) => ({ file, url: URL.createObjectURL(file) })),
+    [selectedFiles]
+  );
 
-  const getImageDimensions = (url: string) => {
-    const { promise, resolve } =
-      Promise.withResolvers<{ width: number; height: number }>();
-    const img = new Image();
-    img.onload = () =>
-      resolve({ width: img.naturalWidth, height: img.naturalHeight });
-    img.src = url;
-    return promise;
-  };
+  useEffect(
+    () => () =>
+      previews.forEach((preview) => URL.revokeObjectURL(preview.url)),
+    [previews]
+  );
 
   useEffect(() => {
     const loadSizes = async () => {
@@ -103,24 +137,38 @@ const PostFeed: React.FC<PostFeedProps> = ({ tag, title, subtitle }) => {
   }, [posts]);
 
   useEffect(() => {
+    // Navigating between two feeds (or two profiles) leaves the first
+    // request in flight; without this, its late response overwrites the
+    // newer feed's posts.
+    const controller = new AbortController();
+
     const loadPosts = async () => {
       setLoading(true);
 
       try {
-        const data: Post[] = await fetchPosts(token, [tag]);
+        const data: Post[] = await fetchPosts(
+          token,
+          tag ? [tag] : [],
+          authorId ?? null,
+          controller.signal
+        );
         setPosts(data);
+        setError(null);
       } catch (error) {
-        console.error('Error fetching posts:', error);
+        if (isAbort(error)) return;
+
         setError(
           error instanceof Error ? error.message : 'Something went wrong'
         );
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       }
     };
 
     loadPosts();
-  }, [token, tag]);
+
+    return () => controller.abort();
+  }, [token, tag, authorId]);
 
   const handleOpenEditDialog = (post: Post) => {
     setEditingPost(post);
@@ -143,33 +191,27 @@ const PostFeed: React.FC<PostFeedProps> = ({ tag, title, subtitle }) => {
   };
 
   const handleAddPost = async () => {
-    setLoading(true);
+    // A mutation must not unmount the feed: the old page-level spinner threw
+    // away scroll position and any text still in the composer.
+    setSubmitting(true);
 
     try {
       const newPost = await addPostApi({
-        authorId: currentUser?.id,
-        authorName: currentUser?.name,
         content: newContent,
-        tags: newTags,
+        tags: tag ? [tag] : [],
         medias: selectedFiles,
         bearerToken: token,
       });
 
       setPosts((prevPosts) => [newPost, ...prevPosts]);
       setNewContent('');
-      // Back to this feed's tag, not empty: an emptied tag list would make the
-      // next post from this page untagged, and an untagged post appears in no
-      // feed at all.
-      setNewTags([tag]);
       setSelectedFiles([]);
-      setToastOpen(true);
-      setToastMessage('New post success.');
-      setToastSeverity('success');
       setFormErrorSummary([]);
+      notify({ message: 'New post success.', severity: 'success' });
     } catch (error: unknown) {
       setFormErrorSummary(errorSummary(error));
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
@@ -178,18 +220,20 @@ const PostFeed: React.FC<PostFeedProps> = ({ tag, title, subtitle }) => {
   }
 
   if (error) {
-    return <div>Error: {error}</div>;
+    return (
+      <Box
+        maxWidth={1000}
+        mx="auto"
+        mt={{ xs: 2, sm: 4 }}
+        px={{ xs: 1.5, sm: 2 }}
+      >
+        <Alert severity="error">{error}</Alert>
+      </Box>
+    );
   }
 
   return (
     <Box maxWidth={1000} mx="auto" mt={{ xs: 2, sm: 4 }} px={{ xs: 1.5, sm: 2 }}>
-      <Toast
-        open={toastOpen}
-        onClose={() => setToastOpen(false)}
-        message={toastMessage}
-        severity={toastSeverity}
-      />
-
       <ErrorList errors={formErrorSummary} />
 
       <Typography
@@ -204,76 +248,82 @@ const PostFeed: React.FC<PostFeedProps> = ({ tag, title, subtitle }) => {
         {subtitle}
       </Typography>
 
-      <Card variant="outlined" sx={{ mb: 3 }}>
-        <CardContent>
-          <TextField
-            fullWidth
-            label="What's on your mind?"
-            value={newContent}
-            onChange={(e) => setNewContent(e.target.value)}
-            multiline
-            rows={4}
-          />
+      {composer && (
+        <Card variant="outlined" sx={{ mb: 3 }}>
+          <CardContent>
+            <TextField
+              fullWidth
+              label="What's on your mind?"
+              value={newContent}
+              onChange={(e) => setNewContent(e.target.value)}
+              multiline
+              rows={4}
+            />
 
-          <Box
-            {...getRootProps()}
-            sx={{
-              border: '2px dashed',
-              borderColor: 'divider',
-              borderRadius: 2,
-              p: { xs: 1.5, sm: 2 },
-              mt: 2,
-              textAlign: 'center',
-              cursor: 'pointer',
-              bgcolor: 'surface.sunken',
-              '&:hover': { bgcolor: 'primary.light' },
-            }}
-          >
-            <input {...getInputProps()} />
-            <Typography variant="body2">
-              {isDragActive
-                ? 'Drop the files here...'
-                : 'Drag and drop images here, or click to select'}
-            </Typography>
-          </Box>
-
-          {selectedFiles.length > 0 && (
-            <Stack
-              direction="row"
-              spacing={1}
-              mt={2}
-              flexWrap="wrap"
-              // Stack spaces children with margins, so wrapped lines get no
-              // vertical gap of their own. Only two previews fit per line on a
-              // phone, so add one there; the desktop row never wraps.
-              sx={{ rowGap: { xs: 1, md: 0 } }}
+            <Box
+              {...getRootProps()}
+              sx={{
+                border: '2px dashed',
+                borderColor: 'divider',
+                borderRadius: 2,
+                p: { xs: 1.5, sm: 2 },
+                mt: 2,
+                textAlign: 'center',
+                cursor: 'pointer',
+                bgcolor: 'surface.sunken',
+                '&:hover': { bgcolor: 'primary.light' },
+              }}
             >
-              {selectedFiles.map((file, idx) => (
-                <Box
-                  key={idx}
-                  component="img"
-                  src={URL.createObjectURL(file)}
-                  alt={`preview-${idx}`}
-                  sx={{
-                    width: 100,
-                    height: 100,
-                    objectFit: 'cover',
-                    borderRadius: 1,
-                    border: '1px solid',
-                    borderColor: 'divider',
-                  }}
-                />
-              ))}
-            </Stack>
-          )}
+              <input {...getInputProps()} />
+              <Typography variant="body2">
+                {isDragActive
+                  ? 'Drop the files here...'
+                  : 'Drag and drop images here, or click to select'}
+              </Typography>
+            </Box>
 
-          <Box mt={2} textAlign="right">
-            <Button variant="contained" onClick={handleAddPost}>
-              Post
-            </Button>
-          </Box>
-        </CardContent>
-      </Card>
+            {previews.length > 0 && (
+              <Stack
+                direction="row"
+                spacing={1}
+                mt={2}
+                flexWrap="wrap"
+                // Stack spaces children with margins, so wrapped lines get no
+                // vertical gap of their own. Only two previews fit per line on a
+                // phone, so add one there; the desktop row never wraps.
+                sx={{ rowGap: { xs: 1, md: 0 } }}
+              >
+                {previews.map((preview) => (
+                  <Box
+                    key={preview.url}
+                    component="img"
+                    src={preview.url}
+                    alt={`preview of ${preview.file.name}`}
+                    sx={{
+                      width: 100,
+                      height: 100,
+                      objectFit: 'cover',
+                      borderRadius: 1,
+                      border: '1px solid',
+                      borderColor: 'divider',
+                    }}
+                  />
+                ))}
+              </Stack>
+            )}
+
+            <Box mt={2} textAlign="right">
+              <Button
+                variant="contained"
+                loading={submitting}
+                onClick={handleAddPost}
+              >
+                Post
+              </Button>
+            </Box>
+          </CardContent>
+        </Card>
+      )}
 
       <Stack spacing={2}>
         {posts.map((post) => {
@@ -295,23 +345,24 @@ const PostFeed: React.FC<PostFeedProps> = ({ tag, title, subtitle }) => {
 
       <EditPostDialog
         open={isEditDialogOpen}
-        handleCloseEditDialog={handleCloseEditDialog}
-        editingPost={editingPost}
-        setToastOpen={setToastOpen}
-        setToastMessage={setToastMessage}
-        setToastSeverity={setToastSeverity}
-        setPosts={setPosts}
+        post={editingPost}
+        onClose={handleCloseEditDialog}
+        onSaved={(saved) =>
+          setPosts((prevPosts) =>
+            prevPosts.map((post) => (post.id === saved.id ? saved : post))
+          )
+        }
       />
 
       <ConfirmDeletePostDialog
         open={isDeleteDialogOpen}
-        handleCloseDeleteDialog={handleCloseDeleteDialog}
-        setPosts={setPosts}
-        setLoading={setLoading}
-        setToastOpen={setToastOpen}
-        setToastMessage={setToastMessage}
-        setToastSeverity={setToastSeverity}
-        postToDelete={postToDelete}
+        post={postToDelete}
+        onClose={handleCloseDeleteDialog}
+        onDeleted={(deletedId) =>
+          setPosts((prevPosts) =>
+            prevPosts.filter((post) => post.id !== deletedId)
+          )
+        }
       />
     </Box>
   );

@@ -1,4 +1,5 @@
 import { API_BASE_URL } from '../config/api';
+import { notifyUnauthorized } from './authBridge';
 
 /**
  * A failed API call. `list` carries Laravel's `errors` bag (field -> messages)
@@ -31,6 +32,8 @@ interface RequestOptions {
   /** Sent as multipart; Content-Type is left to the browser so it can add the boundary. */
   form?: FormData;
   query?: Query;
+  /** Aborts the request; the rejection is a DOMException, not an `ApiError`. */
+  signal?: AbortSignal;
 }
 
 const buildUrl = (path: string, query?: Query): string => {
@@ -94,7 +97,7 @@ const readErrorBag = (detail: object): Record<string, string[]> | undefined => {
 
 export const apiRequest = async <T>(
   path: string,
-  { method = 'GET', token, json, form, query }: RequestOptions
+  { method = 'GET', token, json, form, query, signal }: RequestOptions
 ): Promise<T> => {
   const headers: Record<string, string> = {
     Accept: 'application/json',
@@ -109,12 +112,19 @@ export const apiRequest = async <T>(
     method,
     headers,
     body: form ?? (json !== undefined ? JSON.stringify(json) : undefined),
+    signal,
   });
 
   const body = await response.text();
   const payload: unknown = body.length > 0 ? JSON.parse(body) : null;
 
   if (!response.ok) {
+    // An expired or revoked token must end the session rather than surface as a
+    // per-call error in whichever component happened to make the request.
+    if (response.status === 401) {
+      notifyUnauthorized();
+    }
+
     const detail = payload !== null && typeof payload === 'object' ? payload : {};
 
     throw new ApiError(
@@ -126,6 +136,14 @@ export const apiRequest = async <T>(
 
   return unwrap<T>(payload);
 };
+
+/**
+ * A request cancelled through its `signal` rejects with an `AbortError`
+ * DOMException. That is a component unmounting or a newer keystroke winning,
+ * never a failure the user should be told about.
+ */
+export const isAbort = (error: unknown): boolean =>
+  error instanceof DOMException && error.name === 'AbortError';
 
 /**
  * Flattens a caught error into lines for `ErrorList`. Only a 422 carries a

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   AppBar,
   Toolbar,
@@ -6,9 +6,7 @@ import {
   Button,
   Box,
   InputBase,
-  Paper,
-  List,
-  ListItem,
+  Autocomplete,
   ListItemText,
   IconButton,
 } from '@mui/material';
@@ -19,7 +17,8 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import { useAuth } from '../../AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
 import { searchUsers as searchUsersApi } from '../../service/user/userApi';
-import { flushSync } from 'react-dom';
+import { isAbort } from '../../service/apiClient';
+import { User } from '../../interface/User';
 
 type TopbarProps = {
   /** Opens the overlay nav drawer; the button that calls it is hidden at `md`. */
@@ -27,51 +26,44 @@ type TopbarProps = {
 };
 
 const Topbar = ({ onMenuClick }: TopbarProps) => {
-  const { logout } = useAuth()!;
+  const { logout, token } = useAuth();
   const [search, setSearch] = useState('');
-  const [results, setResults] = useState<any[]>([]);
-  const [showResults, setShowResults] = useState(false);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [results, setResults] = useState<User[]>([]);
+  const [open, setOpen] = useState(false);
   const navigate = useNavigate();
 
-  const handleLogout = () => logout();
-  const { token } = useAuth()!;
-
   useEffect(() => {
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
+    const keyword = search.trim();
 
-    if (search.trim() === '') {
+    if (keyword === '') {
       setResults([]);
+
       return;
     }
 
-    timeoutRef.current = setTimeout(async () => {
+    // One controller per debounce window: the cleanup below aborts the
+    // in-flight request as soon as the query changes, so a slow response for
+    // an older keystroke can never overwrite a newer result set.
+    const controller = new AbortController();
+
+    const timer = setTimeout(async () => {
       try {
-        const users = await searchUsersApi(token, search.trim());
-        setResults(users);
-        setShowResults(true);
-      } catch (err) {
-        console.error('Search failed', err);
+        setResults(await searchUsersApi(token, keyword, controller.signal));
+      } catch (error: unknown) {
+        if (isAbort(error)) return;
+
+        console.error('Search failed', error);
         setResults([]);
       }
     }, 500);
 
     return () => {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      clearTimeout(timer);
+      controller.abort();
     };
-  }, [search]);
-
-  const handleSelectUser = (user: any) => {
-    flushSync(() => {
-      setSearch('');
-      setResults([]);
-      setShowResults(false);
-    });
-
-    navigate(`/profile/${user.id}`);
-  };
+    // `token` belongs here: without it the closure keeps the token of whoever
+    // was signed in when this component mounted.
+  }, [search, token]);
 
   return (
     <AppBar position="sticky">
@@ -116,66 +108,87 @@ const Topbar = ({ onMenuClick }: TopbarProps) => {
           }}
         >
           {/*
-           * Shrink-wraps the field so the results dropdown's `left: 0` lines up
-           * with it. Fluid below `md`; the 420 cap reproduces the desktop size.
+           * Shrink-wraps the field, which is also the popper's anchor: the
+           * results list takes its width from it. Fluid below `md`; the 420 cap
+           * reproduces the desktop size.
            */}
           <Box
             sx={{
-              position: 'relative',
               display: 'flex',
               flexGrow: 1,
               maxWidth: 420,
               minWidth: 0,
             }}
           >
-            <InputBase
-              placeholder="Search people"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              sx={{
-                bgcolor: 'surface.sunken',
-                borderRadius: '6px',
-                width: '100%',
-                padding: '9px 13px',
-                fontSize: 14,
-              }}
-              startAdornment={
-                <SearchIcon sx={{ mr: 1, fontSize: 16, color: 'text.muted' }} />
+            <Autocomplete<User>
+              fullWidth
+              // The server already matched the keyword; filtering again here
+              // would drop rows it deliberately returned.
+              filterOptions={(options) => options}
+              options={results}
+              getOptionLabel={(user) => `${user.first_name} ${user.last_name}`}
+              getOptionKey={(user) => user.id}
+              isOptionEqualToValue={(option, value) => option.id === value.id}
+              // Nothing is ever "selected": picking a result navigates away, so
+              // the field must not keep the chosen name in it.
+              value={null}
+              inputValue={search}
+              onInputChange={(_, value, reason) =>
+                setSearch(reason === 'input' ? value : '')
               }
+              onChange={(_, user) => {
+                if (user) navigate(`/profile/${user.id}`);
+              }}
+              blurOnSelect
+              // Gated on results so an empty debounce window shows no popup, as
+              // before. Open/close is otherwise MUI's: it closes on select, on
+              // Escape and on click-away, which the hand-rolled list never did.
+              open={open && results.length > 0}
+              onOpen={() => setOpen(true)}
+              onClose={() => setOpen(false)}
+              renderInput={(params) => (
+                <InputBase
+                  id={params.id}
+                  disabled={params.disabled}
+                  fullWidth={params.fullWidth}
+                  ref={params.InputProps.ref}
+                  className={params.InputProps.className}
+                  onMouseDown={params.InputProps.onMouseDown}
+                  inputProps={params.inputProps}
+                  placeholder="Search people"
+                  sx={{
+                    bgcolor: 'surface.sunken',
+                    borderRadius: '6px',
+                    width: '100%',
+                    padding: '9px 13px',
+                    fontSize: 14,
+                  }}
+                  startAdornment={
+                    <SearchIcon
+                      sx={{ mr: 1, fontSize: 16, color: 'text.muted' }}
+                    />
+                  }
+                />
+              )}
+              renderOption={({ key, ...optionProps }, user) => (
+                <Box component="li" key={key} {...optionProps}>
+                  <ListItemText
+                    primary={`${user.first_name} ${user.last_name}`}
+                    secondary={user.email}
+                  />
+                </Box>
+              )}
+              slotProps={{
+                paper: {
+                  sx: {
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    borderRadius: '6px',
+                  },
+                },
+                listbox: { sx: { maxHeight: 300 } },
+              }}
             />
-
-            {showResults && results.length > 0 && (
-              <Paper
-                sx={{
-                  position: 'absolute',
-                  top: '100%',
-                  left: 0,
-                  width: '100%',
-                  zIndex: 1,
-                  maxHeight: 300,
-                  overflowY: 'auto',
-                  border: '1px solid',
-                  borderColor: 'divider',
-                  borderRadius: '6px',
-                }}
-              >
-                <List>
-                  {results.map((user) => (
-                    <ListItem
-                      key={user.id}
-                      component="div"
-                      onClick={() => handleSelectUser(user)}
-                      sx={{ cursor: 'pointer' }}
-                    >
-                      <ListItemText
-                        primary={`${user.first_name} ${user.last_name}`}
-                        secondary={user.email}
-                      />
-                    </ListItem>
-                  ))}
-                </List>
-              </Paper>
-            )}
           </Box>
         </Box>
 
@@ -183,7 +196,7 @@ const Topbar = ({ onMenuClick }: TopbarProps) => {
           <Button color="inherit" component={Link} to="/my_profile">
             My Profile
           </Button>
-          <Button color="inherit" onClick={handleLogout}>
+          <Button color="inherit" onClick={logout}>
             Log out
           </Button>
         </Box>
@@ -199,7 +212,7 @@ const Topbar = ({ onMenuClick }: TopbarProps) => {
             <PersonOutlineIcon />
           </IconButton>
           <IconButton
-            onClick={handleLogout}
+            onClick={logout}
             aria-label="Log out"
             sx={{ color: 'text.secondary' }}
           >

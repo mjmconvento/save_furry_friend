@@ -10,64 +10,50 @@ import {
 } from '@mui/material';
 import WarningIcon from '@mui/icons-material/Warning';
 import { deletePost as deletePostApi } from '../../../service/post/postApi';
+import { errorSummary } from '../../../service/apiClient';
+import { useNotify } from '../../template/ToastProvider';
 import { useAuth } from '../../../AuthContext';
 import { Post } from '../../../interface/Post';
 
 interface ConfirmDeletePostDialogProps {
   open: boolean;
-  postToDelete: Post | null;
-  setToastOpen: (value: boolean) => void;
-  setToastMessage: (message: string) => void;
-  setToastSeverity: (severity: 'success' | 'error') => void;
-  setLoading: (value: boolean) => void;
-  handleCloseDeleteDialog: () => void;
-  setPosts: React.Dispatch<React.SetStateAction<Post[]>>;
+  post: Post | null;
+  onClose: () => void;
+  onDeleted: (id: string) => void;
 }
 
 const ConfirmDeletePostDialog: React.FC<ConfirmDeletePostDialogProps> = ({
   open,
-  postToDelete,
-  handleCloseDeleteDialog,
-  setLoading,
-  setToastOpen,
-  setToastMessage,
-  setToastSeverity,
-  setPosts,
+  post,
+  onClose,
+  onDeleted,
 }) => {
-  const { token } = useAuth()!;
+  const { token } = useAuth();
+  const notify = useNotify();
 
   const handleConfirmDelete = async () => {
-    if (!postToDelete) return;
-    setLoading(true);
+    if (!post) return;
 
     try {
-      await deletePostApi({
-        id: postToDelete.id,
-        token: token,
-      });
+      await deletePostApi({ id: post.id, token: token });
 
-      setPosts((prevPosts) =>
-        prevPosts.filter((post) => post.id !== postToDelete.id)
-      );
-
-      setToastOpen(true);
-      setToastMessage('Delete success.');
-      setToastSeverity('success');
-    } catch (error) {
-      setToastOpen(true);
-      setToastMessage('Delete error.');
-      setToastSeverity('error');
+      onDeleted(post.id);
+      notify({ message: 'Delete success.', severity: 'success' });
+    } catch (error: unknown) {
+      // The generic 'Delete error.' this used to show discarded the only
+      // explanation the server gave (permission, missing record, validation).
+      notify({ message: errorSummary(error).join(' '), severity: 'error' });
     } finally {
-      setLoading(false);
-      handleCloseDeleteDialog();
+      onClose();
     }
   };
 
   return (
     <Dialog
       open={open}
-      onClose={handleCloseDeleteDialog}
+      onClose={onClose}
       maxWidth="xs"
+      aria-labelledby="delete-post-title"
       sx={{
         '& .MuiPaper-root': {
           borderRadius: 12,
@@ -77,6 +63,7 @@ const ConfirmDeletePostDialog: React.FC<ConfirmDeletePostDialogProps> = ({
       }}
     >
       <DialogTitle
+        id="delete-post-title"
         sx={{
           display: 'flex',
           alignItems: 'center',
@@ -105,7 +92,7 @@ const ConfirmDeletePostDialog: React.FC<ConfirmDeletePostDialogProps> = ({
       <DialogActions sx={{ justifyContent: 'space-between', px: 3, pb: 2 }}>
         <Button
           variant="outlined"
-          onClick={handleCloseDeleteDialog}
+          onClick={onClose}
           sx={{ textTransform: 'none' }}
         >
           Cancel

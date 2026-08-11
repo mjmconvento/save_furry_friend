@@ -6,18 +6,11 @@ import AddUserDialog from '../component/user/add/AddUserDialog';
 import ConfirmDeleteUserDialog from '../component/user/delete/ConfirmDeleteUserDialog';
 import UserList from '../component/user/list/UserList';
 import { Button, Container, Stack, Typography } from '@mui/material';
-import Toast from '../component/template/Toast';
 import LoadingIndicator from '../component/template/LoadingIndicator';
 import { User } from '../interface/User';
 
 const UserPage: React.FC = () => {
-  const [toastOpen, setToastOpen] = useState(false);
-  const [toastMessage, setToastMessage] = useState('');
-  const [toastSeverity, setToastSeverity] = useState<'success' | 'error'>(
-    'success'
-  );
-
-  const { token } = useAuth()!;
+  const { token } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -83,13 +76,6 @@ const UserPage: React.FC = () => {
 
   return (
     <Container maxWidth="lg" sx={{ pt: 4, pb: 4 }}>
-      <Toast
-        open={toastOpen}
-        onClose={() => setToastOpen(false)}
-        message={toastMessage}
-        severity={toastSeverity}
-      />
-
       <Typography variant="h4" gutterBottom>
         User List
       </Typography>
@@ -114,32 +100,28 @@ const UserPage: React.FC = () => {
 
       <AddUserDialog
         open={isAddDialogOpen}
-        handleCloseAddDialog={handleCloseAddDialog}
-        setToastOpen={setToastOpen}
-        setToastMessage={setToastMessage}
-        setToastSeverity={setToastSeverity}
-        setUsers={setUsers}
+        onClose={handleCloseAddDialog}
+        onSaved={(user) => setUsers((prev) => [...prev, user])}
       />
 
       <EditUserDialog
         open={isEditDialogOpen}
-        handleCloseEditDialog={handleCloseEditDialog}
-        editingUser={editingUser}
-        setToastOpen={setToastOpen}
-        setToastMessage={setToastMessage}
-        setToastSeverity={setToastSeverity}
-        setUsers={setUsers}
+        user={editingUser}
+        onClose={handleCloseEditDialog}
+        onSaved={(saved) =>
+          setUsers((prev) =>
+            prev.map((user) => (user.id === saved.id ? saved : user))
+          )
+        }
       />
 
       <ConfirmDeleteUserDialog
         open={isDeleteDialogOpen}
-        userFullName={`${userToDelete?.first_name ?? ''} ${userToDelete?.middle_name ?? ''} ${userToDelete?.last_name ?? ''}`.trim()}
-        handleCloseDeleteDialog={handleCloseDeleteDialog}
-        setUsers={setUsers}
-        setToastOpen={setToastOpen}
-        setToastMessage={setToastMessage}
-        setToastSeverity={setToastSeverity}
-        userToDelete={userToDelete}
+        user={userToDelete}
+        onClose={handleCloseDeleteDialog}
+        onDeleted={(id) =>
+          setUsers((prev) => prev.filter((user) => user.id !== id))
+        }
       />
     </Container>
   );

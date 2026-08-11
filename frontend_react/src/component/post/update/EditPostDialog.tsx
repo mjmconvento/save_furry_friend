@@ -16,6 +16,7 @@ import {
   SelectChangeEvent,
 } from '@mui/material';
 import ErrorList from '../../template/ErrorList';
+import { useNotify } from '../../template/ToastProvider';
 import EditIcon from '@mui/icons-material/Edit';
 import { useAuth } from '../../../AuthContext';
 import { Post } from '../../../interface/Post';
@@ -25,27 +26,22 @@ import { POST_TONE_BY_TAG } from '../PostCard';
 
 interface EditPostDialogProps {
   open: boolean;
-  editingPost: Post | null;
-  handleCloseEditDialog: () => void;
-  setToastOpen: (value: boolean) => void;
-  setToastMessage: (message: string) => void;
-  setToastSeverity: (severity: 'success' | 'error') => void;
-  setPosts: React.Dispatch<React.SetStateAction<Post[]>>;
+  post: Post | null;
+  onClose: () => void;
+  onSaved: (post: Post) => void;
 }
 
 const EditPostDialog: React.FC<EditPostDialogProps> = ({
   open,
-  editingPost,
-  handleCloseEditDialog,
-  setToastOpen,
-  setToastMessage,
-  setToastSeverity,
-  setPosts,
+  post,
+  onClose,
+  onSaved,
 }) => {
   const [formErrorSummary, setFormErrorSummary] = useState<string[]>([]);
   const [updatedContent, setUpdatedContent] = useState<string>('');
   const [updatedTags, setUpdatedTags] = useState<string[]>([]);
-  const { token } = useAuth()!;
+  const { token } = useAuth();
+  const notify = useNotify();
 
   // Derived from the tone table rather than a second hand-written list. The
   // literal that used to live here read 'hearthbreaking_post', which matched
@@ -61,37 +57,31 @@ const EditPostDialog: React.FC<EditPostDialogProps> = ({
   };
 
   useEffect(() => {
-    if (editingPost) {
-      setUpdatedContent(editingPost.content);
-      setUpdatedTags(editingPost.tags);
+    if (post) {
+      setUpdatedContent(post.content);
+      setUpdatedTags(post.tags);
     }
-  }, [editingPost, open]);
+  }, [post, open]);
 
   const handleUpdate = async () => {
-    if (!editingPost) return;
+    if (!post) return;
 
     try {
       const updatedPost = await updatePostApi({
-        id: editingPost.id,
+        id: post.id,
         content: updatedContent,
         tags: updatedTags,
         token: token,
       });
 
-      setPosts((prevPosts) =>
-        prevPosts.map((post) =>
-          post.id === updatedPost.id ? updatedPost : post
-        )
-      );
+      onSaved(updatedPost);
 
       setFormErrorSummary([]);
       setUpdatedContent('');
       setUpdatedTags([]);
 
-      setToastOpen(true);
-      setToastMessage('Update success.');
-      setToastSeverity('success');
-      handleCloseEditDialog();
+      notify({ message: 'Update success.', severity: 'success' });
+      onClose();
     } catch (error: unknown) {
       setFormErrorSummary(errorSummary(error));
     }
@@ -100,9 +90,10 @@ const EditPostDialog: React.FC<EditPostDialogProps> = ({
   return (
     <Dialog
       open={open}
-      onClose={handleCloseEditDialog}
+      onClose={onClose}
       maxWidth="sm"
       fullWidth
+      aria-labelledby="edit-post-title"
       sx={{
         '& .MuiPaper-root': {
           borderRadius: 12,
@@ -115,7 +106,9 @@ const EditPostDialog: React.FC<EditPostDialogProps> = ({
         <EditIcon sx={{ fontSize: 40, color: 'primary.main' }} />
       </Box>
 
-      <DialogTitle sx={{ textAlign: 'center' }}>Edit Post</DialogTitle>
+      <DialogTitle id="edit-post-title" sx={{ textAlign: 'center' }}>
+        Edit Post
+      </DialogTitle>
       <ErrorList errors={formErrorSummary} />
 
       <DialogContent>
@@ -149,7 +142,7 @@ const EditPostDialog: React.FC<EditPostDialogProps> = ({
         </FormControl>
       </DialogContent>
       <DialogActions>
-        <Button onClick={handleCloseEditDialog}>Cancel</Button>
+        <Button onClick={onClose}>Cancel</Button>
         <Button variant="contained" color="primary" onClick={handleUpdate}>
           Save
         </Button>

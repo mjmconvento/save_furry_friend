@@ -13,6 +13,7 @@ import { Link } from 'react-router-dom';
 import { Gallery, Item } from 'react-photoswipe-gallery';
 import 'photoswipe/dist/photoswipe.css';
 import { Post } from '../../interface/Post';
+import { POST_TAGS } from '../../config/tags';
 
 type ToneKey = keyof Theme['palette']['tone'];
 
@@ -25,9 +26,12 @@ export const POST_TONE_BY_TAG: Record<
   string,
   { tone: ToneKey; label: string }
 > = {
-  happy_post: { tone: 'happy', label: 'Happy' },
-  neutral_post: { tone: 'neutral', label: 'Neutral' },
-  heartbreaking_post: { tone: 'heartbreaking', label: 'Heartbreaking' },
+  [POST_TAGS.happy]: { tone: 'happy', label: 'Happy' },
+  [POST_TAGS.neutral]: { tone: 'neutral', label: 'Neutral' },
+  [POST_TAGS.heartbreaking]: {
+    tone: 'heartbreaking',
+    label: 'Heartbreaking',
+  },
 };
 
 /**
@@ -188,7 +192,11 @@ const PostCard: React.FC<PostCardProps> = ({
                   minWidth: 0,
                 }}
               >
-                <Avatar>{post.authorName[0]}</Avatar>
+                {/* An author name the server built from an empty profile would
+                    make `[0]` throw during render. */}
+                <Avatar>
+                  {post.authorName?.trim().charAt(0).toUpperCase() || '?'}
+                </Avatar>
 
                 <Link to={profileTo} style={{ textDecoration: 'none' }}>
                   <Typography

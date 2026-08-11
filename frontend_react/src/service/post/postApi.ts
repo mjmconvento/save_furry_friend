@@ -5,26 +5,25 @@ import { apiRequest } from '../apiClient';
 export const fetchPosts = async (
   bearerToken: string | null,
   tags: string[],
-  authorId: string | null = null
+  authorId: string | null = null,
+  signal?: AbortSignal
 ): Promise<Post[]> =>
   apiRequest<Post[]>(POSTS_ENDPOINT, {
     token: bearerToken,
     query: { tags, authorId },
+    signal,
   });
 
-interface AddPostParams {
-  // Author ids are UUID strings from Postgres, not integers.
-  authorId: string | number | undefined;
-  authorName: string | undefined;
+export interface AddPostParams {
   content: string;
   tags: string[];
   medias?: File[];
   bearerToken: string | null;
 }
 
+// Authorship is not a client input: the server reads the author off the bearer
+// token and ignores anything sent for it.
 export const addPost = async ({
-  authorId,
-  authorName,
   content,
   tags,
   medias,
@@ -33,8 +32,6 @@ export const addPost = async ({
   const form = new FormData();
   form.append('content', content);
   tags.forEach((tag) => form.append('tags[]', tag));
-  form.append('authorId', authorId?.toString() || '');
-  form.append('authorName', authorName || '');
   medias?.forEach((file) => form.append('medias[]', file));
 
   return apiRequest<Post>(POSTS_ENDPOINT, {

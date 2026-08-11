@@ -2,22 +2,30 @@ import { USERS_ENDPOINT } from '../../config/api';
 import { User } from '../../interface/User';
 import { apiRequest } from '../apiClient';
 
-export const fetchUsers = async (token: string | null): Promise<User[]> =>
-  apiRequest<User[]>(USERS_ENDPOINT, { token });
+export const fetchUsers = async (
+  token: string | null,
+  signal?: AbortSignal
+): Promise<User[]> => apiRequest<User[]>(USERS_ENDPOINT, { token, signal });
 
 export const searchUsers = async (
   token: string | null,
-  keyword: string
+  keyword: string,
+  signal?: AbortSignal
 ): Promise<User[]> =>
-  apiRequest<User[]>(`${USERS_ENDPOINT}/search/${keyword}`, { token });
+  apiRequest<User[]>(`${USERS_ENDPOINT}/search/${keyword}`, { token, signal });
 
 export interface GetUserParams {
   id: string | undefined;
   token: string | null;
+  signal?: AbortSignal;
 }
 
-export const getUser = async ({ id, token }: GetUserParams): Promise<User> =>
-  apiRequest<User>(`${USERS_ENDPOINT}/${id}`, { token });
+export const getUser = async ({
+  id,
+  token,
+  signal,
+}: GetUserParams): Promise<User> =>
+  apiRequest<User>(`${USERS_ENDPOINT}/${id}`, { token, signal });
 
 interface AddUserParams {
   firstName: string;

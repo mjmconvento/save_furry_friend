@@ -1,6 +1,11 @@
+import React from 'react';
 import { Alert, Typography } from '@mui/material';
 
-const ErrorList = ({ errors }: { errors: string[] }) => {
+interface ErrorListProps {
+  errors: string[];
+}
+
+const ErrorList: React.FC<ErrorListProps> = ({ errors }) => {
   if (errors.length === 0) return null;
 
   return (

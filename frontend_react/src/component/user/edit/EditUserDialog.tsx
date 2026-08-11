@@ -7,9 +7,9 @@ import {
   TextField,
   Button,
   Box,
-  Typography,
 } from '@mui/material';
 import ErrorList from '../../template/ErrorList';
+import { useNotify } from '../../template/ToastProvider';
 import EditIcon from '@mui/icons-material/Edit';
 import { useAuth } from '../../../AuthContext';
 import { updateUser as updateUserApi } from '../../../service/user/userApi';
@@ -18,45 +18,41 @@ import { User } from '../../../interface/User';
 
 interface EditUserDialogProps {
   open: boolean;
-  editingUser: User | null;
-  handleCloseEditDialog: () => void;
-  setToastOpen: (value: boolean) => void;
-  setToastMessage: (message: string) => void;
-  setToastSeverity: (severity: 'success' | 'error') => void;
-  setUsers: React.Dispatch<React.SetStateAction<User[]>>;
+  user: User | null;
+  onClose: () => void;
+  onSaved: (user: User) => void;
 }
 
 const EditUserDialog: React.FC<EditUserDialogProps> = ({
   open,
-  editingUser,
-  handleCloseEditDialog,
-  setToastOpen,
-  setToastMessage,
-  setToastSeverity,
-  setUsers,
+  user,
+  onClose,
+  onSaved,
 }) => {
   const [formErrorSummary, setFormErrorSummary] = useState<string[]>([]);
   const [updatedFirstName, setUpdatedFirstName] = useState<string>('');
   const [updatedMiddleName, setUpdatedMiddleName] = useState<string>('');
   const [updatedLastName, setUpdatedLastName] = useState<string>('');
   const [updatedEmail, setUpdatedEmail] = useState<string>('');
-  const { token } = useAuth()!;
+  const { token } = useAuth();
+  const notify = useNotify();
 
   useEffect(() => {
-    if (editingUser) {
-      setUpdatedFirstName(editingUser.first_name);
-      setUpdatedMiddleName(editingUser.middle_name);
-      setUpdatedLastName(editingUser.last_name);
-      setUpdatedEmail(editingUser.email);
+    if (user) {
+      setUpdatedFirstName(user.first_name);
+      // `middle_name` is nullable on the wire; the field is a controlled input.
+      setUpdatedMiddleName(user.middle_name ?? '');
+      setUpdatedLastName(user.last_name);
+      setUpdatedEmail(user.email);
     }
-  }, [editingUser, open]);
+  }, [user, open]);
 
   const handleUpdate = async () => {
-    if (!editingUser) return;
+    if (!user) return;
 
     try {
       const updatedUser = await updateUserApi({
-        id: editingUser.id,
+        id: user.id,
         firstName: updatedFirstName,
         middleName: updatedMiddleName,
         lastName: updatedLastName,
@@ -64,11 +60,7 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({
         token: token,
       });
 
-      setUsers((prevUsers) =>
-        prevUsers.map((user) =>
-          user.id === updatedUser.id ? updatedUser : user
-        )
-      );
+      onSaved(updatedUser);
 
       setFormErrorSummary([]);
       setUpdatedFirstName('');
@@ -76,10 +68,8 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({
       setUpdatedLastName('');
       setUpdatedEmail('');
 
-      setToastOpen(true);
-      setToastMessage('Update success.');
-      setToastSeverity('success');
-      handleCloseEditDialog();
+      notify({ message: 'Update success.', severity: 'success' });
+      onClose();
     } catch (error: unknown) {
       setFormErrorSummary(errorSummary(error));
     }
@@ -88,9 +78,10 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({
   return (
     <Dialog
       open={open}
-      onClose={handleCloseEditDialog}
+      onClose={onClose}
       maxWidth="sm"
       fullWidth
+      aria-labelledby="edit-user-title"
       sx={{
         '& .MuiPaper-root': {
           borderRadius: 12,
@@ -103,7 +94,9 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({
         <EditIcon sx={{ fontSize: 40, color: 'primary.main' }} />
       </Box>
 
-      <DialogTitle sx={{ textAlign: 'center' }}>Edit User</DialogTitle>
+      <DialogTitle id="edit-user-title" sx={{ textAlign: 'center' }}>
+        Edit User
+      </DialogTitle>
       <ErrorList errors={formErrorSummary} />
 
       <DialogContent>
@@ -137,7 +130,7 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({
         />
       </DialogContent>
       <DialogActions>
-        <Button onClick={handleCloseEditDialog}>Cancel</Button>
+        <Button onClick={onClose}>Cancel</Button>
         <Button variant="contained" color="primary" onClick={handleUpdate}>
           Save
         </Button>

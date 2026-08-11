@@ -1,6 +1,15 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { ReactNode } from 'react';
+import {
+  createContext,
+  ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { API_BASE_URL } from './config/api';
+import { apiRequest } from './service/apiClient';
+import { setUnauthorizedHandler } from './service/authBridge';
 
 export interface CurrentUser {
   id: string;
@@ -10,7 +19,7 @@ export interface CurrentUser {
 interface AuthContextType {
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   token: string | null;
   /** Author identity for anything the user creates. Null only mid-logout. */
   currentUser: CurrentUser | null;
@@ -65,25 +74,49 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsAuthenticated(true);
   };
 
-  const logout = () => {
-    setToken(null);
-    setCurrentUser(null);
-    localStorage.removeItem('token');
-    localStorage.removeItem(USER_ID_KEY);
-    localStorage.removeItem(USER_NAME_KEY);
-    setIsAuthenticated(false);
-  };
+  // Re-entrancy guard: the revoke call below carries the very token that may
+  // already be dead, and a 401 answer reaches `logout` again through the
+  // unauthorized bridge. Without this, logout calls itself forever.
+  const loggingOut = useRef(false);
+
+  const logout = useCallback(async () => {
+    if (loggingOut.current) {
+      return;
+    }
+    loggingOut.current = true;
+
+    try {
+      if (token !== null) {
+        await apiRequest<unknown>('api/logout', { method: 'POST', token });
+      }
+    } catch {
+      // The token is discarded locally either way; a failed revoke must never
+      // leave the user stuck inside a session they asked to end.
+    } finally {
+      setToken(null);
+      setCurrentUser(null);
+      localStorage.removeItem('token');
+      localStorage.removeItem(USER_ID_KEY);
+      localStorage.removeItem(USER_NAME_KEY);
+      setIsAuthenticated(false);
+      loggingOut.current = false;
+    }
+  }, [token]);
+
+  // `apiRequest` runs outside React and cannot call `useAuth`, so it reports a
+  // 401 through a module-level handler instead. Registering `logout` here is
+  // what turns an expired or revoked token into a return to the login form.
+  useEffect(() => setUnauthorizedHandler(logout), [logout]);
 
   // The login response is the only source of the user's identity - there is no
-  // "current user" endpoint (`/api/token/user` returns a token, not a user). A
-  // session carrying a token but no cached identity therefore predates this and
-  // cannot author a post correctly, so send it back through login. Mirrors how
-  // App.tsx handles a missing CSRF cookie.
+  // "current user" endpoint. A session carrying a token but no cached identity
+  // therefore cannot attribute anything the user creates, so send it back
+  // through login.
   useEffect(() => {
     if (isAuthenticated && !currentUser) {
       logout();
     }
-  }, [isAuthenticated, currentUser]);
+  }, [isAuthenticated, currentUser, logout]);
 
   return (
     <AuthContext.Provider

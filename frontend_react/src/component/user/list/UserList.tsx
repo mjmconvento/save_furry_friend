@@ -31,7 +31,7 @@ const UserList: React.FC<Props> = ({ users, onEdit, onDelete }) => {
         </TableHead>
         <TableBody>
           {users.map((user) => (
-            <TableRow key={user.id + user.email}>
+            <TableRow key={user.id}>
               <TableCell>{user.id}</TableCell>
               <TableCell>
                 {`${user.first_name} ${user.middle_name ?? ''} ${user.last_name}`.trim()}

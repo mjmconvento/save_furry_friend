@@ -23,6 +23,7 @@ const NotFoundPage = () => {
       }}
     >
       <Box
+        aria-hidden="true"
         sx={{
           fontSize: 80,
           mb: 3,

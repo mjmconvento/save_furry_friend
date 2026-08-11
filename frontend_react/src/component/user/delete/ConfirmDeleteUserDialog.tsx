@@ -10,62 +10,57 @@ import {
 } from '@mui/material';
 import WarningIcon from '@mui/icons-material/Warning';
 import { deleteUser as deleteUserApi } from '../../../service/user/userApi';
+import { errorSummary } from '../../../service/apiClient';
+import { useNotify } from '../../template/ToastProvider';
 import { useAuth } from '../../../AuthContext';
 import { User } from '../../../interface/User';
 
 interface ConfirmDeleteUserDialogProps {
   open: boolean;
-  userToDelete: User | null;
-  userFullName: string;
-  setToastOpen: (value: boolean) => void;
-  setToastMessage: (message: string) => void;
-  setToastSeverity: (severity: 'success' | 'error') => void;
-  handleCloseDeleteDialog: () => void;
-  setUsers: React.Dispatch<React.SetStateAction<User[]>>;
+  user: User | null;
+  onClose: () => void;
+  onDeleted: (id: string) => void;
 }
 
 const ConfirmDeleteUserDialog: React.FC<ConfirmDeleteUserDialogProps> = ({
   open,
-  userToDelete,
-  userFullName,
-  handleCloseDeleteDialog,
-  setToastOpen,
-  setToastMessage,
-  setToastSeverity,
-  setUsers,
+  user,
+  onClose,
+  onDeleted,
 }) => {
-  const { token } = useAuth()!;
+  const { token } = useAuth();
+  const notify = useNotify();
+
+  // `middle_name` is nullable, so the naive join leaves a double space.
+  const fullName = user
+    ? `${user.first_name} ${user.middle_name ?? ''} ${user.last_name}`
+        .replace(/\s+/g, ' ')
+        .trim()
+    : '';
 
   const handleConfirmDelete = async () => {
-    if (!userToDelete) return;
+    if (!user) return;
 
     try {
-      await deleteUserApi({
-        id: userToDelete.id,
-        token: token,
-      });
+      await deleteUserApi({ id: user.id, token: token });
 
-      setUsers((prevUsers) =>
-        prevUsers.filter((user) => user.id !== userToDelete.id)
-      );
-
-      setToastOpen(true);
-      setToastMessage('Delete success.');
-      setToastSeverity('success');
-    } catch (error) {
-      setToastOpen(true);
-      setToastMessage('Delete error.');
-      setToastSeverity('error');
+      onDeleted(user.id);
+      notify({ message: 'Delete success.', severity: 'success' });
+    } catch (error: unknown) {
+      // The generic 'Delete error.' this used to show discarded the only
+      // explanation the server gave (permission, missing record, validation).
+      notify({ message: errorSummary(error).join(' '), severity: 'error' });
     } finally {
-      handleCloseDeleteDialog();
+      onClose();
     }
   };
 
   return (
     <Dialog
       open={open}
-      onClose={handleCloseDeleteDialog}
+      onClose={onClose}
       maxWidth="xs"
+      aria-labelledby="delete-user-title"
       sx={{
         '& .MuiPaper-root': {
           borderRadius: 12,
@@ -75,6 +70,7 @@ const ConfirmDeleteUserDialog: React.FC<ConfirmDeleteUserDialogProps> = ({
       }}
     >
       <DialogTitle
+        id="delete-user-title"
         sx={{
           display: 'flex',
           alignItems: 'center',
@@ -93,7 +89,7 @@ const ConfirmDeleteUserDialog: React.FC<ConfirmDeleteUserDialogProps> = ({
           sx={{ px: 2, py: 1 }}
         >
           <Typography variant="body1" align="center" gutterBottom>
-            You're about to delete <strong>{userFullName}</strong>.
+            You're about to delete <strong>{fullName}</strong>.
           </Typography>
           <Typography variant="body2" color="textSecondary" align="center">
             This action cannot be undone.
@@ -103,7 +99,7 @@ const ConfirmDeleteUserDialog: React.FC<ConfirmDeleteUserDialogProps> = ({
       <DialogActions sx={{ justifyContent: 'space-between', px: 3, pb: 2 }}>
         <Button
           variant="outlined"
-          onClick={handleCloseDeleteDialog}
+          onClick={onClose}
           sx={{ textTransform: 'none' }}
         >
           Cancel

@@ -1,57 +1,42 @@
-import { useState } from 'react';
-import { useAuth } from './AuthContext';
-import LoginForm from './component/login/LoginForm';
-import Topbar from './component/template/Topbar';
-import Sidebar from './component/template/Sidebar';
-import UserPage from './page/UserPage';
-import { Box } from '@mui/material';
-import { Routes, Route } from 'react-router-dom';
-import HomePage from './page/HomePage';
-import HappyPostPage from './page/HappyPostPage';
-import NeutralPostPage from './page/NeutralPostPage';
-import { BrowserRouter } from 'react-router-dom';
-import HeartbreakingPostPage from './page/HeartbreakingPostPage';
-import NotFoundPage from './page/NotFoundPage';
-import ProfilePage from './page/ProfilePage';
-import MyProfilePage from './page/MyProfilePage';
+import { lazy } from 'react';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import LoginRoute from './route/LoginRoute';
+import ProtectedLayout from './route/ProtectedLayout';
 
-const App = () => {
-  const { isAuthenticated } = useAuth();
-  // The nav drawer is only ever open below `md`; the permanent sidebar at
-  // `md` and up ignores this flag.
-  const [navOpen, setNavOpen] = useState(false);
+// Pages load on demand: the login screen no longer pays for photoswipe,
+// react-dropzone and every feed before it can paint. `LoginForm` stays a static
+// import (via `LoginRoute`) for exactly that reason.
+const HappyPostPage = lazy(() => import('./page/HappyPostPage'));
+const NeutralPostPage = lazy(() => import('./page/NeutralPostPage'));
+const HeartbreakingPostPage = lazy(
+  () => import('./page/HeartbreakingPostPage')
+);
+const MyProfilePage = lazy(() => import('./page/MyProfilePage'));
+const ProfilePage = lazy(() => import('./page/ProfilePage'));
+const UserPage = lazy(() => import('./page/UserPage'));
+const NotFoundPage = lazy(() => import('./page/NotFoundPage'));
 
-  if (!isAuthenticated) return <LoginForm />;
-
-  return (
-    <BrowserRouter>
-      <Topbar onMenuClick={() => setNavOpen(true)} />
-      <Box sx={{ display: 'flex' }}>
-        <Sidebar open={navOpen} onClose={() => setNavOpen(false)} />
-        <Box
-          component="main"
-          sx={{ flexGrow: 1, minWidth: 0, p: { xs: 2, md: 3 } }}
-        >
-          <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/happy_posts" element={<HappyPostPage />} />
-            <Route path="/neutral_posts" element={<NeutralPostPage />} />
-            <Route path="/my_profile" element={<MyProfilePage />} />
-            <Route
-              path="/profile/:id"
-              element={<ProfilePage key={window.location.pathname} />}
-            />
-            <Route
-              path="/heartbreaking_posts"
-              element={<HeartbreakingPostPage />}
-            />
-            <Route path="/users" element={<UserPage />} />
-            <Route path="*" element={<NotFoundPage />} />
-          </Routes>
-        </Box>
-      </Box>
-    </BrowserRouter>
-  );
-};
+// The router is mounted once, unconditionally: auth is enforced per route by
+// `ProtectedLayout`, so logging out navigates instead of destroying history.
+const App = () => (
+  <BrowserRouter>
+    <Routes>
+      <Route path="/login" element={<LoginRoute />} />
+      <Route element={<ProtectedLayout />}>
+        <Route index element={<Navigate to="/happy_posts" replace />} />
+        <Route path="/happy_posts" element={<HappyPostPage />} />
+        <Route path="/neutral_posts" element={<NeutralPostPage />} />
+        <Route
+          path="/heartbreaking_posts"
+          element={<HeartbreakingPostPage />}
+        />
+        <Route path="/my_profile" element={<MyProfilePage />} />
+        <Route path="/profile/:id" element={<ProfilePage />} />
+        <Route path="/users" element={<UserPage />} />
+        <Route path="*" element={<NotFoundPage />} />
+      </Route>
+    </Routes>
+  </BrowserRouter>
+);
 
 export default App;

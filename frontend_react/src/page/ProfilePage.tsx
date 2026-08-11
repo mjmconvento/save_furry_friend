@@ -1,42 +1,41 @@
 import React, { useEffect, useState } from 'react';
-import {
-  Box,
-  Card,
-  CardContent,
-  CardHeader,
-  Typography,
-  Avatar,
-  Stack,
-  Button,
-} from '@mui/material';
-import { Post } from '../interface/Post';
+import { Alert, Box, Button, Typography } from '@mui/material';
+import { useParams } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import {
   followUser as followUserApi,
   unfollowUser as unfollowUserApi,
 } from '../service/user/userFollowApi';
-
-import { fetchPosts } from '../service/post/postApi';
 import { getUser as getUserApi } from '../service/user/userApi';
+import { errorSummary } from '../service/apiClient';
+import { useNotify } from '../component/template/ToastProvider';
 import LoadingIndicator from '../component/template/LoadingIndicator';
-import { useParams } from 'react-router-dom';
+import PostFeed from '../component/post/PostFeed';
 import { User } from '../interface/User';
 
 const ProfilePage: React.FC = () => {
   const { id } = useParams();
+  const { token } = useAuth();
+  const notify = useNotify();
   const [user, setUser] = useState<User | null>(null);
-  const [posts, setPosts] = useState<Post[]>([]);
-  const { token } = useAuth()!;
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [isFollowing, setIsFollowing] = useState<boolean>(false);
+  const [submitting, setSubmitting] = useState<boolean>(false);
 
+  // One request, one `setLoading(false)`. This page used to run two effects
+  // that each cleared `loading` in their own `finally`, so whichever settled
+  // first revealed the page while the other was still in flight. The posts
+  // moved into <PostFeed>, which owns its own loading state.
   useEffect(() => {
-    const getUser = async () => {
+    const loadUser = async () => {
+      setLoading(true);
+
       try {
         const data: User = await getUserApi({ id, token });
         setUser(data);
-        setIsFollowing(data.is_following);
+        setIsFollowing(data.is_following ?? false);
+        setError(null);
       } catch (error) {
         setError(
           error instanceof Error ? error.message : 'Something went wrong'
@@ -46,57 +45,30 @@ const ProfilePage: React.FC = () => {
       }
     };
 
-    getUser();
+    loadUser();
   }, [id, token]);
 
-  useEffect(() => {
-    const loadPosts = async () => {
-      try {
-        const data: Post[] = await fetchPosts(token, ['happy_post', 'cs'], id);
-        setPosts(data);
-      } catch (error) {
-        setError(
-          error instanceof Error ? error.message : 'Something went wrong'
-        );
-      } finally {
-        setLoading(false);
+  const handleToggleFollow = async () => {
+    if (!user) return;
+
+    // A follow is not a page load: driving the page-level `loading` from here
+    // replaced the whole profile with a full-viewport spinner on every click.
+    setSubmitting(true);
+
+    try {
+      if (isFollowing) {
+        await unfollowUserApi({ id: user.id, token });
+        setIsFollowing(false);
+      } else {
+        await followUserApi({ id: user.id, token });
+        setIsFollowing(true);
       }
-    };
-
-    loadPosts();
-  }, [id, token]);
-
-  const handleFollow = async () => {
-    setLoading(true);
-
-    try {
-      await followUserApi({
-        id: user?.id || '',
-        token: token,
-      });
-
-      setIsFollowing(true);
-    } catch (error: unknown) {
-      console.log(error);
+    } catch (error) {
+      // Previously a console.log, so a rejected follow left the button looking
+      // like it had done nothing.
+      notify({ message: errorSummary(error).join(' '), severity: 'error' });
     } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleUnfollow = async () => {
-    setLoading(true);
-
-    try {
-      await unfollowUserApi({
-        id: user?.id || '',
-        token: token,
-      });
-
-      setIsFollowing(false);
-    } catch (error: unknown) {
-      console.log(error);
-    } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
@@ -105,60 +77,49 @@ const ProfilePage: React.FC = () => {
   }
 
   if (error) {
-    return <div>Error: {error}</div>;
+    return (
+      <Box maxWidth={1000} mx="auto" mt={4} px={2}>
+        <Alert severity="error">{error}</Alert>
+      </Box>
+    );
   }
 
   return (
-    <Box maxWidth={1000} mx="auto" mt={4} px={2}>
-      <Typography variant="h5" mb={2} fontWeight="bold">
-        {user?.first_name} {user?.last_name}'s Posts
-      </Typography>
+    <>
+      <Box
+        maxWidth={1000}
+        mx="auto"
+        mt={{ xs: 2, sm: 4 }}
+        px={{ xs: 1.5, sm: 2 }}
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          columnGap: 2,
+          rowGap: 1,
+        }}
+      >
+        <Typography variant="h5" fontWeight="bold">
+          {user?.first_name} {user?.last_name}
+        </Typography>
 
-      <Box display="flex" justifyContent="flex-end" mb={2}>
-        {isFollowing ? (
-          <Button variant="contained" onClick={handleUnfollow}>
-            Unfollow
-          </Button>
-        ) : (
-          <Button variant="contained" onClick={handleFollow}>
-            Follow
-          </Button>
-        )}
+        <Button
+          variant="contained"
+          loading={submitting}
+          onClick={handleToggleFollow}
+        >
+          {isFollowing ? 'Unfollow' : 'Follow'}
+        </Button>
       </Box>
 
-      <Stack spacing={2}>
-        {posts.map((post) => (
-          <Card
-            variant="outlined"
-            sx={{ borderRadius: 2, mb: 2, boxShadow: 3 }}
-            key={post.id}
-          >
-            <CardHeader
-              avatar={
-                <Avatar sx={{ bgcolor: 'primary.main' }}>
-                  {post.authorName}
-                </Avatar>
-              }
-              title={
-                <Typography variant="subtitle1" fontWeight="bold">
-                  {post.authorName}
-                </Typography>
-              }
-              subheader={
-                <Typography variant="caption" color="text.secondary">
-                  {new Date(post.createdAt).toLocaleString()}
-                </Typography>
-              }
-              sx={{ paddingBottom: 0 }}
-            />
-
-            <CardContent>
-              <Typography variant="body1">{post.content}</Typography>
-            </CardContent>
-          </Card>
-        ))}
-      </Stack>
-    </Box>
+      <PostFeed
+        authorId={id}
+        composer={false}
+        title="Posts"
+        subtitle={`Everything ${user?.first_name ?? 'this user'} has posted.`}
+      />
+    </>
   );
 };
 

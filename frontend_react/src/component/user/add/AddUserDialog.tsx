@@ -11,6 +11,7 @@ import {
 } from '@mui/material';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import ErrorList from '../../template/ErrorList';
+import { useNotify } from '../../template/ToastProvider';
 import { addUser as addUserApi } from '../../../service/user/userApi';
 import { errorSummary } from '../../../service/apiClient';
 import { useAuth } from '../../../AuthContext';
@@ -18,20 +19,14 @@ import { User } from '../../../interface/User';
 
 interface AddUserDialogProps {
   open: boolean;
-  handleCloseAddDialog: () => void;
-  setToastOpen: (value: boolean) => void;
-  setToastMessage: (message: string) => void;
-  setToastSeverity: (severity: 'success' | 'error') => void;
-  setUsers: React.Dispatch<React.SetStateAction<User[]>>;
+  onClose: () => void;
+  onSaved: (user: User) => void;
 }
 
 const AddUserDialog: React.FC<AddUserDialogProps> = ({
   open,
-  handleCloseAddDialog,
-  setToastOpen,
-  setToastMessage,
-  setToastSeverity,
-  setUsers,
+  onClose,
+  onSaved,
 }) => {
   const [newUserFirstName, setNewUserFirstName] = useState<string>('');
   const [newUserMiddleName, setNewUserMiddleName] = useState<string>('');
@@ -39,7 +34,8 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({
   const [newUserEmail, setNewUserEmail] = useState<string>('');
   const [newUserPassword, setNewUserPassword] = useState<string>('');
   const [formErrorSummary, setFormErrorSummary] = useState<string[]>([]);
-  const { token } = useAuth()!;
+  const { token } = useAuth();
+  const notify = useNotify();
 
   const addUser = async () => {
     try {
@@ -52,16 +48,14 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({
         token: token,
       });
 
-      setUsers((prevUsers) => [...prevUsers, newUser]);
+      onSaved(newUser);
       setNewUserFirstName('');
       setNewUserMiddleName('');
       setNewUserLastName('');
       setNewUserEmail('');
       setNewUserPassword('');
-      setToastOpen(true);
-      setToastMessage('Add new user success.');
-      setToastSeverity('success');
-      handleCloseAddDialog();
+      notify({ message: 'Add new user success.', severity: 'success' });
+      onClose();
       setFormErrorSummary([]);
     } catch (error: unknown) {
       setFormErrorSummary(errorSummary(error));
@@ -71,9 +65,10 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({
   return (
     <Dialog
       open={open}
-      onClose={handleCloseAddDialog}
+      onClose={onClose}
       maxWidth="sm"
       fullWidth
+      aria-labelledby="add-user-title"
       sx={{
         '& .MuiPaper-root': {
           borderRadius: 12,
@@ -86,7 +81,9 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({
         <PersonAddIcon sx={{ fontSize: 40, color: 'primary.main' }} />
       </Box>
 
-      <DialogTitle sx={{ textAlign: 'center' }}>Add New User</DialogTitle>
+      <DialogTitle id="add-user-title" sx={{ textAlign: 'center' }}>
+        Add New User
+      </DialogTitle>
       <ErrorList errors={formErrorSummary} />
 
       <Box mb={2} px={2}>
@@ -148,7 +145,7 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({
       <DialogActions sx={{ px: 3, pb: 2, justifyContent: 'space-between' }}>
         <Button
           onClick={() => {
-            handleCloseAddDialog();
+            onClose();
             setFormErrorSummary([]);
           }}
           variant="outlined"
