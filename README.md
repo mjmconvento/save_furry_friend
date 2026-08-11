@@ -77,18 +77,25 @@ DB_DATABASE=blog
 DB_USERNAME=root
 DB_PASSWORD=password
 
-MONGODB_URI=mongodb://admin:password@mongo:27017
+MONGODB_URI=mongodb://mongo:27017
 MONGODB_DATABASE=sff
+MONGODB_USERNAME=admin
+MONGODB_PASSWORD=password
 
-# MinIO. The endpoint is the in-container address; Laravel rewrites returned
-# media URLs to http://localhost:9001 so the browser can fetch them.
+# MinIO. AWS_ENDPOINT is the in-container address Laravel writes through;
+# AWS_URL is the browser-reachable base that Storage::url() builds media URLs
+# from. Mongo stores bare object keys, so changing the public host is an .env
+# edit rather than a data migration.
 AWS_ACCESS_KEY_ID=admin
 AWS_SECRET_ACCESS_KEY=password123
 AWS_DEFAULT_REGION=us-east-1
 AWS_BUCKET=uploads
 AWS_ENDPOINT=http://minio:9000
+AWS_URL=http://localhost:9001/uploads
+AWS_USE_PATH_STYLE_ENDPOINT=true
 
-SANCTUM_STATEFUL_DOMAINS=localhost:3000
+# Tokens now expire. Minutes; default is 14 days.
+SANCTUM_TOKEN_EXPIRATION=20160
 ```
 
 ### 3. Install dependencies, key, schema, seed data
@@ -129,11 +136,21 @@ Backend (all inside the `app` container):
 ```bash
 docker compose exec app php artisan migrate:fresh --seed --seeder=TestUserSeeder
 docker compose exec app php artisan tinker
-docker compose exec app composer test        # Pest (sqlite :memory:)
+docker compose exec app composer test        # Pest, against real Postgres + Mongo
 docker compose exec app composer phpstan
 docker compose exec app composer ecs-check   # ecs-fix to apply
 docker compose exec app composer rector      # rector-fix to apply
 docker compose logs -f app
+```
+
+`composer test` needs two dedicated databases, not sqlite: a Postgres database named `testing` and
+a Mongo database named `sff_testing` (see `phpunit.xml`). `RefreshDatabase` only migrates and
+transacts the default connection, so `tests/Pest.php` truncates the Mongo `posts` collection per
+test — and refuses to run at all unless the Mongo database name ends in `_testing`, because pointed
+at `sff` that would delete real data. Create the Postgres one once:
+
+```bash
+docker compose exec db createdb -U root testing
 ```
 
 Frontend:
@@ -158,48 +175,55 @@ host-side `yarn install` is optional. Host edits hot-reload — the `react` serv
 `CHOKIDAR_USEPOLLING` it replaced was a CRA 4 setting and did nothing). Polling costs some CPU;
 drop it if native file watching works on your machine.
 
-`CI=true yarn build` (what a CI runner does) currently **fails** on pre-existing lint warnings —
-`eqeqeq`, unused vars and `react-hooks/exhaustive-deps` in `HappyPostPage.tsx` / `MyProfilePage.tsx`.
-Plain `yarn build` succeeds.
+`CI=true yarn build` (what a CI runner does) still **fails** on pre-existing lint warnings in
+`MyProfilePage.tsx` (`eqeqeq`, an unused `setEditId`, `react-hooks/exhaustive-deps`) and an unused
+import in `EditUserDialog.tsx`. Plain `yarn build` succeeds.
 
 ## API surface
 
-Every endpoint is declared in `backend_full_laravel/routes/web.php` — not `routes/api.php` — so
-the whole API runs through Laravel's **web** middleware: session cookies plus CSRF.
+Every endpoint is declared in `backend_full_laravel/routes/api.php` and served under the `/api`
+prefix from `withRouting(apiPrefix: 'api')`. Auth is **stateless bearer token only** — no session,
+no CSRF, no cookies. Errors are always JSON.
 
 | Method | Path | Auth |
 | --- | --- | --- |
-| POST | `/api/login` | public (CSRF-exempt via `bootstrap/app.php`) |
-| POST | `/api/logout` | session |
-| GET | `/api/token/csrf`, `/api/token/user` | `auth:sanctum` |
-| GET/POST | `/api/users` | `auth:sanctum` |
-| GET/PUT/DELETE | `/api/users/{id}` | `auth:sanctum` |
-| GET | `/api/users/search/{keyword}` | `auth:sanctum` |
-| POST | `/api/users/follow/{id}`, `/api/users/unfollow/{id}` | `auth:sanctum` |
-| GET/POST | `/api/posts` | `auth:sanctum` |
-| GET/PUT/DELETE | `/api/posts/{id}` | `auth:sanctum` |
+| POST | `/api/login` | public, `throttle:login` (5/min per email+IP, 20/min per IP) |
+| POST | `/api/users` | public registration, `throttle:5,1` |
+| POST | `/api/logout` | bearer — revokes the presented token |
+| GET | `/api/users` | bearer |
+| GET/PUT/DELETE | `/api/users/{user}` | bearer, own account only (`UserPolicy`) |
+| GET | `/api/users/search/{keyword}` | bearer |
+| POST | `/api/users/{user}/follow`, `/api/users/{user}/unfollow` | bearer |
+| GET/POST | `/api/posts` | bearer |
+| GET/PUT/DELETE | `/api/posts/{post}` | bearer, own posts only for writes (`PostPolicy`) |
 
-Consequences when poking the API with curl instead of the SPA:
+Everything in the authenticated group also carries `throttle:api` (60/min per user, falling back to
+IP). Sanctum tokens expire — `SANCTUM_TOKEN_EXPIRATION`, with `sanctum:prune-expired` scheduled
+daily in `routes/console.php`.
 
-- `POST /api/login` returns `{ token, user }`. Send that token as `Authorization: Bearer <token>`.
-- Reads work with the bearer token alone.
-- Writes (`POST`/`PUT`/`DELETE`) additionally need a CSRF token and its session cookie, otherwise
-  you get **419 Page Expired**. `/api/token/csrf` is itself behind `auth:sanctum`, so log in first:
+Shapes worth knowing:
+
+- `POST /api/login` returns `{ message, token, user }`. Send the token as `Authorization: Bearer <token>`.
+- Single resources are wrapped: `{ "data": { … } }`. `GET /api/posts` is **paginated** —
+  `{ data: [...], links, meta }` — and takes `tags[]`, `authorId` and `per_page` (max 50), all validated.
+- The feed is always scoped to the follow graph plus your own posts. There is no "everything" mode.
+- `medias` is stored in Mongo as bare object keys and rendered to absolute URLs by `PostResource`.
+- Validation failures are `422` with `{ message, errors: { field: [...] } }`; missing records are `404` JSON.
+
+No CSRF dance is needed any more:
 
 ```bash
 TOKEN=$(curl -s -X POST http://localhost:8081/api/login \
   -H 'Content-Type: application/json' \
   -d '{"email":"test@user.com","password":"password112233"}' | jq -r .token)
 
-CSRF=$(curl -s -c /tmp/jar -H "Authorization: Bearer $TOKEN" \
-  http://localhost:8081/api/token/csrf | jq -r .csrfToken)
-
-curl -s -b /tmp/jar -H "Authorization: Bearer $TOKEN" -H "X-CSRF-TOKEN: $CSRF" \
-  -F 'content=hello' -F 'medias[]=@./cat.png' http://localhost:8081/api/posts
+curl -s -H "Authorization: Bearer $TOKEN" \
+  -F 'content=hello' -F 'tags[]=happy_post' -F 'medias[]=@./cat.png' \
+  http://localhost:8081/api/posts
 ```
 
-CORS (`config/cors.php`) and Sanctum stateful domains only allow `http://localhost:3000`, so the
-SPA must be served from that origin.
+CORS (`config/cors.php`) only allows `http://localhost:3000`, so the SPA must be served from that
+origin.
 
 ## Troubleshooting
 
@@ -216,8 +240,9 @@ the other services stopped. Which fix applies depends on *what* clashes:
   `ports:` entry is the cheapest fix.
 
 Two caveats when remapping: moving the SPA off 3000 means adding the new origin to
-`config/cors.php` and `SANCTUM_STATEFUL_DOMAINS`, and moving MinIO off host 9001 breaks media URLs,
-because `PostService::storePost()` hardcodes the `minio:9000` → `localhost:9001` rewrite.
+`config/cors.php`, and moving MinIO off host 9001 means updating `AWS_URL`. Media URLs are no longer
+baked into the database — Mongo stores bare object keys and `PostResource` builds the URL from
+`AWS_URL` at render time — so that is a one-line `.env` change rather than a data migration.
 
 **A container is `Up` but unreachable by service name** — long-lived containers can be left attached
 to a deleted network (`docker inspect -f '{{.NetworkSettings.Networks}}' <name>` prints empty), which
@@ -248,4 +273,9 @@ disk fail there while working fine on macOS.
 
 `.github/workflows/main.yml` runs PHPStan, ECS, Rector (dry-run) and Pest against
 `backend_full_laravel` on every push and pull request. There is no frontend job.
+
+Pest needs real databases, so the job runs `postgres:16` and `mongo:8.0` service containers and
+installs the `mongodb` PHP extension. `phpunit.xml` carries the Compose hostnames (`db`, `mongo`)
+and the job exports `DB_HOST` / `MONGODB_URI` to point at `127.0.0.1` instead — PHPUnit does not
+overwrite variables that already exist in the environment, so the exports win.
 
