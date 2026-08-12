@@ -90,9 +90,9 @@ open http://localhost:3000                # React app
 
 Log in with a seeded account — all four share the password:
 
-| Email | Name | Role |
+| Email | Name | Roles |
 | --- | --- | --- |
-| test1@user.com | Marisol Vega | **admin** |
+| test1@user.com | Marisol Vega | **admin**, user |
 | test2@user.com | Tomas Iker Iglesias | user |
 | test3@user.com | Priya Raman | user |
 | test4@user.com | Daniel Chukwu Okafor | user |
@@ -220,8 +220,8 @@ daily in `routes/console.php`.
 
 Shapes worth knowing:
 
-- `POST /api/login` returns `{ message, token, user }`, and `user.role` is `admin` or `user`. Send
-  the token as `Authorization: Bearer <token>`.
+- `POST /api/login` returns `{ message, token, user }`, and `user.roles` is a list — `["admin","user"]`
+  or `["user"]`. Send the token as `Authorization: Bearer <token>`.
 - Single resources are wrapped: `{ "data": { … } }`. `GET /api/posts` is **paginated** —
   `{ data: [...], links, meta }` — and takes `tags[]`, `authorId`, `page` and `per_page` (max 50).
   The SPA reads `meta.current_page` / `meta.last_page` and offers **Load more**, appending the next
@@ -248,9 +248,15 @@ so the SPA must be served from wherever `FRONTEND_URL` in `backend_full_laravel/
 
 ## Roles
 
-Two roles, `admin` and `user`, in `users.role` — a string column defaulting to `user`, cast to
-`App\Enums\UserRole`. No permission package: every question the app asks is "is this person an
-admin?".
+Each user holds a **list** of roles in `users.roles` — a `jsonb` column defaulting to `["user"]`,
+cast to a collection of `App\Enums\UserRole`. Two cases exist today, `admin` and `user`. No
+permission package and no pivot table: with two roles and no per-role metadata, both would serve one
+boolean question, and `whereJsonContains('roles', 'admin')` covers the queries a pivot would be for.
+
+The list is **additive**, so the admin carries `user` as well and nothing has to special-case "an
+admin can also do what a user can". Checks are membership, never equality — `$user->hasRole(...)`,
+with `isAdmin()` as the shorthand every call site actually uses. Adding a third role later is a new
+enum case and a seeder line; no check has to change.
 
 Administering accounts is admin-only; seeing and following them is not. So listing, creating,
 editing and deleting users need an admin, while `GET /api/users/{user}`, the people search and
@@ -265,8 +271,16 @@ Three consequences worth knowing:
   Nothing in the SPA offers that, and an exception nobody exercises is one to forget about. Note
   `UpdateUserRequest`'s `current_password` rule validates against the *authenticated* user, so an
   admin changing someone's password confirms with their own.
-- **`role` is not mass-assignable,** so no request payload can promote an account. Roles are set by
-  `SampleUserSeeder`, which writes through the query builder.
+- **`roles` is not mass-assignable,** so no request payload can promote an account — there is a test
+  firing `"roles": ["admin"]` at the create endpoint and asserting the result is still `["user"]`.
+  Roles are set by `SampleUserSeeder`, which writes through the query builder. Making another admin
+  means the seeder or a SQL update; there is no role-management UI.
+
+A value in the column that is not a known case is **dropped**, by `App\Casts\UserRoles`. Laravel's
+own `AsEnumCollection` resolves with `UserRole::from()`, which throws — so a single hand-edited row
+would answer 500 to every request that account made, and to any admin listing it. Dropping costs the
+account that role instead, which is the safe direction, and it matches what the SPA does with the
+same payload.
 
 Authorization for these lives in the FormRequests (`IndexUserRequest`, `StoreUserRequest`,
 `UpdateUserRequest`) rather than the controller, because `authorize()` runs *before* validation — an
@@ -274,9 +288,10 @@ unauthorized caller gets `403` instead of a `422` that would disclose whether th
 well-formed. `destroy` has no request class, so it authorizes in the controller.
 
 In the SPA the Users nav group is hidden for non-admins and `/users` is wrapped in `AdminRoute`,
-which redirects — hiding a link does not stop anyone typing the URL. Both are UI only: the role
-is read from `localStorage`, which the user can edit, and editing it just buys an empty page full of
-403s.
+which redirects — hiding a link does not stop anyone typing the URL. Both are UI only: the roles are
+read from `localStorage`, which the user can edit, and editing them just buys an empty page full of
+403s. A stored list with nothing recognisable in it — including sessions predating the field — ends
+the session at the login form rather than rendering a half-known identity.
 
 ## Troubleshooting
 
