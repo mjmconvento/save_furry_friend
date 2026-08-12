@@ -66,8 +66,10 @@ it('stops accepting a token once it has been revoked', function (): void {
     $token = $user->createToken('t')
         ->plainTextToken;
 
+    // `/api/posts` rather than `/api/users`: this is about the token, not about
+    // roles, and the user index is admin-only.
     $this->withToken($token)
-        ->getJson('/api/users')
+        ->getJson('/api/posts')
         ->assertOk();
     $this->withToken($token)
         ->postJson('/api/logout')
@@ -80,7 +82,7 @@ it('stops accepting a token once it has been revoked', function (): void {
     $this->app['auth']->forgetGuards();
 
     $this->withToken($token)
-        ->getJson('/api/users')
+        ->getJson('/api/posts')
         ->assertStatus(401);
 });
 

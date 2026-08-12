@@ -9,7 +9,6 @@ use App\Http\Controllers\User\UserController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('login', [AuthController::class, 'login'])->middleware('throttle:login')->name('login');
-Route::post('users', [UserController::class, 'store'])->middleware('throttle:5,1')->name('users.store');
 
 Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('logout', [AuthController::class, 'logout'])->name('logout');
@@ -21,5 +20,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('users/{user}/unfollow', [FollowController::class, 'unfollow'])->name('users.unfollow');
 
     Route::apiResource('posts', PostController::class);
-    Route::apiResource('users', UserController::class)->except(['store']);
+    // `store` lives in this group now: creating an account is an admin action,
+    // so there is no public registration endpoint left to rate-limit.
+    Route::apiResource('users', UserController::class);
 });

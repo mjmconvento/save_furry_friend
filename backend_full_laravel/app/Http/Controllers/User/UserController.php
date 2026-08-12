@@ -24,6 +24,11 @@ class UserController extends Controller
     ) {
     }
 
+    /**
+     * Admin-only. The check lives in `IndexUserRequest::authorize()`, which runs
+     * before validation; the same is true of `store` and `update`. Only
+     * `destroy` authorizes here, because it has no request class.
+     */
     public function index(IndexUserRequest $request): AnonymousResourceCollection
     {
         $perPage = $request->integer('per_page') ?: 20;
@@ -50,13 +55,8 @@ class UserController extends Controller
             ->setStatusCode(201);
     }
 
-    /**
-     * @throws AuthorizationException
-     */
     public function update(UpdateUserRequest $request, User $user): UserResource
     {
-        $this->authorize('update', $user);
-
         $this->userService->updateUser($request, $user);
 
         return new UserResource($user);
@@ -67,7 +67,7 @@ class UserController extends Controller
      */
     public function destroy(User $user): JsonResponse
     {
-        $this->authorize('delete', $user);
+        $this->authorize('delete', User::class);
 
         $this->userService->destroyUser($user);
 

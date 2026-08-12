@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models\Eloquent;
 
+use App\Enums\UserRole;
 use Database\Factories\Eloquent\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -20,6 +21,7 @@ use Laravel\Sanctum\HasApiTokens;
  * @property string $last_name
  * @property string $email
  * @property string $password
+ * @property UserRole $role
  */
 class User extends Authenticatable
 {
@@ -39,6 +41,18 @@ class User extends Authenticatable
         'last_name',
         'email',
         'password',
+    ];
+
+    /**
+     * The column has the same default, but Eloquent does not read it back after
+     * an insert - so a freshly created `User` had `role` null in memory, and
+     * `UserResource` died on it while the row itself was fine. Declaring it here
+     * means the value exists before the insert, and is written explicitly.
+     *
+     * @var array<string, string>
+     */
+    protected $attributes = [
+        'role' => UserRole::User->value,
     ];
 
     /**
@@ -80,7 +94,18 @@ class User extends Authenticatable
             'id' => 'string',
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'role' => UserRole::class,
         ];
+    }
+
+    /**
+     * `role` is deliberately absent from `$fillable`: no request may set it, so
+     * there is no payload that can promote an account. Roles are assigned by
+     * the seeder, which writes through the query builder.
+     */
+    public function isAdmin(): bool
+    {
+        return $this->role === UserRole::Admin;
     }
 
     /**

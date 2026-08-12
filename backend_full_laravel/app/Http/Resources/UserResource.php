@@ -38,6 +38,7 @@ class UserResource extends JsonResource
      *     middle_name: ?string,
      *     last_name: string,
      *     email: string,
+     *     role: string,
      *     is_following: bool
      * }
      */
@@ -49,6 +50,9 @@ class UserResource extends JsonResource
             'middle_name' => $this->user->middle_name,
             'last_name' => $this->user->last_name,
             'email' => $this->user->email,
+            // `AuthController@login` returns this same resource, so the SPA gets
+            // the role with the token instead of needing a second request.
+            'role' => $this->user->role->value,
             'is_following' => $this->isFollowing,
         ];
     }

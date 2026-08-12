@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\User;
 
+use App\Models\Eloquent\User;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
@@ -11,12 +12,19 @@ use Illuminate\Validation\Rules\Password;
 class UpdateUserRequest extends FormRequest
 {
     /**
-     * Ownership is enforced by UserPolicy via $this->authorize() in the
-     * controller, not here.
+     * Admin-only, and no longer ownership-based, so it needs no model and can
+     * run here - ahead of validation, which would otherwise answer 422 to a
+     * caller not allowed to edit anyone.
+     *
+     * Note `current_password` in the rules below: it validates against the
+     * *authenticated* user, so an admin changing someone's password confirms
+     * with their own.
      */
     public function authorize(): bool
     {
-        return true;
+        $user = $this->user();
+
+        return $user instanceof User && $user->can('update', User::class);
     }
 
     /**
