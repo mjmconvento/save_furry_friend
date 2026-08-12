@@ -22,7 +22,7 @@ class SampleUserSeeder extends Seeder
      * post. The first two ids are the ones this database already had, so
      * re-seeding renames those rows in place instead of stranding their posts.
      *
-     * @var list<array{id: string, email: string, first_name: string, middle_name: ?string, last_name: string, role: UserRole}>
+     * @var list<array{id: string, email: string, first_name: string, middle_name: ?string, last_name: string, roles: list<UserRole>}>
      */
     public const USERS = [
         [
@@ -31,7 +31,9 @@ class SampleUserSeeder extends Seeder
             'first_name' => 'Marisol',
             'middle_name' => null,
             'last_name' => 'Vega',
-            'role' => UserRole::Admin,
+            // Additive: the admin is a user too, so nothing has to special-case
+            // "an admin can also do what a user can".
+            'roles' => [UserRole::Admin, UserRole::User],
         ],
         [
             'id' => '1a58cd7a-92bf-4020-900c-08f7cdd0a806',
@@ -39,7 +41,7 @@ class SampleUserSeeder extends Seeder
             'first_name' => 'Tomas',
             'middle_name' => 'Iker',
             'last_name' => 'Iglesias',
-            'role' => UserRole::User,
+            'roles' => [UserRole::User],
         ],
         [
             'id' => 'e7ab3db6-8650-4804-858a-8ddaccbd940f',
@@ -47,7 +49,7 @@ class SampleUserSeeder extends Seeder
             'first_name' => 'Priya',
             'middle_name' => null,
             'last_name' => 'Raman',
-            'role' => UserRole::User,
+            'roles' => [UserRole::User],
         ],
         [
             'id' => '88206f0f-0eaf-443c-8f53-faa05cf689ce',
@@ -55,7 +57,7 @@ class SampleUserSeeder extends Seeder
             'first_name' => 'Daniel',
             'middle_name' => 'Chukwu',
             'last_name' => 'Okafor',
-            'role' => UserRole::User,
+            'roles' => [UserRole::User],
         ],
     ];
 
@@ -69,9 +71,12 @@ class SampleUserSeeder extends Seeder
                 'first_name' => $user['first_name'],
                 'middle_name' => $user['middle_name'],
                 'last_name' => $user['last_name'],
-                // Re-seeding resets roles, so a role changed by hand in the
-                // database does not survive `make bootstrap`.
-                'role' => $user['role']->value,
+                // Re-seeding resets roles, so one changed by hand in the database
+                // does not survive `make bootstrap`.
+                'roles' => json_encode(array_map(
+                    static fn (UserRole $role): string => $role->value,
+                    $user['roles'],
+                )),
                 'password' => Hash::make(self::PASSWORD),
                 'email_verified_at' => $now,
                 'updated_at' => $now,

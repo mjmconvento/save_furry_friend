@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Resources;
 
+use App\Enums\UserRole;
 use App\Models\Eloquent\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -38,7 +39,7 @@ class UserResource extends JsonResource
      *     middle_name: ?string,
      *     last_name: string,
      *     email: string,
-     *     role: string,
+     *     roles: list<string>,
      *     is_following: bool
      * }
      */
@@ -51,8 +52,14 @@ class UserResource extends JsonResource
             'last_name' => $this->user->last_name,
             'email' => $this->user->email,
             // `AuthController@login` returns this same resource, so the SPA gets
-            // the role with the token instead of needing a second request.
-            'role' => $this->user->role->value,
+            // the roles with the token instead of needing a second request.
+            // `array_values` so it serializes as a JSON array rather than an
+            // object, whatever the keys look like.
+            'roles' => array_values(
+                $this->user->roles
+                    ->map(static fn (UserRole $role): string => $role->value)
+                    ->all()
+            ),
             'is_following' => $this->isFollowing,
         ];
     }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\UserRole;
 use App\Models\Eloquent\User;
+use Illuminate\Support\Facades\DB;
 
 it('lets an admin list every account', function (): void {
     User::factory()->count(2)->create();
@@ -123,7 +124,7 @@ it('still lets a non-admin view and search other users', function (): void {
         ->assertJsonPath('data.0.id', $other->id);
 });
 
-it('reports the role on login so the client can hide admin navigation', function (): void {
+it('reports the whole role list on login so the client can hide admin navigation', function (): void {
     $admin = User::factory()->admin()->create([
         'password' => 'password112233',
     ]);
@@ -133,11 +134,48 @@ it('reports the role on login so the client can hide admin navigation', function
         'password' => 'password112233',
     ])
         ->assertOk()
-        ->assertJsonPath('user.role', UserRole::Admin->value);
+        // Additive, so the admin carries `user` too.
+        ->assertJsonPath('user.roles', [UserRole::Admin->value, UserRole::User->value]);
+});
+
+it('grants administration on membership, not on the whole list matching', function (): void {
+    // The point of a list: an account holding `admin` among other roles is an
+    // admin, whatever else it holds and in whatever order.
+    $admin = User::factory()->create([
+        'roles' => [UserRole::User, UserRole::Admin],
+    ]);
+
+    expect($admin->isAdmin())
+        ->toBeTrue()
+        ->and($admin->hasRole(UserRole::User))->toBeTrue();
+
+    $this->actingAs($admin)
+        ->getJson('/api/users')
+        ->assertOk();
+});
+
+it('ignores a stored role that is not a known case', function (): void {
+    // Written straight to the column, bypassing the cast, as hand-edited data
+    // would be. The unknown value must not become an implicit grant.
+    $user = User::factory()->create();
+    DB::table('users')->where('id', $user->id)->update([
+        'roles' => json_encode(['superuser', UserRole::User->value]),
+    ]);
+
+    $reloaded = $user->fresh();
+
+    expect($reloaded?->roles->count())
+        ->toBe(1)
+        ->and($reloaded?->isAdmin())
+        ->toBeFalse();
+
+    $this->actingAs($reloaded)
+        ->getJson('/api/users')
+        ->assertForbidden();
 });
 
 it('defaults a new account to the non-admin role', function (): void {
-    // `role` is not fillable, so no payload can promote an account.
+    // `roles` is not fillable, so no payload can promote an account.
     $this->actingAs(User::factory()->admin()->create())
         ->postJson('/api/users', [
             'firstName' => 'Sneaky',
@@ -145,10 +183,10 @@ it('defaults a new account to the non-admin role', function (): void {
             'email' => 'sneaky@user.com',
             'password' => 'password112233',
             'password_confirmation' => 'password112233',
-            'role' => 'admin',
+            'roles' => ['admin'],
         ])
         ->assertCreated()
-        ->assertJsonPath('data.role', UserRole::User->value);
+        ->assertJsonPath('data.roles', [UserRole::User->value]);
 
     expect(User::where('email', 'sneaky@user.com')->first()?->isAdmin())->toBeFalse();
 });

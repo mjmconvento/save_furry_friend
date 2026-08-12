@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models\Eloquent;
 
+use App\Casts\UserRoles;
 use App\Enums\UserRole;
 use Database\Factories\Eloquent\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -11,6 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\HasApiTokens;
 
@@ -21,7 +23,7 @@ use Laravel\Sanctum\HasApiTokens;
  * @property string $last_name
  * @property string $email
  * @property string $password
- * @property UserRole $role
+ * @property Collection<int, UserRole> $roles
  */
 class User extends Authenticatable
 {
@@ -45,14 +47,16 @@ class User extends Authenticatable
 
     /**
      * The column has the same default, but Eloquent does not read it back after
-     * an insert - so a freshly created `User` had `role` null in memory, and
+     * an insert - so a freshly created `User` had no roles in memory, and
      * `UserResource` died on it while the row itself was fine. Declaring it here
      * means the value exists before the insert, and is written explicitly.
+     *
+     * A raw JSON string, because `$attributes` holds pre-cast values.
      *
      * @var array<string, string>
      */
     protected $attributes = [
-        'role' => UserRole::User->value,
+        'roles' => '["' . UserRole::User->value . '"]',
     ];
 
     /**
@@ -86,7 +90,7 @@ class User extends Authenticatable
     /**
      * Get the attributes that should be cast.
      *
-     * @return array<string, string>
+     * @return array<string, mixed>
      */
     protected function casts(): array
     {
@@ -94,18 +98,29 @@ class User extends Authenticatable
             'id' => 'string',
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
-            'role' => UserRole::class,
+            'roles' => UserRoles::class,
         ];
     }
 
     /**
-     * `role` is deliberately absent from `$fillable`: no request may set it, so
-     * there is no payload that can promote an account. Roles are assigned by
-     * the seeder, which writes through the query builder.
+     * Membership, not equality: the list is additive, so an admin also carries
+     * `user` and a role added later cannot silently revoke anything.
+     *
+     * A value in the column that is not a known case is dropped by `UserRoles`,
+     * so hand-edited data costs an account that role rather than granting one.
+     *
+     * `roles` is deliberately absent from `$fillable`: no request may set it, so
+     * there is no payload that can promote an account. Roles are assigned by the
+     * seeder, which writes through the query builder.
      */
+    public function hasRole(UserRole $role): bool
+    {
+        return $this->roles->contains($role);
+    }
+
     public function isAdmin(): bool
     {
-        return $this->role === UserRole::Admin;
+        return $this->hasRole(UserRole::Admin);
     }
 
     /**

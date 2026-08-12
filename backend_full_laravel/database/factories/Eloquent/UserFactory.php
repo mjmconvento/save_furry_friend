@@ -50,7 +50,7 @@ class UserFactory extends Factory
             // Non-admin by default: a test that needs administration has to ask
             // for it, so a missing `admin()` shows up as a 403 rather than as an
             // accidentally authorized assertion.
-            'role' => UserRole::User,
+            'roles' => [UserRole::User],
         ];
     }
 
@@ -64,10 +64,13 @@ class UserFactory extends Factory
         ]);
     }
 
+    /**
+     * Additive, matching the seeder: an admin carries `user` too.
+     */
     public function admin(): static
     {
         return $this->state(fn (array $attributes): array => [
-            'role' => UserRole::Admin,
+            'roles' => [UserRole::Admin, UserRole::User],
         ]);
     }
 }
