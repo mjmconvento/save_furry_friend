@@ -67,10 +67,16 @@ services:
         image: mongo:8.0
         volumes:
             - mongodata:/data/db
-        # Not published at all. Nothing on the host talks to Mongo - the app
-        # reaches it over the compose network and tests run inside the app
-        # container - and publishing 27017 collides with any other project
-        # running Mongo. Use `docker compose exec mongo mongosh` for a shell.
+        # Loopback-only, like Postgres: reachable from a GUI client on this
+        # machine but not from the network the laptop is on. The app itself
+        # reaches Mongo over the compose network, not through this publish.
+        #
+        # 27017 is the conventional port every Mongo client defaults to, so it
+        # is the default here too - but it is also the port other local Mongo
+        # stacks grab. If `up` fails with "port is already allocated", set
+        # MONGO_PORT to something free in ./.env.
+        ports:
+            - "127.0.0.1:${MONGO_PORT:-27017}:27017"
         networks: [data]
         environment:
             MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:?set MONGO_ROOT_USER in ./.env}

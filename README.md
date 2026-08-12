@@ -42,12 +42,19 @@ stack is a one-line edit rather than a compose-file diff.
 | http://localhost:9101 | MinIO S3 API (media URLs point here) | `MINIO_API_PORT` |
 | http://localhost:9102 | MinIO console | `MINIO_CONSOLE_PORT` |
 | 127.0.0.1:5432 | PostgreSQL, loopback only — db `blog` | `POSTGRES_PORT` |
-| *(not published)* | MongoDB — `docker compose exec mongo mongosh` | — |
+| 127.0.0.1:27017 | MongoDB, loopback only — db `sff` | `MONGO_PORT` |
 
 Credentials live in `./.env` (copied from `.env.docker.example`), not in the compose file.
 php-fpm is deliberately not published: fastcgi has no authentication and only nginx needs it.
 MinIO sits on 9101/9102 rather than the conventional 9000/9001 because those are commonly taken by
 other local stacks; `MINIO_API_PORT` and `AWS_URL` in `backend_full_laravel/.env` must move together.
+
+Connecting a GUI client to MongoDB needs `authSource=admin` — the user lives in `admin` while the
+data lives in `sff`, and omitting it fails authentication:
+
+```
+mongodb://admin:password@127.0.0.1:27017/sff?authSource=admin
+```
 
 ## Running locally
 
@@ -203,8 +210,10 @@ so the SPA must be served from wherever `FRONTEND_URL` in `backend_full_laravel/
 
 **`bind: address already in use` / `port is already allocated`** — the stack publishes only what a
 browser or a local client needs: `REACT_PORT` (3000), `NGINX_PORT` (8081), `MINIO_API_PORT` (9101),
-`MINIO_CONSOLE_PORT` (9102) and Postgres on `127.0.0.1:5432`. php-fpm and MongoDB are not published
-at all. One clash still aborts the whole `up`, but the fix is now a variable, not a file edit:
+`MINIO_CONSOLE_PORT` (9102), and Postgres and MongoDB on loopback (`POSTGRES_PORT` 5432,
+`MONGO_PORT` 27017). php-fpm is not published at all. `MONGO_PORT` is the one most likely to clash,
+since 27017 is what every other Mongo stack takes too. One clash still aborts the whole `up`, but the
+fix is a variable, not a file edit:
 
 ```bash
 # ./.env
