@@ -116,12 +116,18 @@ Datastore credentials and the published ports live in `./.env` (gitignored, temp
 The posts are a deliberate mix: roughly 40% text-only, 40% one image and 20% a gallery of two to
 four, so the feed layout is exercised rather than just populated.
 
-**No two posts share a photo.** `samples/` holds 60 committed JPEGs and the seeder consumes that
+**Every photo is of a street animal, and no two posts share one.** `samples/` holds 60 committed
+JPEGs — strays, colony cats and street dogs from LoremFlickr's keyword search, each carrying the small
+CC attribution badge its licence asks for. The seeder consumes that
 queue rather than cycling it, spending one photo per media slot — 57 of the 60 at the current
 distribution. If the plan ever needs more slots than there are photos the seeder throws, naming both
 numbers, because silently cycling is exactly the repetition the queue exists to prevent. Each is
 uploaded as its own S3 object per post: sharing objects would be smaller, but deleting one post would
 blank another's pictures. `samples/avatars/` holds four more, one per sample account.
+
+The copy matches: fifty lines about street animals found, fed, trapped, treated, homed or lost. The
+neutral feed carries colony counts, trap nights and feeding rotas rather than shelter opening hours,
+because this is a strays app and the sample data is what everyone judges it by.
 
 Dates matter as much as the mix: six of the fifty are placed inside **today**, spread across the
 hours already elapsed, and the corpus is shuffled before it is dated. Without the shuffle the tone
@@ -345,14 +351,19 @@ mount — a banner layered over a live feed would load the posts and their photo
 warning about them. Verified: no `tags[]=heartbreaking_post` request is made until the reader
 continues.
 
-Dismissal works at two levels:
+The warning appears on **every** visit, from whichever link brought the reader there — including the
+home page's Heartbreaking card, which also says so at the link rather than making anyone click to find
+out why.
 
-- **Continuing** is remembered for the tab (`sessionStorage`), so leaving the feed and coming back a
-  minute later does not warn again;
-- **"Don't show this warning again"** is remembered on the **account**, in `users.preferences`, so it
-  follows you to another browser or device.
+**"Don't show this warning again" is the only thing that stops it**, and it is remembered on the
+**account** in `users.preferences`, so it follows you to another browser or device.
 
-That second one needs a self-service write, which is awkward next to admin-only account CRUD — hence
+It briefly also remembered "continued" for the whole browser session, in `sessionStorage`. That was a
+shortcut nobody asked for: one click suppressed the warning for ever after, which is
+indistinguishable from the feature being broken, and it is why the home page link appeared to stop
+warning. Removed — a regression test now continues once, remounts, and asserts the warning is back.
+
+Saving it needs a self-service write, which is awkward next to admin-only account CRUD — hence
 `PATCH /api/user/preferences` rather than an exception inside `PUT /api/users/{user}`. Singular
 `user` means the token's own account, and **the route has no `{user}` parameter at all**, so there is
 nothing to aim elsewhere. It merges only keys defined by `App\Enums\UserPreference`; a payload
