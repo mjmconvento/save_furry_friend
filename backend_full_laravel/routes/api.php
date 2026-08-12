@@ -6,6 +6,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\User\FollowController;
 use App\Http\Controllers\User\UserController;
+use App\Http\Controllers\User\UserPreferenceController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('login', [AuthController::class, 'login'])->middleware('throttle:login')->name('login');
@@ -18,6 +19,12 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('users/search/{keyword}', [UserController::class, 'search'])->name('users.search');
     Route::post('users/{user}/follow', [FollowController::class, 'follow'])->name('users.follow');
     Route::post('users/{user}/unfollow', [FollowController::class, 'unfollow'])->name('users.unfollow');
+
+    // Singular `user`, meaning the token's own account: no {user} parameter
+    // exists, so this cannot be aimed at anyone else. Account administration
+    // stays admin-only on `users` below.
+    Route::patch('user/preferences', [UserPreferenceController::class, 'update'])
+        ->name('user.preferences.update');
 
     // Same rule as `users/search` above: declared before apiResource('posts'),
     // or `summary` is swallowed by the {post} wildcard.

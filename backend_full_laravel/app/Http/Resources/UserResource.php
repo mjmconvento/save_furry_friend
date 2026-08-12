@@ -40,6 +40,7 @@ class UserResource extends JsonResource
      *     last_name: string,
      *     email: string,
      *     roles: list<string>,
+     *     preferences: array<string, bool>,
      *     is_following: bool
      * }
      */
@@ -60,6 +61,9 @@ class UserResource extends JsonResource
                     ->map(static fn (UserRole $role): string => $role->value)
                     ->all()
             ),
+            // Every known preference with its effective value, so the client
+            // never has to decide what a missing key means.
+            'preferences' => $this->user->preferenceMap(),
             'is_following' => $this->isFollowing,
         ];
     }

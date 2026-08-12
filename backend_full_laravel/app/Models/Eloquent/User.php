@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models\Eloquent;
 
 use App\Casts\UserRoles;
+use App\Enums\UserPreference;
 use App\Enums\UserRole;
 use Database\Factories\Eloquent\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -24,6 +25,7 @@ use Laravel\Sanctum\HasApiTokens;
  * @property string $email
  * @property string $password
  * @property Collection<int, UserRole> $roles
+ * @property array<string, mixed> $preferences
  */
 class User extends Authenticatable
 {
@@ -57,6 +59,7 @@ class User extends Authenticatable
      */
     protected $attributes = [
         'roles' => '["' . UserRole::User->value . '"]',
+        'preferences' => '{}',
     ];
 
     /**
@@ -99,6 +102,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'roles' => UserRoles::class,
+            'preferences' => 'array',
         ];
     }
 
@@ -121,6 +125,36 @@ class User extends Authenticatable
     public function isAdmin(): bool
     {
         return $this->hasRole(UserRole::Admin);
+    }
+
+    /**
+     * False for anything the column has no entry for, which is what makes every
+     * preference opt-in: an account created before a preference existed, or one
+     * whose column holds something other than `true`, behaves as if it is off.
+     *
+     * Like `roles`, `preferences` is not fillable - it is written only through
+     * `UserPreferenceController`, which merges the enum's keys and nothing else.
+     */
+    public function prefers(UserPreference $preference): bool
+    {
+        return ($this->preferences[$preference->value] ?? false) === true;
+    }
+
+    /**
+     * The stored map, restricted to known preferences and filled in with false,
+     * so the wire shape is the same whatever the column happens to hold.
+     *
+     * @return array<string, bool>
+     */
+    public function preferenceMap(): array
+    {
+        $map = [];
+
+        foreach (UserPreference::cases() as $preference) {
+            $map[$preference->value] = $this->prefers($preference);
+        }
+
+        return $map;
     }
 
     /**
