@@ -172,9 +172,10 @@ const PostCard: React.FC<PostCardProps> = ({
                   minWidth: 0,
                 }}
               >
-                {/* An author name the server built from an empty profile would
-                    make `[0]` throw during render. */}
-                <Avatar>
+                {/* `src` undefined falls back to the child initial, and an author
+                    name the server built from an empty profile would make `[0]`
+                    throw during render. */}
+                <Avatar src={post.authorAvatar ?? undefined} alt="">
                   {post.authorName?.trim().charAt(0).toUpperCase() || '?'}
                 </Avatar>
 

@@ -14,3 +14,4 @@ export const POSTS_ENDPOINT = 'api/posts';
 // Singular `user`: the token's own account. Distinct from the admin-only
 // `api/users` collection, and takes no id.
 export const PREFERENCES_ENDPOINT = 'api/user/preferences';
+export const AVATAR_ENDPOINT = 'api/user/avatar';

@@ -212,6 +212,7 @@ describe('authenticated', () => {
       content,
       authorId: 'user-9',
       authorName: 'Other Author',
+      authorAvatar: null,
       tags: ['happy_post'],
       createdAt: '2026-08-01T10:00:00.000Z',
       updatedAt: '2026-08-01T10:00:00.000Z',
@@ -587,5 +588,178 @@ describe('config', () => {
     // F6: this was a hardcoded literal, so no other environment could be built.
     expect(API_BASE_URL).toBe(import.meta.env.VITE_API_BASE_URL);
     expect(API_BASE_URL).toBeTruthy();
+  });
+});
+
+describe('profile picture and header', () => {
+  const profile = (over: Record<string, unknown> = {}) => ({
+    id: 'user-1',
+    first_name: 'Test',
+    middle_name: null,
+    last_name: 'User',
+    email: 'test@user.com',
+    avatar: null,
+    roles: ['user'],
+    preferences: { hide_heartbreaking_warning: false },
+    is_following: false,
+    stats: { posts: 4, followers: 2, following: 7 },
+    ...over,
+  });
+
+  beforeEach(() => {
+    signIn();
+    window.history.pushState({}, '', '/my_profile');
+  });
+
+  it('shows the counts the profile endpoint reports', async () => {
+    // Registered before the spread: `api/users` would otherwise match this URL
+    // first and answer with the empty list.
+    routes = {
+      'api/users/user-1': { status: 200, body: { data: profile() } },
+      ...routes,
+    };
+    renderApp();
+
+    expect(await screen.findByText('4')).toBeInTheDocument();
+    expect(await screen.findByText('2')).toBeInTheDocument();
+    expect(await screen.findByText('7')).toBeInTheDocument();
+  });
+
+  it('falls back to an initial when there is no picture', async () => {
+    renderApp();
+
+    // The header renders from the cached session, so it does not wait on a
+    // request to show who you are.
+    const header = await screen.findByRole('heading', { name: 'Test User' });
+
+    expect(header).toBeInTheDocument();
+    expect(document.querySelector('main img')).toBeNull();
+  });
+
+  it('renders the cached picture without waiting for a request', async () => {
+    localStorage.setItem('loggedInUserAvatar', 'http://minio/uploads/me.jpg');
+    renderApp();
+
+    // Decorative next to the visible name, so `alt` is empty and there is no
+    // `img` role to query by.
+    await waitFor(() =>
+      expect(document.querySelector('main img')).toHaveAttribute(
+        'src',
+        'http://minio/uploads/me.jpg'
+      )
+    );
+  });
+
+  it('uploads a picture and shows it straight away', async () => {
+    routes = {
+      ...routes,
+      'api/user/avatar': {
+        status: 200,
+        body: { data: profile({ avatar: 'http://minio/uploads/new.jpg' }) },
+      },
+    };
+    renderApp();
+
+    const input = await screen.findByTestId('avatar-input');
+
+    await userEvent.upload(
+      input,
+      new File(['x'], 'me.jpg', { type: 'image/jpeg' })
+    );
+
+    // No reload: the context caches what the API returned.
+    await waitFor(() =>
+      expect(document.querySelector('main img')).toHaveAttribute(
+        'src',
+        'http://minio/uploads/new.jpg'
+      )
+    );
+    expect(localStorage.getItem('loggedInUserAvatar')).toBe(
+      'http://minio/uploads/new.jpg'
+    );
+
+    const [, init] =
+      vi
+        .mocked(fetch)
+        .mock.calls.find(([url]) => String(url).includes('user/avatar')) ?? [];
+
+    expect(init?.method).toBe('POST');
+    // Multipart, like post media - not JSON.
+    expect(init?.body).toBeInstanceOf(FormData);
+  });
+
+  it('removes a picture and drops back to the initial', async () => {
+    localStorage.setItem('loggedInUserAvatar', 'http://minio/uploads/me.jpg');
+    routes = {
+      ...routes,
+      'api/user/avatar': { status: 200, body: { data: profile() } },
+    };
+    renderApp();
+
+    await userEvent.click(
+      await screen.findByRole('button', { name: /remove/i })
+    );
+
+    await waitFor(() => expect(document.querySelector('main img')).toBeNull());
+    expect(localStorage.getItem('loggedInUserAvatar')).toBeNull();
+  });
+
+  it('reports a rejected upload instead of pretending it worked', async () => {
+    routes = {
+      ...routes,
+      'api/user/avatar': {
+        status: 422,
+        body: {
+          message: 'A profile picture must be a JPEG, PNG or WebP image.',
+          errors: {
+            avatar: ['A profile picture must be a JPEG, PNG or WebP image.'],
+          },
+        },
+      },
+    };
+    renderApp();
+
+    await userEvent.upload(
+      await screen.findByTestId('avatar-input'),
+      new File(['x'], 'me.jpg', { type: 'image/jpeg' })
+    );
+
+    expect(await screen.findByText(/must be a JPEG/i)).toBeInTheDocument();
+    expect(document.querySelector('main img')).toBeNull();
+  });
+
+  it('shows an author picture on a post card', async () => {
+    window.history.pushState({}, '', '/happy_posts');
+    routes = {
+      ...routes,
+      'api/posts': {
+        status: 200,
+        body: {
+          data: [
+            {
+              id: 'p1',
+              authorId: 'user-9',
+              authorName: 'Other Author',
+              authorAvatar: 'http://minio/uploads/other.jpg',
+              content: 'A post',
+              tags: ['happy_post'],
+              createdAt: '2026-08-01T10:00:00.000Z',
+              updatedAt: '2026-08-01T10:00:00.000Z',
+              medias: [],
+            },
+          ],
+          meta: { current_page: 1, last_page: 1 },
+        },
+      },
+    };
+    renderApp();
+
+    await screen.findByText('A post');
+
+    // The avatar is decorative beside the author's name, so `alt` is empty and
+    // it carries no `img` role.
+    expect(
+      document.querySelector('img[src="http://minio/uploads/other.jpg"]')
+    ).not.toBeNull();
   });
 });

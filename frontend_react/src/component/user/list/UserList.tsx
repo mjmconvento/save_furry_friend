@@ -8,6 +8,8 @@ import {
   TableRow,
   Paper,
   Button,
+  Avatar,
+  Chip,
 } from '@mui/material';
 import { User } from '../../../interface/User';
 
@@ -23,7 +25,9 @@ const UserList: React.FC<Props> = ({ users, onEdit, onDelete }) => {
       <Table>
         <TableHead>
           <TableRow>
-            <TableCell>ID</TableCell>
+            {/* The id is the least useful column to a person reading this, and
+                a picture is the most, so the picture leads. */}
+            <TableCell />
             <TableCell>Name</TableCell>
             <TableCell>Email</TableCell>
             <TableCell align="right">Actions</TableCell>
@@ -32,9 +36,16 @@ const UserList: React.FC<Props> = ({ users, onEdit, onDelete }) => {
         <TableBody>
           {users.map((user) => (
             <TableRow key={user.id}>
-              <TableCell>{user.id}</TableCell>
+              <TableCell sx={{ width: 56, pr: 0 }}>
+                <Avatar src={user.avatar ?? undefined} alt="">
+                  {user.first_name.trim().charAt(0).toUpperCase() || '?'}
+                </Avatar>
+              </TableCell>
               <TableCell>
                 {`${user.first_name} ${user.middle_name ?? ''} ${user.last_name}`.trim()}
+                {user.roles.includes('admin') && (
+                  <Chip label="admin" size="small" sx={{ ml: 1 }} />
+                )}
               </TableCell>
               <TableCell>{user.email}</TableCell>
               <TableCell align="right">

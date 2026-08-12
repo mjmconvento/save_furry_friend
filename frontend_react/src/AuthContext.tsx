@@ -9,7 +9,11 @@ import {
 } from 'react';
 import { API_BASE_URL } from './config/api';
 import { apiRequest } from './service/apiClient';
-import { updatePreference } from './service/user/userApi';
+import {
+  deleteAvatar,
+  updatePreference,
+  uploadAvatar,
+} from './service/user/userApi';
 import { setUnauthorizedHandler } from './service/authBridge';
 import type {
   UserPreferenceKey,
@@ -21,6 +25,8 @@ export interface CurrentUser {
   id: string;
   name: string;
   roles: UserRole[];
+  /** Absolute URL, or null for initials. */
+  avatar: string | null;
 }
 
 interface AuthContextType {
@@ -48,6 +54,11 @@ interface AuthContextType {
    * API refused, so a caller can say the setting did not stick.
    */
   setPreference: (key: UserPreferenceKey, value: boolean) => Promise<void>;
+  /**
+   * Replaces or clears your own picture and refreshes the cached copy, so the
+   * topbar and profile update without a reload. Rejects if the API refused.
+   */
+  changeAvatar: (file: File | null) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -56,6 +67,7 @@ const USER_ID_KEY = 'loggedInUserId';
 const USER_NAME_KEY = 'loggedInUserName';
 const USER_ROLES_KEY = 'loggedInUserRoles';
 const USER_PREFERENCES_KEY = 'loggedInUserPreferences';
+const USER_AVATAR_KEY = 'loggedInUserAvatar';
 
 /**
  * Only known keys, and only booleans. Anything else is dropped, which keeps a
@@ -130,7 +142,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const id = localStorage.getItem(USER_ID_KEY);
     const name = localStorage.getItem(USER_NAME_KEY);
     const roles = readStoredRoles(localStorage.getItem(USER_ROLES_KEY));
-    return id && name && roles ? { id, name, roles } : null;
+    // A cached avatar is optional: unlike identity, its absence just means
+    // initials until the next login refreshes it.
+    const avatar = localStorage.getItem(USER_AVATAR_KEY);
+    return id && name && roles ? { id, name, roles, avatar } : null;
   });
   const [preferences, setPreferences] = useState<UserPreferences>(() =>
     readStoredPreferences(localStorage.getItem(USER_PREFERENCES_KEY))
@@ -178,7 +193,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       JSON.stringify(loginPreferences)
     );
 
-    setCurrentUser({ id: data.user.id, name, roles });
+    const avatar =
+      typeof data.user.avatar === 'string' ? data.user.avatar : null;
+
+    if (avatar === null) {
+      localStorage.removeItem(USER_AVATAR_KEY);
+    } else {
+      localStorage.setItem(USER_AVATAR_KEY, avatar);
+    }
+
+    setCurrentUser({ id: data.user.id, name, roles, avatar });
     setPreferences(loginPreferences);
     setIsAuthenticated(true);
   };
@@ -210,6 +234,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       localStorage.removeItem(USER_NAME_KEY);
       localStorage.removeItem(USER_ROLES_KEY);
       localStorage.removeItem(USER_PREFERENCES_KEY);
+      localStorage.removeItem(USER_AVATAR_KEY);
       setIsAuthenticated(false);
       loggingOut.current = false;
     }
@@ -224,6 +249,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       setPreferences(saved);
       localStorage.setItem(USER_PREFERENCES_KEY, JSON.stringify(saved));
+    },
+    [token]
+  );
+
+  const changeAvatar = useCallback(
+    async (file: File | null): Promise<void> => {
+      // `null` means remove. Same rule as preferences: the account answers first,
+      // then the cache follows, so a rejected upload leaves nothing to unwind.
+      const updated =
+        file === null
+          ? await deleteAvatar(token)
+          : await uploadAvatar(token, file);
+
+      if (updated.avatar === null) {
+        localStorage.removeItem(USER_AVATAR_KEY);
+      } else {
+        localStorage.setItem(USER_AVATAR_KEY, updated.avatar);
+      }
+
+      setCurrentUser((previous) =>
+        previous === null ? previous : { ...previous, avatar: updated.avatar }
+      );
     },
     [token]
   );
@@ -254,6 +301,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         isAdmin: currentUser?.roles.includes('admin') ?? false,
         preferences,
         setPreference,
+        changeAvatar,
       }}
     >
       {children}

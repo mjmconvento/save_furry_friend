@@ -1,4 +1,8 @@
-import { PREFERENCES_ENDPOINT, USERS_ENDPOINT } from '../../config/api';
+import {
+  AVATAR_ENDPOINT,
+  PREFERENCES_ENDPOINT,
+  USERS_ENDPOINT,
+} from '../../config/api';
 import { User, UserPreferenceKey, UserPreferences } from '../../interface/User';
 import { apiRequest } from '../apiClient';
 
@@ -23,6 +27,23 @@ export const updatePreference = async (
 
   return updated.preferences;
 };
+
+/**
+ * Multipart, like post media. Returns the updated account so the caller can
+ * refresh its cached copy without a second request.
+ */
+export const uploadAvatar = async (
+  token: string | null,
+  file: File
+): Promise<User> => {
+  const form = new FormData();
+  form.append('avatar', file);
+
+  return apiRequest<User>(AVATAR_ENDPOINT, { method: 'POST', token, form });
+};
+
+export const deleteAvatar = async (token: string | null): Promise<User> =>
+  apiRequest<User>(AVATAR_ENDPOINT, { method: 'DELETE', token });
 
 export const fetchUsers = async (
   token: string | null,

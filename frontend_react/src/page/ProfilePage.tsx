@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, Box, Button, Typography } from '@mui/material';
+import { Alert, Box, Button } from '@mui/material';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import {
@@ -11,6 +11,7 @@ import { errorSummary } from '../service/apiClient';
 import { useNotify } from '../component/template/ToastProvider';
 import LoadingIndicator from '../component/template/LoadingIndicator';
 import PostFeed from '../component/post/PostFeed';
+import ProfileHeader from '../component/user/ProfileHeader';
 import { User } from '../interface/User';
 
 const ProfilePage: React.FC = () => {
@@ -85,33 +86,26 @@ const ProfilePage: React.FC = () => {
   }
 
   return (
-    <>
-      <Box
-        maxWidth={1000}
-        mx="auto"
-        mt={{ xs: 2, sm: 4 }}
-        px={{ xs: 1.5, sm: 2 }}
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          columnGap: 2,
-          rowGap: 1,
-        }}
-      >
-        <Typography variant="h5" fontWeight="bold">
-          {user?.first_name} {user?.last_name}
-        </Typography>
-
-        <Button
-          variant="contained"
-          loading={submitting}
-          onClick={handleToggleFollow}
-        >
-          {isFollowing ? 'Unfollow' : 'Follow'}
-        </Button>
-      </Box>
+    <Box
+      maxWidth={1000}
+      mx="auto"
+      mt={{ xs: 2, sm: 4 }}
+      px={{ xs: 1.5, sm: 2 }}
+    >
+      <ProfileHeader
+        name={`${user?.first_name ?? ''} ${user?.last_name ?? ''}`.trim()}
+        avatar={user?.avatar ?? null}
+        stats={user?.stats ?? null}
+        action={
+          <Button
+            variant="contained"
+            loading={submitting}
+            onClick={handleToggleFollow}
+          >
+            {isFollowing ? 'Unfollow' : 'Follow'}
+          </Button>
+        }
+      />
 
       <PostFeed
         authorId={id}
@@ -119,7 +113,7 @@ const ProfilePage: React.FC = () => {
         title="Posts"
         subtitle={`Everything ${user?.first_name ?? 'this user'} has posted.`}
       />
-    </>
+    </Box>
   );
 };
 

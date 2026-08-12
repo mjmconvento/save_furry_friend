@@ -4,6 +4,11 @@ export interface Post {
   content: string;
   authorId: string;
   authorName: string;
+  /**
+   * Absolute URL, or null. Read from the account at render time rather than
+   * denormalized into the post, so it never shows a picture the author replaced.
+   */
+  authorAvatar: string | null;
   tags: string[];
   createdAt: string;
   updatedAt: string;

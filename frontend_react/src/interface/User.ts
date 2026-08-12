@@ -19,6 +19,13 @@ export interface User {
   /** Additive, so an admin carries `user` too. Test membership, not equality. */
   roles: UserRole[];
   preferences: UserPreferences;
+  /** Absolute URL, or null when the account has no picture. */
+  avatar: string | null;
+  /**
+   * Counts for a profile header. Null on lists and search results, which do not
+   * pay the three extra queries for numbers they never show.
+   */
+  stats: { posts: number; followers: number; following: number } | null;
   /** Present only on `GET /api/users/{id}`; absent from list and search. */
   is_following?: boolean;
 }
