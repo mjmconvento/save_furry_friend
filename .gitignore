@@ -1,4 +1,11 @@
-/postgresql
 /ai_docs
-/.idea
 /.ai
+/.idea
+
+# Compose credentials (interpolated into docker-compose.yml); copy from
+# .env.docker.example.
+/.env
+
+# Local-only compose tweaks such as port remaps; copy from
+# docker-compose.override.yml.example.
+/docker-compose.override.yml

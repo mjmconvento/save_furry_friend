@@ -1,84 +1,178 @@
+# Credentials and host ports come from a gitignored root `./.env`; copy
+# `.env.docker.example` to `./.env` before the first `up`. The `:?` form fails
+# the command with a named error rather than, say, starting Postgres with an
+# empty password.
+# Deliberately no `name:` key. The project name defaults to the directory, and
+# changing it would repoint every named volume (pgdata, mongodata, minio-data)
+# at a fresh empty one, silently abandoning the existing database and media.
+
+x-svc: &svc
+    restart: unless-stopped
+
 services:
     app:
-        container_name: backend_full_laravel
+        <<: *svc
         build:
-            context: ./php
-            dockerfile: Dockerfile
+            # Context is the repo root so the image can COPY php/*.ini. A root
+            # .dockerignore keeps node_modules/vendor/.git out of the context.
+            context: .
+            dockerfile: php/Dockerfile
+            target: base
         volumes:
             - ./backend_full_laravel:/var/www
-        ports:
-            - "9000:9000"
         working_dir: /var/www
+        # fastcgi is deliberately not published: it has no authentication and
+        # SCRIPT_FILENAME comes from the client, so only nginx should reach it.
+        networks: [edge, data]
         depends_on:
-            - db
+            db: { condition: service_healthy }
+            mongo: { condition: service_healthy }
+            minio: { condition: service_healthy }
+        healthcheck:
+            # cgi-fcgi comes from libfcgi-bin and /ping from php/fpm-ping.conf.
+            test:
+                [
+                    'CMD-SHELL',
+                    'SCRIPT_NAME=/ping SCRIPT_FILENAME=/ping REQUEST_METHOD=GET cgi-fcgi -bind -connect 127.0.0.1:9000 | grep -q pong',
+                ]
+            interval: 10s
+            timeout: 3s
+            retries: 5
+            start_period: 20s
 
     db:
+        <<: *svc
         image: postgres:16
-        container_name: postgres
         volumes:
             - pgdata:/var/lib/postgresql/data
+        # Loopback-only: reachable for a psql client on this machine, not from
+        # the network the laptop happens to be on.
         ports:
-            - "5432:5432"
+            - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+        networks: [data]
         environment:
-            POSTGRES_DB: blog
-            POSTGRES_USER: root
-            POSTGRES_PASSWORD: password
+            POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB in ./.env}
+            POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in ./.env}
+            POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in ./.env}
+        healthcheck:
+            # $$ escapes compose interpolation so the shell expands it inside
+            # the container.
+            test: ['CMD-SHELL', 'pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB']
+            interval: 5s
+            timeout: 3s
+            retries: 10
 
     mongo:
+        <<: *svc
         image: mongo:8.0
-        container_name: mongo
-        restart: always
         volumes:
             - mongodata:/data/db
-        ports:
-            - "27017:27017"
+        # Not published at all. Nothing on the host talks to Mongo - the app
+        # reaches it over the compose network and tests run inside the app
+        # container - and publishing 27017 collides with any other project
+        # running Mongo. Use `docker compose exec mongo mongosh` for a shell.
+        networks: [data]
         environment:
-            MONGO_INITDB_ROOT_USERNAME: admin
-            MONGO_INITDB_ROOT_PASSWORD: password
+            MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:?set MONGO_ROOT_USER in ./.env}
+            MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?set MONGO_ROOT_PASSWORD in ./.env}
+        healthcheck:
+            test:
+                [
+                    'CMD-SHELL',
+                    'mongosh --quiet -u $$MONGO_INITDB_ROOT_USERNAME -p $$MONGO_INITDB_ROOT_PASSWORD --eval "db.adminCommand({ping:1}).ok" | grep -q 1',
+                ]
+            interval: 5s
+            timeout: 5s
+            retries: 10
+
+    minio:
+        <<: *svc
+        image: minio/minio
+        command: server /data --console-address ":9001"
+        volumes:
+            - minio-data:/data
+        # Published because the browser fetches media directly from MinIO;
+        # AWS_URL in the backend env must match the API port here.
+        ports:
+            - "${MINIO_API_PORT:-9001}:9000"
+            - "${MINIO_CONSOLE_PORT:-9002}:9001"
+        networks: [data]
+        environment:
+            MINIO_ROOT_USER: ${MINIO_ROOT_USER:?set MINIO_ROOT_USER in ./.env}
+            MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD in ./.env}
+        healthcheck:
+            test: ['CMD-SHELL', 'curl -fsS http://localhost:9000/minio/health/live || exit 1']
+            interval: 5s
+            timeout: 5s
+            retries: 10
+
+    # One-shot: creates the bucket and grants read at the bucket level, which
+    # replaces both the manual console click in the old README and the
+    # per-object setVisibility() call the app used to make on every upload.
+    minio-init:
+        image: minio/mc
+        restart: "no"
+        networks: [data]
+        depends_on:
+            minio: { condition: service_healthy }
+        environment:
+            MINIO_ROOT_USER: ${MINIO_ROOT_USER:?}
+            MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?}
+            MINIO_BUCKET: ${MINIO_BUCKET:-uploads}
+        entrypoint:
+            - /bin/sh
+            - -c
+            - |
+                set -eu
+                mc alias set local http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD"
+                mc mb --ignore-existing "local/$$MINIO_BUCKET"
+                mc anonymous set download "local/$$MINIO_BUCKET"
+                echo "minio-init: bucket $$MINIO_BUCKET ready"
 
     nginx:
+        <<: *svc
         image: nginx:alpine
-        container_name: nginx
         ports:
-            - "8081:80"
+            - "${NGINX_PORT:-8081}:80"
         volumes:
             - ./backend_full_laravel:/var/www
             - ./nginx/conf.d/:/etc/nginx/conf.d/
+        networks: [edge, data]
+        # Only `app` - nginx never talks to Postgres. Gating on service_healthy
+        # means the vhost is not accepting traffic before fpm can answer.
         depends_on:
-            - app
-            - db
+            app: { condition: service_healthy }
+        healthcheck:
+            # Laravel's health route, so this transitively proves
+            # nginx -> fpm -> framework boot.
+            test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1/up >/dev/null || exit 1']
+            interval: 10s
+            timeout: 5s
+            retries: 5
 
     react:
-        container_name: react_app
+        <<: *svc
         build:
             context: ./frontend_react
             dockerfile: Dockerfile
         volumes:
             - ./frontend_react:/app
             - /app/node_modules
-        ports:
-            - "3000:3000"
         working_dir: /app
-        environment:
-            # Vite polls because the source arrives over a bind mount, where
-            # inotify events are unreliable. WATCHPACK_POLLING was the
-            # react-scripts equivalent and is no longer read.
-            - CHOKIDAR_USEPOLLING=true
-            - VITE_API_BASE_URL=http://localhost:8081
-
-    minio:
-        image: minio/minio
-        container_name: minio
         ports:
-            - "9001:9000" # MinIO API
-            - "9002:9001" # MinIO Console (UI)
-        volumes:
-            - minio-data:/data
+            - "${REACT_PORT:-3000}:3000"
+        # No `data` network: the SPA talks to the API over the host, so it has
+        # no business opening sockets to Postgres, Mongo or MinIO.
+        networks: [edge]
         environment:
-            MINIO_ROOT_USER: admin
-            MINIO_ROOT_PASSWORD: password123
-        command: server /data --console-address ":9001"
+            # Vite polls via server.watch.usePolling in vite.config.ts - there
+            # is no env var for it. CHOKIDAR_USEPOLLING was a CRA 4 setting and
+            # WATCHPACK_POLLING a CRA 5 one; both are dead on this toolchain.
+            VITE_API_BASE_URL: http://localhost:${NGINX_PORT:-8081}
 
+networks:
+    edge:
+    data:
 
 volumes:
     minio-data:

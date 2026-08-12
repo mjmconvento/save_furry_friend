@@ -1,0 +1,38 @@
+# Local-only compose tweaks. Copy it, do not edit the tracked compose file:
+#
+#     cp docker-compose.override.yml.example docker-compose.override.yml
+#
+# `docker compose` merges ./docker-compose.override.yml on top of
+# ./docker-compose.yml automatically, with no -f flags, and the copy is
+# gitignored — so a host port clash stops producing a local diff in a file
+# everybody shares.
+#
+# For a plain port clash you usually do not need this file at all: NGINX_PORT
+# and REACT_PORT are interpolated from the root ./.env, so changing them there
+# is the shorter path. Use the override for anything those variables do not
+# reach (extra volumes, a debug entrypoint, an added service).
+#
+# Two gotchas:
+#
+#  1. Compose *appends* to sequences when merging, so a bare `ports:` key would
+#     publish a second host port instead of replacing the tracked one. The
+#     `!override` tag replaces the list outright (Compose v2.24+).
+#  2. The SPA's port is load-bearing in a second place: FRONTEND_URL is the
+#     single origin config/cors.php allows, and auth is a cross-origin bearer
+#     token. Move the port without moving FRONTEND_URL and every API call dies
+#     in preflight — login just stops working, with nothing in the Laravel log.
+#     FRONTEND_URL is *not* a compose variable: Laravel reads it straight from
+#     backend_full_laravel/.env, so that is the file to edit.
+
+services:
+    # SPA on http://localhost:3100 instead of :3000.
+    # Pair with FRONTEND_URL=http://localhost:3100 in backend_full_laravel/.env.
+    react:
+        ports: !override
+            - "3100:3000"
+
+    # The API port needs no override: NGINX_PORT in the root ./.env publishes
+    # nginx *and* feeds the react service's VITE_API_BASE_URL, so both ends move
+    # together. Only APP_URL in backend_full_laravel/.env has to follow by hand.
+    # (VITE_API_BASE_URL is read by frontend_react/src/config/api.ts, which
+    # throws when it is unset, so it can never silently fall back to :8081.)
