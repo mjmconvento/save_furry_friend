@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Models\Eloquent\User;
 use App\Models\Mongo\Post;
+use App\Services\User\UserService;
 use Database\Seeders\SamplePostSeeder;
 use Database\Seeders\SampleUserSeeder;
 use Illuminate\Support\Facades\DB;
@@ -19,18 +21,18 @@ it('creates the documented sample corpus', function (): void {
     $this->seed(SampleUserSeeder::class);
     $this->seed(SamplePostSeeder::class);
 
-    expect(Post::count())->toBe(50)
+    expect(Post::count())->toBe(74)
         ->and(DB::table('users')->count())->toBe(count(SampleUserSeeder::USERS));
 });
 
 it('replaces its own output on a re-run instead of doubling it', function (): void {
     // `make bootstrap` and any deploy step runs `migrate --seed` unconditionally,
-    // so a seeder that appends would grow the corpus by 50 every time.
+    // so a seeder that appends would grow the corpus by 74 every time.
     $this->seed(SampleUserSeeder::class);
     $this->seed(SamplePostSeeder::class);
     $this->seed(SamplePostSeeder::class);
 
-    expect(Post::count())->toBe(50);
+    expect(Post::count())->toBe(74);
 });
 
 it('leaves posts it did not create alone', function (): void {
@@ -49,7 +51,7 @@ it('leaves posts it did not create alone', function (): void {
     // The re-run purges by the `sample` marker, which no API-created post
     // carries; matching on anything looser would delete real content.
     expect(Post::find($mine->id)?->content)->toBe('written by hand')
-        ->and(Post::count())->toBe(51);
+        ->and(Post::count())->toBe(75);
 });
 
 it('spreads the corpus across every author, tone and media count', function (): void {
@@ -114,13 +116,38 @@ it('gives every sample author a media object of its own per image', function ():
     }
 });
 
-it('makes the sample users follow each other so their posts are visible', function (): void {
-    // Every feed is scoped to the follow graph plus the viewer's own posts, so
-    // without this the sample corpus is invisible to the account you log in as.
+it('gives every sample user people to follow and people still to discover', function (): void {
+    // Feeds are scoped to the follow graph plus your own posts, so with no follows
+    // the corpus is invisible. But a *complete* graph is just as useless: "who to
+    // follow" is then empty by construction. Seeded twice, because `upsert` used
+    // to leave the edges of a previous shape behind.
     $this->seed(SampleUserSeeder::class);
     $this->seed(SampleUserSeeder::class);
 
-    $users = count(SampleUserSeeder::USERS);
+    $total = count(SampleUserSeeder::USERS);
 
-    expect(DB::table('user_followers')->count())->toBe($users * ($users - 1));
+    foreach (SampleUserSeeder::USERS as $user) {
+        $following = DB::table('user_followers')
+            ->where('follower_id', $user['id'])
+            ->count();
+
+        expect($following)
+            ->toBeGreaterThan(0)
+            ->and($following)
+            ->toBeLessThan($total - 1);
+    }
+
+    // Deterministic: re-running does not accumulate edges.
+    expect(DB::table('user_followers')->count())->toBe($total * 3);
+});
+
+it('leaves at least one stranger for the suggestions to offer', function (): void {
+    $this->seed(SampleUserSeeder::class);
+    $this->seed(SamplePostSeeder::class);
+
+    $viewer = User::where('email', SampleUserSeeder::USERS[0]['email'])->firstOrFail();
+    $suggested = app(UserService::class)->suggestions($viewer);
+
+    expect($suggested)
+        ->not->toBeEmpty();
 });

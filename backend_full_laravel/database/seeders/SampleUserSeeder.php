@@ -60,6 +60,38 @@ class SampleUserSeeder extends Seeder
             'last_name' => 'Okafor',
             'roles' => [UserRole::User],
         ],
+        [
+            'id' => '1a80c442-e846-49a2-8099-7f8cc8a67bd8',
+            'email' => 'test5@user.com',
+            'first_name' => 'Ama',
+            'middle_name' => null,
+            'last_name' => 'Boateng',
+            'roles' => [UserRole::User],
+        ],
+        [
+            'id' => '75f515bc-ddfe-40b4-aca7-1d057a23de7a',
+            'email' => 'test6@user.com',
+            'first_name' => 'Lucia',
+            'middle_name' => 'Pilar',
+            'last_name' => 'Ferrer',
+            'roles' => [UserRole::User],
+        ],
+        [
+            'id' => '15a6aba1-7491-430a-bd06-a435c431f1d0',
+            'email' => 'test7@user.com',
+            'first_name' => 'Ines',
+            'middle_name' => null,
+            'last_name' => 'Duarte',
+            'roles' => [UserRole::User],
+        ],
+        [
+            'id' => '9f00c818-0cb0-425d-af18-3bef631df114',
+            'email' => 'test8@user.com',
+            'first_name' => 'Kwame',
+            'middle_name' => 'Osei',
+            'last_name' => 'Mensah',
+            'roles' => [UserRole::User],
+        ],
     ];
 
     public function run(): void
@@ -145,33 +177,46 @@ class SampleUserSeeder extends Seeder
     }
 
     /**
-     * Every sample user follows every other one.
+     * A partial follow graph: each account follows the next three in the list,
+     * wrapping round.
      *
-     * Without this the sample corpus is invisible: `PostService::getPosts()`
-     * scopes every feed to the follow graph plus the viewer's own posts, so a
-     * freshly seeded account would see only its own output - and with nothing
-     * but its own posts on screen there is no way to tell that Edit and Delete
-     * are owner-only, because everything would be owned.
+     * Two things depend on it. Feeds are scoped to the follow graph plus your own
+     * posts, so without any follows a freshly seeded account sees only itself -
+     * and with nothing but your own posts on screen there is no way to tell that
+     * Edit and Delete are owner-only. But *everyone following everyone* is just as
+     * useless: "who to follow" is then empty by construction, because there is
+     * nobody left to suggest. Three of eight leaves four strangers each.
      */
     private function followEachOther(\Carbon\CarbonInterface $now): void
     {
+        $users = self::USERS;
+        $total = count($users);
         $rows = [];
 
-        foreach (self::USERS as $follower) {
-            foreach (self::USERS as $followed) {
-                if ($follower['id'] === $followed['id']) {
-                    continue;
-                }
+        foreach ($users as $index => $follower) {
+            foreach ([1, 2, 3] as $step) {
+                $followed = $users[($index + $step) % $total];
 
                 $rows[] = [
                     'follower_id' => $follower['id'],
                     'followed_id' => $followed['id'],
-                    'created_at' => $now,
+                    // Staggered so "newest follow first" has something to order
+                    // by, rather than eight rows sharing a timestamp.
+                    'created_at' => $now->copy()
+                        ->subMinutes($index * 10 + $step),
                 ];
             }
         }
 
-        // The composite primary key makes a plain insert fail on a re-run.
-        DB::table('user_followers')->upsert($rows, ['follower_id', 'followed_id'], ['created_at']);
+        // Cleared first, scoped to rows the sample accounts own: `upsert` adds and
+        // updates but never deletes, so a graph that used to be everyone-follows-
+        // everyone left its extra edges behind and the corpus stopped being
+        // deterministic. Rows where a real account follows a sample one are keyed
+        // by that account and are not touched.
+        DB::table('user_followers')
+            ->whereIn('follower_id', array_column($users, 'id'))
+            ->delete();
+
+        DB::table('user_followers')->insert($rows);
     }
 }

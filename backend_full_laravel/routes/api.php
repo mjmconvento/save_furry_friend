@@ -33,6 +33,10 @@ Route::middleware('auth:sanctum')->group(function (): void {
     // These MUST be declared BEFORE apiResource('users'), or `search` is
     // swallowed by the {user} wildcard.
     Route::get('users/search/{keyword}', [UserController::class, 'search'])->name('users.search');
+    // Also before apiResource('users'), or `suggestions` resolves as a user id.
+    Route::get('users/suggestions', [FollowController::class, 'suggestions'])->name('users.suggestions');
+    Route::get('users/{user}/followers', [FollowController::class, 'followers'])->name('users.followers');
+    Route::get('users/{user}/following', [FollowController::class, 'following'])->name('users.following');
 
     Route::post('email/verification-notification', [EmailVerificationController::class, 'send'])
         ->middleware('throttle:6,1')

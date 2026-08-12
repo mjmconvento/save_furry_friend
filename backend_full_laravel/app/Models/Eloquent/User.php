@@ -37,6 +37,22 @@ class User extends Authenticatable implements MustVerifyEmail
     use Notifiable;
 
     /**
+     * Viewer-relative and query-relative data, filled in per request and never
+     * persisted.
+     *
+     * Declared PHP properties, deliberately not Eloquent attributes: `save()`
+     * cannot write a real property to the table, so hydrating one on a model that
+     * is later saved is harmless. They exist because
+     * `UserResource::collection()` gives no way to thread per-item data through a
+     * collection, which is exactly what a list of people with follow buttons
+     * needs.
+     */
+    public ?bool $viewerFollows = null;
+
+    /** @var ?array{posts: int, followers: int, following: int} */
+    public ?array $profileStats = null;
+
+    /**
      * The attributes that are mass assignable.
      *
      * @var list<string>

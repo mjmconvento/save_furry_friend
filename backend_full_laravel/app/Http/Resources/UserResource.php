@@ -14,30 +14,20 @@ use Illuminate\Support\Facades\Storage;
  * Wire shape for a user. Keys are snake_case on purpose — the React client's
  * `interface/User.ts` reads exactly these.
  *
- * Two fields are viewer- or query-relative rather than properties of the model,
- * so the caller passes them through the constructor:
+ * Two fields are viewer- or query-relative rather than properties of the row, and
+ * both are read from per-request properties the callers fill in: `viewerFollows`
+ * and `profileStats` on the model. They used to be constructor arguments, which
+ * only worked for a single resource - `UserResource::collection()` instantiates
+ * members with the resource argument alone, so a list of people could never carry
+ * its own follow state. Every list needed one.
  *
- *     new UserResource($user, $isFollowing, $stats);
- *
- * `is_following` defaults to `false`, which is what `UserResource::collection()`
- * yields (Laravel instantiates collection members with the resource argument
- * only, so there is no way to thread a per-item flag through it). `false` is also
- * the correct answer when the resource *is* the viewer.
- *
- * `stats` defaults to `null` and is sent as `null` on lists, deliberately:
- * counting posts, followers and following per row would be three extra queries
- * per user, one of them against Mongo. Only `show` pays for them, because only a
- * profile page displays them.
+ * `stats` stays null wherever nobody displays it: the user index and people
+ * search do not pay for three counts per row.
  */
 class UserResource extends JsonResource
 {
-    /**
-     * @param ?array{posts: int, followers: int, following: int} $stats
-     */
     public function __construct(
         private readonly User $user,
-        private readonly bool $isFollowing = false,
-        private readonly ?array $stats = null,
     ) {
         parent::__construct($user);
     }
@@ -86,8 +76,10 @@ class UserResource extends JsonResource
             // Every known preference with its effective value, so the client
             // never has to decide what a missing key means.
             'preferences' => $this->user->preferenceMap(),
-            'is_following' => $this->isFollowing,
-            'stats' => $this->stats,
+            // False when nobody hydrated it, which is also the right answer for
+            // a resource that *is* the viewer.
+            'is_following' => $this->user->viewerFollows ?? false,
+            'stats' => $this->user->profileStats,
         ];
     }
 }

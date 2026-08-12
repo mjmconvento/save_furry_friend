@@ -72,6 +72,14 @@ class SamplePostSeeder extends Seeder
                 'The greyhound from the lay-by has discovered sofas and will not be discussing the matter further.',
                 'Reunited: he had been living rough for three months, four streets from a family who never stopped looking.',
                 'Home visit passed. She leaves on Friday with the blanket she has slept on since we lifted her off the verge in March.',
+                'The scrapyard tabby let me pick her up tonight. Eight months of sitting on an upturned crate talking to a cat.',
+                'Both of the bridge dogs are neutered, vaccinated and back on the estate with a shelter and someone checking daily.',
+                'The kitten from the engine bay is off the syringe and eating like a horse.',
+                'He has been at the depot four winters. Tonight he is asleep in a kitchen in Cardiff.',
+                'Ear-tipped number sixty for the year. The harbour colony has not grown since March.',
+                'The one everyone said was feral has spent the evening on a lap, purring, being extremely feral.',
+                'She came in with a wound down her flank and no interest in living. Look at her now.',
+                'Six months of leaving food at the same spot and he followed me to the van by himself.',
             ],
             PostTag::Neutral->value => [
                 'Tonight\'s round: eleven cats fed at the harbour, two new faces, one ear-tipped already.',
@@ -92,6 +100,14 @@ class SamplePostSeeder extends Seeder
                 'Kitten milk replacer is running low with six bottle-feeders from the scrapyard litter in care.',
                 'Lost-and-found board is now sorted by street rather than by date. Easier for the walkers.',
                 'If you have reported a stray and not heard back, we are three days behind on the inbox rather than ignoring you.',
+                'Colony count at the marina: fourteen, eleven ear-tipped. Two new toms this month.',
+                'The trap-neuter-return van is out Tuesday and Thursday. Names on the board if you want to ride along.',
+                'If you feed a stray regularly, please tell us where. Half our duplicate trapping comes from not knowing.',
+                'Winter shelter build day Saturday: polystyrene boxes, straw, no blankets. Straw, not hay.',
+                'Three of the estate cats are on eye ointment. Chart is on the shed door.',
+                'We are looking for a garage or dry corner near the industrial estate for overnight traps.',
+                'Reminder that a stray in a carrier is not a stray any more: log it before you drive off.',
+                'Post-op checks moved to Sunday mornings while the vet is short-staffed.',
             ],
             PostTag::Heartbreaking->value => [
                 'She waited by the same gate every evening for a family that was never coming back. Fourteen years old, and she died on that pavement.',
@@ -106,6 +122,14 @@ class SamplePostSeeder extends Seeder
                 'Twelve dogs from one address, all born on that concrete. Nine are going to make it.',
                 'She had been feeding four kittens on nothing behind the takeaway. She weighed less than any of them.',
                 'Returned to the street twice by people who wanted a puppy and got a dog.',
+                'Six weeks of feeding him at the gate and he still would not come. This morning we found out why: he had been guarding a litter under the shed.',
+                'The council cleared the encampment and the cats with it. We have found four of nine.',
+                'Her collar had grown into her neck. She had been on that street for years and nobody looked twice.',
+                'Somebody dropped a box of kittens at the gate overnight, in January, with the lid taped shut.',
+                'He is deaf, which is why he did not move for the car. Somebody chose to leave him.',
+                'The vet found buckshot. Not a road, then.',
+                'She is the last of the harbour colony. Nineteen at the start of the year, one tonight.',
+                'Nobody claimed him and nobody will. He has been at the depot longer than any of us have been volunteering.',
             ],
         ];
     }
@@ -348,13 +372,15 @@ class SamplePostSeeder extends Seeder
         foreach ($entries as $position => $entry) {
             $author = $authors[$slots[$position]];
 
-            // Roughly 40% text-only, 40% one image, 20% a small gallery - the
-            // spread the feed layout has to cope with.
-            $roll = mt_rand(1, 10);
+            // Roughly 50% text-only, 35% one image, 15% a pair - still the spread
+            // the feed layout has to cope with, but sized so the corpus fits the
+            // committed photos: every slot spends a distinct one, and there are
+            // 56 of them.
+            $roll = mt_rand(1, 20);
             $mediaCount = match (true) {
-                $roll <= 4 => 0,
-                $roll <= 8 => 1,
-                default => mt_rand(2, 4),
+                $roll <= 10 => 0,
+                $roll <= 17 => 1,
+                default => 2,
             };
 
             // The newest few are placed inside today deliberately: a fresh

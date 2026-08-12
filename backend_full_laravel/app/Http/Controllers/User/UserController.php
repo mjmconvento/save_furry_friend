@@ -56,11 +56,12 @@ class UserController extends Controller
      */
     public function show(User $user): UserResource
     {
-        return new UserResource(
-            $user,
-            $this->userService->isFollowing($this->authUser(), $user),
-            $this->userService->profileStats($user),
-        );
+        $viewer = $this->authUser();
+
+        $user->viewerFollows = $this->userService->isFollowing($viewer, $user);
+        $this->userService->attachProfileStats($user);
+
+        return new UserResource($user);
     }
 
     public function store(StoreUserRequest $request): JsonResponse
