@@ -16,6 +16,7 @@ const HeartbreakingPostPage = lazy(
 const MyProfilePage = lazy(() => import('./page/MyProfilePage'));
 const ProfilePage = lazy(() => import('./page/ProfilePage'));
 const HomePage = lazy(() => import('./page/HomePage'));
+const FollowListPage = lazy(() => import('./page/FollowListPage'));
 const UserPage = lazy(() => import('./page/UserPage'));
 const NotFoundPage = lazy(() => import('./page/NotFoundPage'));
 
@@ -36,6 +37,17 @@ const App = () => (
         />
         <Route path="/my_profile" element={<MyProfilePage />} />
         <Route path="/profile/:id" element={<ProfilePage />} />
+        {/* Both sides of the graph share one page and one route shape, so
+            `/my_profile` links here with its own id rather than needing a
+            second pair of routes. */}
+        <Route
+          path="/profile/:id/followers"
+          element={<FollowListPage mode="followers" />}
+        />
+        <Route
+          path="/profile/:id/following"
+          element={<FollowListPage mode="following" />}
+        />
         <Route element={<AdminRoute />}>
           <Route path="/users" element={<UserPage />} />
         </Route>

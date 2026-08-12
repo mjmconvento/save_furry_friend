@@ -62,6 +62,7 @@ const MyProfilePage: React.FC = () => {
         avatar={currentUser.avatar}
         stats={stats}
         action={<AvatarUpload />}
+        listBase={`/profile/${currentUser.id}`}
       />
 
       <PostFeed

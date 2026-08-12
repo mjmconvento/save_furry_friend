@@ -1031,3 +1031,154 @@ describe('people search', () => {
     );
   });
 });
+
+describe('followers and following', () => {
+  const person = (
+    id: string,
+    first: string,
+    over: Record<string, unknown> = {}
+  ) => ({
+    id,
+    first_name: first,
+    middle_name: null,
+    last_name: 'Walker',
+    email: `${first.toLowerCase()}@user.com`,
+    email_verified: true,
+    avatar: null,
+    roles: ['user'],
+    preferences: { hide_heartbreaking_warning: false },
+    is_following: false,
+    stats: { posts: 4, followers: 2, following: 1 },
+    ...over,
+  });
+
+  const me = person('user-1', 'Test');
+
+  const withGraph = (over: Record<string, unknown>) => {
+    routes = {
+      'api/users/user-1/followers': {
+        status: 200,
+        body: { data: [], meta: { current_page: 1, last_page: 1, total: 0 } },
+      },
+      'api/users/user-1/following': {
+        status: 200,
+        body: { data: [], meta: { current_page: 1, last_page: 1, total: 0 } },
+      },
+      'api/users/suggestions': { status: 200, body: { data: [] } },
+      'api/users/user-1': { status: 200, body: { data: me } },
+      ...over,
+      ...routes,
+    };
+  };
+
+  beforeEach(() => signIn());
+
+  it('reaches the lists from the counts on a profile', async () => {
+    withGraph({});
+    window.history.pushState({}, '', '/my_profile');
+    renderApp();
+
+    expect(
+      await screen.findByRole('link', { name: /followers: 2/i })
+    ).toHaveAttribute('href', '/profile/user-1/followers');
+    expect(screen.getByRole('link', { name: /following: 1/i })).toHaveAttribute(
+      'href',
+      '/profile/user-1/following'
+    );
+  });
+
+  it('lists the followers', async () => {
+    withGraph({
+      'api/users/user-1/followers': {
+        status: 200,
+        body: {
+          data: [person('user-9', 'Ines')],
+          meta: { current_page: 1, last_page: 1, total: 1 },
+        },
+      },
+    });
+    window.history.pushState({}, '', '/profile/user-1/followers');
+    renderApp();
+
+    expect(await screen.findByText('Ines Walker')).toBeInTheDocument();
+    // The row says what they have posted, not just their name.
+    expect(await screen.findByText(/4 posts/i)).toBeInTheDocument();
+  });
+
+  it('says so when a list is empty', async () => {
+    withGraph({});
+    window.history.pushState({}, '', '/profile/user-1/followers');
+    renderApp();
+
+    expect(await screen.findByText(/nobody yet/i)).toBeInTheDocument();
+  });
+
+  it('follows somebody straight from a list', async () => {
+    withGraph({
+      'api/users/user-1/followers': {
+        status: 200,
+        body: {
+          data: [person('user-9', 'Ines')],
+          meta: { current_page: 1, last_page: 1, total: 1 },
+        },
+      },
+      'api/users/user-9/follow': { status: 200, body: { message: 'Followed' } },
+    });
+    window.history.pushState({}, '', '/profile/user-1/followers');
+    renderApp();
+
+    await userEvent.click(
+      await screen.findByRole('button', { name: /^follow$/i })
+    );
+
+    // Flips in place rather than needing a reload.
+    expect(
+      await screen.findByRole('button', { name: /unfollow/i })
+    ).toBeInTheDocument();
+  });
+
+  it('offers suggestions on your own following list', async () => {
+    withGraph({
+      'api/users/suggestions': {
+        status: 200,
+        body: {
+          data: [
+            person('user-7', 'Kwame', {
+              stats: { posts: 9, followers: 3, following: 2 },
+            }),
+          ],
+        },
+      },
+    });
+    window.history.pushState({}, '', '/profile/user-1/following');
+    renderApp();
+
+    expect(await screen.findByText(/who to follow/i)).toBeInTheDocument();
+    expect(await screen.findByText(/9 posts/i)).toBeInTheDocument();
+  });
+
+  it('does not suggest people while looking at somebody else', async () => {
+    // "Who to follow" belongs on your own list; on a stranger's it is a non
+    // sequitur.
+    withGraph({
+      'api/users/user-2/following': {
+        status: 200,
+        body: { data: [], meta: { current_page: 1, last_page: 1, total: 0 } },
+      },
+      'api/users/user-2': {
+        status: 200,
+        body: { data: person('user-2', 'Other') },
+      },
+      'api/users/suggestions': {
+        status: 200,
+        body: { data: [person('user-7', 'Kwame')] },
+      },
+    });
+    window.history.pushState({}, '', '/profile/user-2/following');
+    renderApp();
+
+    await screen.findByText(/people other walker follows/i);
+
+    expect(screen.queryByText(/who to follow/i)).not.toBeInTheDocument();
+  });
+});

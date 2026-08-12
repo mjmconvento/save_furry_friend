@@ -7,6 +7,7 @@ import {
   Stack,
   Typography,
 } from '@mui/material';
+import { Link } from 'react-router-dom';
 
 interface ProfileHeaderProps {
   name: string;
@@ -16,21 +17,50 @@ interface ProfileHeaderProps {
   stats: { posts: number; followers: number; following: number } | null;
   /** Follow button on someone else's profile, upload control on your own. */
   action?: ReactNode;
+  /**
+   * Where the follower and following counts lead, e.g. `/profile/<id>`. Omitted
+   * leaves them as plain numbers.
+   */
+  listBase?: string;
 }
 
-const Stat: React.FC<{ label: string; value: number | null }> = ({
-  label,
-  value,
-}) => (
-  <Box>
-    <Typography variant="h6" component="p" lineHeight={1.2}>
-      {value ?? '—'}
-    </Typography>
-    <Typography variant="caption" color="text.muted">
-      {label}
-    </Typography>
-  </Box>
-);
+const Stat: React.FC<{
+  label: string;
+  value: number | null;
+  to?: string;
+}> = ({ label, value, to }) => {
+  const body = (
+    <>
+      <Typography variant="h6" component="p" lineHeight={1.2}>
+        {value ?? '—'}
+      </Typography>
+      <Typography variant="caption" color="text.muted">
+        {label}
+      </Typography>
+    </>
+  );
+
+  if (to === undefined) {
+    return <Box>{body}</Box>;
+  }
+
+  return (
+    <Box
+      component={Link}
+      to={to}
+      // The number alone is not a name a screen reader can act on.
+      aria-label={`${label}: ${value ?? 0}`}
+      sx={{
+        display: 'block',
+        textDecoration: 'none',
+        color: 'inherit',
+        '&:hover p': { textDecoration: 'underline' },
+      }}
+    >
+      {body}
+    </Box>
+  );
+};
 
 /**
  * Shared header for both profile surfaces: `/my_profile` and `/profile/:id`
@@ -42,6 +72,7 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
   avatar,
   stats,
   action,
+  listBase,
 }) => (
   <Card variant="outlined" sx={{ mb: 3 }}>
     <CardContent sx={{ p: { xs: 2.5, md: 3 } }}>
@@ -64,8 +95,16 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
           </Typography>
           <Stack direction="row" spacing={3}>
             <Stat label="Posts" value={stats?.posts ?? null} />
-            <Stat label="Followers" value={stats?.followers ?? null} />
-            <Stat label="Following" value={stats?.following ?? null} />
+            <Stat
+              label="Followers"
+              value={stats?.followers ?? null}
+              to={listBase === undefined ? undefined : `${listBase}/followers`}
+            />
+            <Stat
+              label="Following"
+              value={stats?.following ?? null}
+              to={listBase === undefined ? undefined : `${listBase}/following`}
+            />
           </Stack>
         </Box>
 

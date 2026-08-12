@@ -96,6 +96,7 @@ const ProfilePage: React.FC = () => {
         name={`${user?.first_name ?? ''} ${user?.last_name ?? ''}`.trim()}
         avatar={user?.avatar ?? null}
         stats={user?.stats ?? null}
+        listBase={`/profile/${id}`}
         action={
           <Button
             variant="contained"
