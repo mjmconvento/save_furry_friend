@@ -74,8 +74,8 @@ image, so `vendor/`, `.env` and the schema have to be created once. `make bootst
 2. `docker compose up -d --build --wait`. `--wait` blocks until every healthcheck reports healthy,
    so the next step cannot race Postgres creating its cluster on a fresh `pgdata` volume;
 3. `composer install`, plus `php artisan key:generate` when `APP_KEY` is still empty;
-4. `php artisan migrate --seed` — `DatabaseSeeder` calls `TestUserSeeder`, which matches on email,
-   so re-running `make bootstrap` against a live stack is safe;
+4. `php artisan migrate --seed` — see [Sample data](#sample-data); re-running `make bootstrap`
+   against a live stack is safe;
 5. prints the URLs and the seeded login.
 
 Creating the `uploads` bucket is no longer a manual click: the `minio-init` service creates it and
@@ -88,16 +88,51 @@ curl -i http://localhost:8081/up          # Laravel health check
 open http://localhost:3000                # React app
 ```
 
-Log in with a seeded account:
+Log in with a seeded account — all four share the password:
 
-| Email | Password |
+| Email | Name |
 | --- | --- |
-| test@user.com | password112233 |
-| test2@user.com | password112233 |
+| test1@user.com | Marisol Vega |
+| test2@user.com | Tomas Iker Iglesias |
+| test3@user.com | Priya Raman |
+| test4@user.com | Daniel Chukwu Okafor |
+
+Password for every one of them: `password112233`.
 
 `make help` lists the rest: `up`, `down`, `env`, `deps`, `fresh`, `logs`, `shell`, `test`, `lint`.
 Datastore credentials and the published ports live in `./.env` (gitignored, template in
 `.env.docker.example`); everything Laravel reads lives in `backend_full_laravel/.env`.
+
+## Sample data
+
+`migrate --seed` runs `DatabaseSeeder`, which calls two seeders:
+
+| Seeder | Creates |
+| --- | --- |
+| `SampleUserSeeder` | the four accounts above, and makes each one follow the other three |
+| `SamplePostSeeder` | 50 posts across those four authors, three tones and 90 days |
+
+The posts are a deliberate mix: roughly 40% text-only, 40% one image and 20% a gallery of two to
+four, so the feed layout is exercised rather than just populated. Images come from
+`backend_full_laravel/database/seeders/samples/` (eight JPEGs, committed) and are uploaded to MinIO
+on each run, one object per post per image — sharing objects would mean deleting one post blanked
+another's photos.
+
+Two properties make it safe to re-run, which matters because `make bootstrap` seeds every time:
+
+- users are matched on a **fixed UUID**, not on email, so changing a name or address updates the
+  same row instead of orphaning the posts that reference its id. Renaming also fans out to the
+  `authorName` denormalized into every Mongo post, via the same `SyncAuthorName` job the API uses;
+- every seeded post carries `sample: true`, and a re-run deletes exactly those documents and their
+  S3 objects before writing the new 50. **Posts created through the app are never touched** — they
+  have no such field.
+
+The follow graph is not decoration: `PostService::getPosts()` scopes every feed to the accounts you
+follow plus your own posts, so without it you would log in and see only the posts you wrote — and
+with nothing but your own posts on screen there would be no way to see that Edit and Delete are
+owner-only.
+
+To wipe and reseed from scratch: `make fresh`.
 
 ## Day-to-day commands
 
@@ -186,7 +221,10 @@ Shapes worth knowing:
 
 - `POST /api/login` returns `{ message, token, user }`. Send the token as `Authorization: Bearer <token>`.
 - Single resources are wrapped: `{ "data": { … } }`. `GET /api/posts` is **paginated** —
-  `{ data: [...], links, meta }` — and takes `tags[]`, `authorId` and `per_page` (max 50), all validated.
+  `{ data: [...], links, meta }` — and takes `tags[]`, `authorId`, `page` and `per_page` (max 50).
+  The SPA reads `meta.current_page` / `meta.last_page` and offers **Load more**, appending the next
+  page rather than replacing the list; `apiClient` exposes `apiPage` for that, beside `apiRequest`
+  which peels the envelope and is right for everything unpaginated.
 - The feed is always scoped to the follow graph plus your own posts. There is no "everything" mode.
 - `medias` is stored in Mongo as bare object keys and rendered to absolute URLs by `PostResource`.
 - Validation failures are `422` with `{ message, errors: { field: [...] } }`; missing records are `404` JSON.
@@ -196,7 +234,7 @@ No CSRF dance is needed any more:
 ```bash
 TOKEN=$(curl -s -X POST http://localhost:8081/api/login \
   -H 'Content-Type: application/json' \
-  -d '{"email":"test@user.com","password":"password112233"}' | jq -r .token)
+  -d '{"email":"test1@user.com","password":"password112233"}' | jq -r .token)
 
 curl -s -H "Authorization: Bearer $TOKEN" \
   -F 'content=hello' -F 'tags[]=happy_post' -F 'medias[]=@./cat.png' \

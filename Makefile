@@ -52,15 +52,16 @@ deps: ## composer install and generate APP_KEY if missing
 	@grep -q '^APP_KEY=base64:' backend_full_laravel/.env || $(EXEC) php artisan key:generate
 
 # No MinIO step: the minio-init service creates the uploads bucket and its
-# anonymous-download policy. Seeding is idempotent (TestUserSeeder matches on
-# email), so re-running bootstrap on an existing stack is safe.
+# anonymous-download policy. Seeding is idempotent - users are matched on a
+# fixed uuid and the sample posts replace their own previous run - so
+# re-running bootstrap on an existing stack is safe.
 bootstrap: env up deps ## one command: fresh clone -> working app
 	$(EXEC) php artisan migrate --seed
 	@echo
 	@echo "SPA         http://localhost:$(REACT_PORT)"
 	@echo "API health  http://localhost:$(NGINX_PORT)/up"
 	@echo "MinIO       http://localhost:$(MINIO_CONSOLE_PORT)  (MINIO_ROOT_USER / MINIO_ROOT_PASSWORD from ./.env)"
-	@echo "login       test@user.com / password112233"
+	@echo "login       test1@user.com / password112233  (also test2, test3, test4)"
 
 fresh: ## drop every table, re-migrate, re-seed
 	$(EXEC) php artisan migrate:fresh --seed
