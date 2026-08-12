@@ -90,14 +90,15 @@ open http://localhost:3000                # React app
 
 Log in with a seeded account — all four share the password:
 
-| Email | Name |
-| --- | --- |
-| test1@user.com | Marisol Vega |
-| test2@user.com | Tomas Iker Iglesias |
-| test3@user.com | Priya Raman |
-| test4@user.com | Daniel Chukwu Okafor |
+| Email | Name | Role |
+| --- | --- | --- |
+| test1@user.com | Marisol Vega | **admin** |
+| test2@user.com | Tomas Iker Iglesias | user |
+| test3@user.com | Priya Raman | user |
+| test4@user.com | Daniel Chukwu Okafor | user |
 
-Password for every one of them: `password112233`.
+Password for every one of them: `password112233`. Only the admin sees the Users page — see
+[Roles](#roles).
 
 `make help` lists the rest: `up`, `down`, `env`, `deps`, `fresh`, `logs`, `shell`, `test`, `lint`.
 Datastore credentials and the published ports live in `./.env` (gitignored, template in
@@ -109,7 +110,7 @@ Datastore credentials and the published ports live in `./.env` (gitignored, temp
 
 | Seeder | Creates |
 | --- | --- |
-| `SampleUserSeeder` | the four accounts above, and makes each one follow the other three |
+| `SampleUserSeeder` | the four accounts above with their roles, and makes each one follow the other three |
 | `SamplePostSeeder` | 50 posts across those four authors, three tones and 90 days |
 
 The posts are a deliberate mix: roughly 40% text-only, 40% one image and 20% a gallery of two to
@@ -204,12 +205,12 @@ no CSRF, no cookies. Errors are always JSON.
 | Method | Path | Auth |
 | --- | --- | --- |
 | POST | `/api/login` | public, `throttle:login` (5/min per email+IP, 20/min per IP) |
-| POST | `/api/users` | public registration, `throttle:5,1` |
 | POST | `/api/logout` | bearer — revokes the presented token |
-| GET | `/api/users` | bearer |
-| GET/PUT/DELETE | `/api/users/{user}` | bearer, own account only (`UserPolicy`) |
-| GET | `/api/users/search/{keyword}` | bearer |
-| POST | `/api/users/{user}/follow`, `/api/users/{user}/unfollow` | bearer |
+| GET/POST | `/api/users` | bearer, **admin only** (`UserPolicy`) |
+| PUT/DELETE | `/api/users/{user}` | bearer, **admin only** (`UserPolicy`) |
+| GET | `/api/users/{user}` | bearer — any signed-in user, for profile pages |
+| GET | `/api/users/search/{keyword}` | bearer — any signed-in user |
+| POST | `/api/users/{user}/follow`, `/api/users/{user}/unfollow` | bearer — any signed-in user |
 | GET/POST | `/api/posts` | bearer |
 | GET/PUT/DELETE | `/api/posts/{post}` | bearer, own posts only for writes (`PostPolicy`) |
 
@@ -219,7 +220,8 @@ daily in `routes/console.php`.
 
 Shapes worth knowing:
 
-- `POST /api/login` returns `{ message, token, user }`. Send the token as `Authorization: Bearer <token>`.
+- `POST /api/login` returns `{ message, token, user }`, and `user.role` is `admin` or `user`. Send
+  the token as `Authorization: Bearer <token>`.
 - Single resources are wrapped: `{ "data": { … } }`. `GET /api/posts` is **paginated** —
   `{ data: [...], links, meta }` — and takes `tags[]`, `authorId`, `page` and `per_page` (max 50).
   The SPA reads `meta.current_page` / `meta.last_page` and offers **Load more**, appending the next
@@ -243,6 +245,38 @@ curl -s -H "Authorization: Bearer $TOKEN" \
 
 CORS (`config/cors.php`) allows exactly one origin, `env('FRONTEND_URL', 'http://localhost:3000')`,
 so the SPA must be served from wherever `FRONTEND_URL` in `backend_full_laravel/.env` points.
+
+## Roles
+
+Two roles, `admin` and `user`, in `users.role` — a string column defaulting to `user`, cast to
+`App\Enums\UserRole`. No permission package: every question the app asks is "is this person an
+admin?".
+
+Administering accounts is admin-only; seeing and following them is not. So listing, creating,
+editing and deleting users need an admin, while `GET /api/users/{user}`, the people search and
+follow/unfollow stay open to every signed-in user — gating those would break profile pages and the
+follow graph, which are the product rather than its administration.
+
+Three consequences worth knowing:
+
+- **There is no public registration.** `POST /api/users` used to be unauthenticated; it now needs an
+  admin token. Accounts come from the seeder or from an admin on the Users page.
+- **There is no self-service exception.** A non-admin cannot edit or delete even their own account.
+  Nothing in the SPA offers that, and an exception nobody exercises is one to forget about. Note
+  `UpdateUserRequest`'s `current_password` rule validates against the *authenticated* user, so an
+  admin changing someone's password confirms with their own.
+- **`role` is not mass-assignable,** so no request payload can promote an account. Roles are set by
+  `SampleUserSeeder`, which writes through the query builder.
+
+Authorization for these lives in the FormRequests (`IndexUserRequest`, `StoreUserRequest`,
+`UpdateUserRequest`) rather than the controller, because `authorize()` runs *before* validation — an
+unauthorized caller gets `403` instead of a `422` that would disclose whether their payload was
+well-formed. `destroy` has no request class, so it authorizes in the controller.
+
+In the SPA the Users nav group is hidden for non-admins and `/users` is wrapped in `AdminRoute`,
+which redirects — hiding a link does not stop anyone typing the URL. Both are UI only: the role
+is read from `localStorage`, which the user can edit, and editing it just buys an empty page full of
+403s.
 
 ## Troubleshooting
 
