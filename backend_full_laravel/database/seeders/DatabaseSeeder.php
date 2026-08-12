@@ -10,11 +10,18 @@ use Illuminate\Database\Seeder;
  * Default seeder: `migrate --seed` and `db:seed` resolve
  * Database\Seeders\DatabaseSeeder, so its absence is what forced every
  * documented command to spell out `--seeder=`.
+ *
+ * Both children are idempotent - users are matched on a fixed id, and the post
+ * seeder removes its own previous output - so `make bootstrap` is safe to run
+ * against a live stack.
  */
 class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        $this->call(TestUserSeeder::class);
+        $this->call([
+            SampleUserSeeder::class,
+            SamplePostSeeder::class,
+        ]);
     }
 }
