@@ -134,11 +134,11 @@ The copy matches: seventy-four lines about street animals found, fed, trapped, t
 neutral feed carries colony counts, trap nights and feeding rotas rather than shelter opening hours,
 because this is a strays app and the sample data is what everyone judges it by.
 
-Dates matter as much as the mix: six of the fifty are placed inside **today**, spread across the
+Dates matter as much as the mix: six of the seventy-four are placed inside **today**, spread across the
 hours already elapsed, and the corpus is shuffled before it is dated. Without the shuffle the tone
-order in the seeder became chronological order — every recent post happy — and without today's six
-the home page's daily summary read all zeros on a fresh install, which looks broken rather than
-empty. The remaining forty-four walk back over ninety days.
+order in the seeder became chronological order — every recent post happy — and without recent posts
+the home page's summary read all zeros on a fresh install, which looks broken rather than
+empty. The rest walk back over ninety days, so a rolling week catches a handful beyond today's six.
 
 Two properties make it safe to re-run, which matters because `make bootstrap` seeds every time:
 
@@ -246,7 +246,7 @@ no CSRF, no cookies. Errors are always JSON.
 | POST | `/api/users/{user}/follow`, `/api/users/{user}/unfollow` | bearer — any signed-in user |
 | GET | `/api/users/{user}/followers`, `/api/users/{user}/following` | bearer — any signed-in user, paginated |
 | GET | `/api/users/suggestions` | bearer — five prolific authors you do not follow yet |
-| GET | `/api/posts/summary` | bearer — today's post count per tone, feed-scoped |
+| GET | `/api/posts/summary` | bearer — post count per tone over a rolling week, feed-scoped |
 | GET/POST | `/api/posts` | bearer |
 | GET/PUT/DELETE | `/api/posts/{post}` | bearer, own posts only for writes (`PostPolicy`) |
 
@@ -270,10 +270,15 @@ Shapes worth knowing:
   a middle name broke contiguity, and a null middle name left two spaces, so `Marisol Vega` was
   unsearchable by the name the app displays. Capped at five words and ten results, and it never
   returns the person searching.
-- `GET /api/posts/summary` powers the home page: `{ data: { date, counts } }`, where `counts` always
-  carries all three tones, zeros included, so the client never fills a gap. `date` is the day the API
-  counted, in **its own** timezone (`config/app.php`) — the page states it rather than assuming the
-  browser's. It is scoped like the feeds, so a card reading 3 and its feed showing 3 are one claim.
+- `GET /api/posts/summary` powers the home page: `{ data: { from, to, counts } }`, where `counts` always
+  carries all three tones, zeros included, so the client never fills a gap. It counts a **rolling
+  week** — `PostController::SUMMARY_DAYS`, today plus the previous six — over whole days bounded by
+  midnight in the API's **own** timezone (`config/app.php`). Both dates travel with the counts and the
+  page prints them: the browser is on a different clock and does not know how many days the window
+  spans, so widening it here needs no client change. A calendar week was the alternative and lost —
+  Monday to Sunday collapses to near-zero every Monday morning, which is the emptiness the original
+  single-day window suffered from. Scoped like the feeds, so the number counts posts by the same
+  authors clicking through would show you.
 - `medias` is stored in Mongo as bare object keys and rendered to absolute URLs by `PostResource`.
   `avatar` on a user and `authorAvatar` on a post work the same way.
 - `stats` on a user (`posts` / `followers` / `following`) is **null wherever nothing displays it** —
