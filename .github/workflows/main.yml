@@ -1,4 +1,4 @@
-name: main.yml
+name: CI (backend, frontend, compose)
 on: [push, pull_request]
 
 jobs:
@@ -55,6 +55,15 @@ jobs:
                   # talk to MongoDB, so the suite cannot boot without it.
                   extensions: mbstring, pdo, pdo_pgsql, mongodb
                   coverage: none
+
+            # Composer's cache dir is ~/.cache/composer on the runners; keyed on
+            # the lockfile so a dependency bump misses and everything else hits.
+            - name: Cache Composer downloads
+              uses: actions/cache@v4
+              with:
+                  path: ~/.cache/composer
+                  key: composer-${{ hashFiles('backend_full_laravel/composer.lock') }}
+                  restore-keys: composer-
 
             - name: Install dependencies
               run: composer install --no-progress --prefer-dist
@@ -122,3 +131,25 @@ jobs:
               run: yarn build
               env:
                   VITE_API_BASE_URL: http://localhost:8081
+
+    # The stack itself is CI-visible: a broken bind mount, a floating image tag
+    # or a missing key in .env.docker.example used to survive indefinitely
+    # because nothing in CI ever read docker-compose.yml.
+    compose:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v7
+
+            # Compose interpolates credentials and published ports from ./.env,
+            # which is gitignored, and ${VAR:?} aborts when one is missing - so
+            # this step also proves .env.docker.example still covers every key.
+            - name: Create root .env from the committed example
+              run: cp .env.docker.example .env
+
+            - name: Validate docker-compose.yml
+              run: docker compose config -q
+
+            - name: Build images
+              run: docker compose build
