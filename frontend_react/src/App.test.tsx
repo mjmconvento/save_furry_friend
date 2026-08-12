@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ThemeProvider } from '@mui/material/styles';
@@ -340,6 +340,17 @@ describe('home page summary', () => {
     ).toBeInTheDocument();
   });
 
+  it('flags the heartbreaking feed at the link, not just behind it', async () => {
+    withCounts({ happy_post: 1, neutral_post: 0, heartbreaking_post: 2 });
+    renderApp();
+
+    const caution = await screen.findByText(/upsetting content/i);
+    const card = caution.closest('a');
+
+    // On that card specifically, so it warns before the click as well as after.
+    expect(card).toHaveAttribute('href', '/heartbreaking_posts');
+  });
+
   it('surfaces a failed summary without blanking the page', async () => {
     routes = {
       ...routes,
@@ -465,14 +476,23 @@ describe('heartbreaking content warning', () => {
     expect(screen.queryByText(/before you read on/i)).not.toBeInTheDocument();
   });
 
-  it('does not warn twice in the same tab', async () => {
-    // Acknowledgement is per tab, so leaving and coming back a minute later must
-    // not warn again even without the box ticked.
-    sessionStorage.setItem('heartbreakingWarningAcknowledged', 'true');
+  it('warns again on a later visit, unless the box was ticked', async () => {
+    // Regression: continuing once used to be remembered for the whole browser
+    // session, so the warning never appeared again - indistinguishable from it
+    // being broken. Only the account preference may suppress it.
     renderApp();
 
+    await userEvent.click(
+      await screen.findByRole('button', { name: /show the posts/i })
+    );
     await waitFor(() => expect(askedForTheFeed()).toBe(true));
-    expect(screen.queryByText(/before you read on/i)).not.toBeInTheDocument();
+
+    // Leave and come back, as navigating away and returning would.
+    cleanup();
+    window.history.pushState({}, '', '/heartbreaking_posts');
+    renderApp();
+
+    expect(await screen.findByText(/before you read on/i)).toBeInTheDocument();
   });
 
   it('still shows the posts when saving the preference fails', async () => {

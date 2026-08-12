@@ -18,10 +18,16 @@ import { useCountUp } from '../hook/useCountUp';
 import ErrorList from '../component/template/ErrorList';
 
 /** Left to right in the order the sidebar lists the feeds. */
-const TONES: { tag: PostTag; to: string }[] = [
+const TONES: { tag: PostTag; to: string; caution?: string }[] = [
   { tag: POST_TAGS.happy, to: '/happy_posts' },
   { tag: POST_TAGS.neutral, to: '/neutral_posts' },
-  { tag: POST_TAGS.heartbreaking, to: '/heartbreaking_posts' },
+  {
+    tag: POST_TAGS.heartbreaking,
+    to: '/heartbreaking_posts',
+    // Said at the link as well as behind it: the feed itself asks for an
+    // explicit yes, but nobody should have to click to find out why.
+    caution: 'Upsetting content — you will be warned first',
+  },
 ];
 
 interface ToneCardProps {
@@ -29,9 +35,16 @@ interface ToneCardProps {
   to: string;
   count: number;
   loading: boolean;
+  caution?: string;
 }
 
-const ToneCard: React.FC<ToneCardProps> = ({ tag, to, count, loading }) => {
+const ToneCard: React.FC<ToneCardProps> = ({
+  tag,
+  to,
+  count,
+  loading,
+  caution,
+}) => {
   const { tone, label } = TONE_BY_TAG[tag];
   // The hook runs regardless of `loading` so the number animates the moment the
   // real count replaces the zero it starts from.
@@ -76,6 +89,15 @@ const ToneCard: React.FC<ToneCardProps> = ({ tag, to, count, loading }) => {
         <Typography variant="body2" color="text.muted" sx={{ mt: 0.5 }}>
           {count === 1 ? 'post today' : 'posts today'}
         </Typography>
+
+        {caution !== undefined && (
+          <Typography
+            variant="caption"
+            sx={{ mt: 1, display: 'block', color: `tone.${tone}.main` }}
+          >
+            {caution}
+          </Typography>
+        )}
       </CardActionArea>
     </Card>
   );
@@ -136,13 +158,14 @@ const HomePage: React.FC = () => {
         spacing={2}
         alignItems="stretch"
       >
-        {TONES.map(({ tag, to }) => (
+        {TONES.map(({ tag, to, caution }) => (
           <ToneCard
             key={tag}
             tag={tag}
             to={to}
             count={counts[tag] ?? 0}
             loading={loading}
+            caution={caution}
           />
         ))}
       </Stack>

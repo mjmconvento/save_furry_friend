@@ -15,54 +15,33 @@ import { useAuth } from '../../AuthContext';
 import { useNotify } from '../template/ToastProvider';
 
 /**
- * Acknowledging lasts the tab, so navigating away and back does not re-warn
- * someone who read the warning a minute ago. Ticking the box is what makes it
- * permanent, and that lives on the account rather than here.
- */
-const SESSION_KEY = 'heartbreakingWarningAcknowledged';
-
-const readSessionAcknowledgement = (): boolean => {
-  try {
-    return sessionStorage.getItem(SESSION_KEY) === 'true';
-  } catch {
-    // Storage can be unavailable (private mode, blocked cookies). Warning again
-    // is the acceptable failure; crashing the page is not.
-    return false;
-  }
-};
-
-const rememberForSession = (): void => {
-  try {
-    sessionStorage.setItem(SESSION_KEY, 'true');
-  } catch {
-    // As above: the warning simply reappears next navigation.
-  }
-};
-
-/**
  * Content warning for the heartbreaking feed.
  *
  * `children` is not rendered until the reader continues, which is the whole
  * point: `PostFeed` fetches on mount, so a banner layered over a live feed would
  * load the posts and their photos behind the notice warning about them.
+ *
+ * The warning appears on **every** visit until the account says otherwise, from
+ * whichever link brought the reader here. It briefly remembered "continued" for
+ * the whole browser session, which meant one click silently suppressed it for
+ * ever after - a shortcut nobody asked for, and indistinguishable from the
+ * warning being broken. The checkbox is the only way to stop it, because that is
+ * the one the reader chooses deliberately.
  */
 const HeartbreakingWarning: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
   const { preferences, setPreference } = useAuth();
   const notify = useNotify();
-  const [acknowledged, setAcknowledged] = useState<boolean>(
-    readSessionAcknowledgement
-  );
+  const [continued, setContinued] = useState<boolean>(false);
   const [remember, setRemember] = useState<boolean>(false);
 
-  if (preferences.hide_heartbreaking_warning === true || acknowledged) {
+  if (preferences.hide_heartbreaking_warning === true || continued) {
     return <>{children}</>;
   }
 
   const proceed = () => {
-    rememberForSession();
-    setAcknowledged(true);
+    setContinued(true);
 
     if (!remember) {
       return;
@@ -90,8 +69,8 @@ const HeartbreakingWarning: React.FC<{ children: ReactNode }> = ({
         </Stack>
 
         <Typography variant="body1" sx={{ mb: 1.5 }}>
-          These are the hard stories: animals nobody came back for, illness,
-          neglect, endings that are not happy ones.
+          These are the hard stories: strays nobody came back for, injuries left
+          untreated, animals that ran out of time.
         </Typography>
         <Typography variant="body1" color="text.muted" sx={{ mb: 3 }}>
           They are here because they are true and because they matter. But they
