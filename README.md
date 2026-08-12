@@ -88,7 +88,7 @@ curl -i http://localhost:8081/up          # Laravel health check
 open http://localhost:3000                # React app
 ```
 
-Log in with a seeded account — all four share the password:
+Log in with a seeded account — all eight share the password:
 
 | Email | Name | Roles |
 | --- | --- | --- |
@@ -96,6 +96,10 @@ Log in with a seeded account — all four share the password:
 | test2@user.com | Tomas Iker Iglesias | user |
 | test3@user.com | Priya Raman | user |
 | test4@user.com | Daniel Chukwu Okafor | user |
+| test5@user.com | Ama Boateng | user |
+| test6@user.com | Kwame Osei Mensah | user |
+| test7@user.com | Lucia Ferrer | user |
+| test8@user.com | Ines Duarte | user |
 
 Password for every one of them: `password112233`. Only the admin sees the Users page — see
 [Roles](#roles).
@@ -110,22 +114,23 @@ Datastore credentials and the published ports live in `./.env` (gitignored, temp
 
 | Seeder | Creates |
 | --- | --- |
-| `SampleUserSeeder` | the four accounts above with their roles, and makes each one follow the other three |
-| `SamplePostSeeder` | 50 posts across those four authors, three tones and 90 days |
+| `SampleUserSeeder` | the eight accounts above with their roles, and a **partial** follow graph: each one follows the next three, wrapping round |
+| `SamplePostSeeder` | 74 posts across those eight authors, three tones and 90 days |
 
-The posts are a deliberate mix: roughly 40% text-only, 40% one image and 20% a gallery of two to
-four, so the feed layout is exercised rather than just populated.
+The posts are a deliberate mix: roughly 50% text-only, 35% one image and 15% a gallery of two to
+four, so the feed layout is exercised rather than just populated — sized so 74 posts still fit inside
+the committed photo supply.
 
-**Every photo is of a street animal, and no two posts share one.** `samples/` holds 60 committed
+**Every photo is of a street animal, and no two posts share one.** `samples/` holds 56 committed
 JPEGs — strays, colony cats and street dogs from LoremFlickr's keyword search, each carrying the small
 CC attribution badge its licence asks for. The seeder consumes that
-queue rather than cycling it, spending one photo per media slot — 57 of the 60 at the current
+queue rather than cycling it, spending one photo per media slot — 42 of the 56 at the current
 distribution. If the plan ever needs more slots than there are photos the seeder throws, naming both
 numbers, because silently cycling is exactly the repetition the queue exists to prevent. Each is
 uploaded as its own S3 object per post: sharing objects would be smaller, but deleting one post would
-blank another's pictures. `samples/avatars/` holds four more, one per sample account.
+blank another's pictures. `samples/avatars/` holds eight more, one per sample account.
 
-The copy matches: fifty lines about street animals found, fed, trapped, treated, homed or lost. The
+The copy matches: seventy-four lines about street animals found, fed, trapped, treated, homed or lost. The
 neutral feed carries colony counts, trap nights and feeding rotas rather than shelter opening hours,
 because this is a strays app and the sample data is what everyone judges it by.
 
@@ -141,13 +146,20 @@ Two properties make it safe to re-run, which matters because `make bootstrap` se
   same row instead of orphaning the posts that reference its id. Renaming also fans out to the
   `authorName` denormalized into every Mongo post, via the same `SyncAuthorName` job the API uses;
 - every seeded post carries `sample: true`, and a re-run deletes exactly those documents and their
-  S3 objects before writing the new 50. **Posts created through the app are never touched** — they
+  S3 objects before writing the new 74. **Posts created through the app are never touched** — they
   have no such field.
 
 The follow graph is not decoration: `PostService::getPosts()` scopes every feed to the accounts you
 follow plus your own posts, so without it you would log in and see only the posts you wrote — and
 with nothing but your own posts on screen there would be no way to see that Edit and Delete are
 owner-only.
+
+It is **partial** on purpose. Everyone-follows-everyone leaves "Who to follow" empty by construction
+and every Follow button already pressed, so each account follows only the next three in the list,
+wrapping round. That also makes it asymmetric — the people who follow you are not the people you
+follow — which is what gives the two list pages different contents. `upsert` adds and updates but
+never deletes, so the seeder clears the sample accounts' own rows first; without that a graph from a
+previous shape survives a re-seed.
 
 To wipe and reseed from scratch: `make fresh`.
 
@@ -232,6 +244,8 @@ no CSRF, no cookies. Errors are always JSON.
 | PATCH | `/api/user/preferences` | bearer — **your own** account, display preferences only |
 | POST/DELETE | `/api/user/avatar` | bearer — **your own** picture only |
 | POST | `/api/users/{user}/follow`, `/api/users/{user}/unfollow` | bearer — any signed-in user |
+| GET | `/api/users/{user}/followers`, `/api/users/{user}/following` | bearer — any signed-in user, paginated |
+| GET | `/api/users/suggestions` | bearer — five prolific authors you do not follow yet |
 | GET | `/api/posts/summary` | bearer — today's post count per tone, feed-scoped |
 | GET/POST | `/api/posts` | bearer |
 | GET/PUT/DELETE | `/api/posts/{post}` | bearer, own posts only for writes (`PostPolicy`) |
@@ -262,9 +276,15 @@ Shapes worth knowing:
   browser's. It is scoped like the feeds, so a card reading 3 and its feed showing 3 are one claim.
 - `medias` is stored in Mongo as bare object keys and rendered to absolute URLs by `PostResource`.
   `avatar` on a user and `authorAvatar` on a post work the same way.
-- `stats` on a user (`posts` / `followers` / `following`) is **null on lists and search** and filled
-  in only by `GET /api/users/{id}`, which is the only surface that displays it — three extra queries
-  per row would be an N+1 nobody notices until the list grows.
+- `stats` on a user (`posts` / `followers` / `following`) is **null wherever nothing displays it** —
+  the admin user index, people search — and filled in by `GET /api/users/{id}` and the follower,
+  following and suggestion lists, which show it on every row. Those fill it in **bulk**: three
+  aggregate queries for the whole page, not three per person, because per-row hydration is an N+1
+  nobody notices until the list grows. The fields are per-request properties on the model rather than
+  columns, so nothing can accidentally persist them.
+- `is_following` is likewise per row, and always relative to **the viewer**, not to whoever's list you
+  are reading: on somebody else's followers page each button reflects your own relationship with that
+  person. Your own row never carries it — you cannot follow yourself.
 - Validation failures are `422` with `{ message, errors: { field: [...] } }`; missing records are `404` JSON.
 
 No CSRF dance is needed any more:
@@ -370,6 +390,22 @@ account, a changed address, and opening a valid link twice.
 `/my_profile` and `/profile/:id` share one `ProfileHeader`: picture, name, and post / follower /
 following counts. They differ only by their action — an upload control on your own, a follow button
 on somebody else's — so they are one component rather than two that drift.
+
+### Followers, following and who to follow
+
+The follower and following counts are links, to `/profile/:id/followers` and `/following`. Both sides
+of the graph are one `FollowListPage` and one route shape: `/my_profile` links here with its own id
+rather than needing a second pair of routes, and the heading names the person when it is not you.
+
+Each row is a `PersonRow` — picture, name, `9 posts · 3 followers`, and a Follow button that flips in
+place rather than reloading the list, the same optimistic-with-rollback shape as the profile button.
+Clicking the row goes to their profile. Your own row has no button.
+
+**Who to follow** appears under your own following list, never on somebody else's, where it would be a
+non sequitur. It ranks by post count over the accounts you do not follow yet, from
+`GET /api/users/suggestions`. The ranking slice is deliberately wider than the five it returns —
+taking exactly five would come back empty the moment the five busiest are all followed already, which
+is the state the seeded graph used to start in.
 
 Uploading is the **second** narrow self-service exception, alongside preferences: `POST` and `DELETE
 /api/user/avatar` act on the token's own account, take no `{user}` parameter, and write one column.
