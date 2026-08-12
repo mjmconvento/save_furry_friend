@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\PostController;
+use App\Http\Controllers\User\AvatarController;
 use App\Http\Controllers\User\FollowController;
 use App\Http\Controllers\User\UserController;
 use App\Http\Controllers\User\UserPreferenceController;
@@ -25,6 +26,8 @@ Route::middleware('auth:sanctum')->group(function (): void {
     // stays admin-only on `users` below.
     Route::patch('user/preferences', [UserPreferenceController::class, 'update'])
         ->name('user.preferences.update');
+    Route::post('user/avatar', [AvatarController::class, 'store'])->name('user.avatar.store');
+    Route::delete('user/avatar', [AvatarController::class, 'destroy'])->name('user.avatar.destroy');
 
     // Same rule as `users/search` above: declared before apiResource('posts'),
     // or `summary` is swallowed by the {post} wildcard.

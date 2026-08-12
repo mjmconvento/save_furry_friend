@@ -17,6 +17,10 @@ use MongoDB\Laravel\Eloquent\Model;
  * @property ?Carbon $updatedAt
  * @property array<string> $tags
  * @property array<string> $medias
+ * @property ?string $authorAvatar
+ *   Not stored: filled in from Postgres by `PostService::attachAuthorAvatars()`
+ *   so a changed picture cannot leave old posts showing the old one. Absent from
+ *   `$fillable`, and these instances are never saved.
  *
  * @method static ?Post find(string $id)
  */

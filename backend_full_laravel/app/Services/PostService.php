@@ -39,7 +39,44 @@ class PostService
         $paginator = $query->orderBy('createdAt', 'desc')
             ->paginate($perPage);
 
+        $this->attachAuthorAvatars($paginator->items());
+
         return $paginator;
+    }
+
+    /**
+     * Fills in each post's author picture from Postgres in a single query.
+     *
+     * `authorName` is denormalized into the documents and needs a write-side
+     * fan-out to stay honest - the staleness this codebase already carries a job
+     * for. Avatars deliberately do not repeat that: they are read at render time,
+     * so changing a picture cannot leave old posts showing the old one, and there
+     * is nothing to backfill. The cost is one `whereIn` per page.
+     *
+     * The value is set on the in-memory model only; these instances are never
+     * saved, so nothing reaches the documents.
+     *
+     * @param array<int, Post> $posts
+     */
+    public function attachAuthorAvatars(array $posts): void
+    {
+        if ($posts === []) {
+            return;
+        }
+
+        $authorIds = array_values(array_unique(array_map(
+            static fn (Post $post): string => $post->authorId,
+            $posts,
+        )));
+
+        /** @var array<string, ?string> $avatars */
+        $avatars = User::whereIn('id', $authorIds)
+            ->pluck('avatar', 'id')
+            ->all();
+
+        foreach ($posts as $post) {
+            $post->authorAvatar = $avatars[$post->authorId] ?? null;
+        }
     }
 
     /**

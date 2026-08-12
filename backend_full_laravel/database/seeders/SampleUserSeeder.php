@@ -9,6 +9,7 @@ use App\Jobs\SyncAuthorName;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 
 class SampleUserSeeder extends Seeder
 {
@@ -64,8 +65,9 @@ class SampleUserSeeder extends Seeder
     public function run(): void
     {
         $now = now();
+        $avatars = $this->avatarPaths();
 
-        foreach (self::USERS as $user) {
+        foreach (self::USERS as $index => $user) {
             $values = [
                 'email' => $user['email'],
                 'first_name' => $user['first_name'],
@@ -80,6 +82,7 @@ class SampleUserSeeder extends Seeder
                 'password' => Hash::make(self::PASSWORD),
                 'email_verified_at' => $now,
                 'updated_at' => $now,
+                'avatar' => $this->uploadAvatar($user['id'], $avatars[$index] ?? null),
             ];
 
             // Matched on the fixed id, so a re-run updates the same row - which
@@ -108,6 +111,37 @@ class SampleUserSeeder extends Seeder
         }
 
         $this->followEachOther($now);
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function avatarPaths(): array
+    {
+        $paths = glob(__DIR__ . '/samples/avatars/*.jpg');
+
+        return $paths === false ? [] : $paths;
+    }
+
+    /**
+     * Uploaded on every run, replacing the previous object rather than
+     * accumulating one per re-seed. Returns the bare key the column stores; the
+     * URL is rendered by `UserResource`.
+     *
+     * A missing file leaves the account without a picture, which the SPA renders
+     * as initials - a seeder is not the place to fail over a decoration.
+     */
+    private function uploadAvatar(string $userId, ?string $path): ?string
+    {
+        if ($path === null || ! is_file($path)) {
+            return null;
+        }
+
+        $key = $userId . '/avatar.' . pathinfo($path, PATHINFO_EXTENSION);
+
+        Storage::disk('s3')->put($key, (string) file_get_contents($path));
+
+        return $key;
     }
 
     /**

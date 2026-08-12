@@ -67,6 +67,8 @@ class PostController extends Controller
 
     public function show(Post $post): PostResource
     {
+        $this->postService->attachAuthorAvatars([$post]);
+
         return new PostResource($post);
     }
 
@@ -75,7 +77,10 @@ class PostController extends Controller
         /** @var User $author */
         $author = $request->user();
 
-        return new PostResource($this->postService->storePost($request, $author));
+        $post = $this->postService->storePost($request, $author);
+        $this->postService->attachAuthorAvatars([$post]);
+
+        return new PostResource($post);
     }
 
     public function update(UpdatePostRequest $request, Post $post): PostResource
@@ -83,6 +88,9 @@ class PostController extends Controller
         $this->authorize('update', $post);
 
         $this->postService->updatePost($request, $post);
+        // After the save, never before: the attribute is not persisted, and
+        // hydrating first would write it into the document.
+        $this->postService->attachAuthorAvatars([$post]);
 
         return new PostResource($post);
     }

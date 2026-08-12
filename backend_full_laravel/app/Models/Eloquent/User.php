@@ -26,6 +26,7 @@ use Laravel\Sanctum\HasApiTokens;
  * @property string $password
  * @property Collection<int, UserRole> $roles
  * @property array<string, mixed> $preferences
+ * @property ?string $avatar bare S3 object key, rendered to a URL by UserResource
  */
 class User extends Authenticatable
 {

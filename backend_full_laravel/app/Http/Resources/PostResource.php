@@ -23,6 +23,12 @@ class PostResource extends JsonResource
             'id' => $this->id,
             'authorId' => $this->authorId,
             'authorName' => $this->authorName,
+            // Read from Postgres at render time rather than denormalized, so it
+            // cannot go stale. Null when the author has no picture, or when the
+            // caller did not hydrate it.
+            'authorAvatar' => $this->authorAvatar === null
+                ? null
+                : Storage::disk('s3')->url($this->authorAvatar),
             'content' => $this->content,
             'tags' => $this->tags ?? [],
             'medias' => array_map(

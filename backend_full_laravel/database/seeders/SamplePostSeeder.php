@@ -10,6 +10,7 @@ use Illuminate\Http\File;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use RuntimeException;
 
 /**
  * Fills the three category feeds with a realistic corpus: 50 posts spread over
@@ -121,18 +122,33 @@ class SamplePostSeeder extends Seeder
             $this->note(sprintf('SamplePostSeeder: removed %d posts from a previous run.', $removed));
         }
 
-        $images = $this->images();
         $plan = $this->plan($authors);
+        $queue = $this->images();
+        $slots = array_sum(array_column($plan, 'mediaCount'));
+
+        // Loud rather than silently cycling: repeated photos across the corpus
+        // is exactly the thing this queue exists to prevent, so a shortfall has
+        // to be visible.
+        if ($slots > count($queue)) {
+            throw new RuntimeException(sprintf(
+                'SamplePostSeeder needs %d unique photos for %d media slots, but %s holds %d. Add more images or lower the media distribution.',
+                $slots,
+                $slots,
+                'database/seeders/samples',
+                count($queue),
+            ));
+        }
+
         $documents = [];
 
-        foreach ($plan as $index => $entry) {
+        foreach ($plan as $entry) {
             $documents[] = [
                 '_id' => (string) Str::uuid(),
                 'authorId' => $entry['authorId'],
                 'authorName' => $entry['authorName'],
                 'content' => $entry['content'],
                 'tags' => [$entry['tag']],
-                'medias' => $this->uploadMedia($entry['authorId'], $entry['mediaCount'], $images, $index),
+                'medias' => $this->uploadMedia($entry['authorId'], $entry['mediaCount'], $queue),
                 'createdAt' => $entry['createdAt'],
                 'updatedAt' => $entry['createdAt'],
                 self::MARKER => true,
@@ -142,9 +158,11 @@ class SamplePostSeeder extends Seeder
         DB::connection('mongodb')->table('posts')->insert($documents);
 
         $this->note(sprintf(
-            'SamplePostSeeder: created %d posts across %d authors.',
+            'SamplePostSeeder: created %d posts across %d authors, using %d of %d photos.',
             count($documents),
             count($authors),
+            $slots,
+            $slots + count($queue),
         ));
     }
 
@@ -235,23 +253,30 @@ class SamplePostSeeder extends Seeder
     }
 
     /**
-     * One object per post per image, matching what the API does on upload.
-     * Sharing objects between posts would be smaller but wrong: deleting one
-     * post deletes its keys, which would blank the images on the others.
+     * One object per post per image, matching what the API does on upload, and
+     * one *source photo* per slot: the queue is consumed rather than cycled, so
+     * no two posts in the corpus show the same picture.
      *
-     * @param  list<string>  $images
+     * Sharing S3 objects between posts would be smaller but wrong for a second
+     * reason: deleting one post deletes its keys, which would blank the images
+     * on the others.
+     *
+     * @param  list<string>  $queue  consumed by reference
      * @return list<string>
      */
-    private function uploadMedia(string $authorId, int $count, array $images, int $index): array
+    private function uploadMedia(string $authorId, int $count, array &$queue): array
     {
-        if ($count === 0 || $images === []) {
-            return [];
-        }
-
         $keys = [];
 
         for ($i = 0; $i < $count; $i++) {
-            $path = $images[($index + $i) % count($images)];
+            $path = array_shift($queue);
+
+            if ($path === null) {
+                // Guarded before the run starts; reaching here would mean the
+                // plan and the photo count disagree.
+                break;
+            }
+
             $key = Storage::disk('s3')->putFile($authorId, new File($path));
 
             if (is_string($key)) {

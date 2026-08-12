@@ -38,11 +38,15 @@ class UserController extends Controller
         );
     }
 
+    /**
+     * The profile page: the only place that pays for the counts.
+     */
     public function show(User $user): UserResource
     {
         return new UserResource(
             $user,
-            $this->userService->isFollowing($this->authUser(), $user)
+            $this->userService->isFollowing($this->authUser(), $user),
+            $this->userService->profileStats($user),
         );
     }
 

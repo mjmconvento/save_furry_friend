@@ -8,6 +8,7 @@ use App\Http\Requests\User\StoreUserRequest;
 use App\Http\Requests\User\UpdateUserRequest;
 use App\Jobs\SyncAuthorName;
 use App\Models\Eloquent\User;
+use App\Models\Mongo\Post;
 use App\Services\PostService;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -31,6 +32,24 @@ class UserService
         return $viewer->following()
             ->wherePivot('followed_id', $user->id)
             ->exists();
+    }
+
+    /**
+     * Counts for a profile header. Three queries, one of them against Mongo,
+     * which is why only `show` asks for them - doing this per row on the user
+     * index would be an N+1 nobody would notice until the list grew.
+     *
+     * @return array{posts: int, followers: int, following: int}
+     */
+    public function profileStats(User $user): array
+    {
+        return [
+            'posts' => Post::where('authorId', $user->id)->count(),
+            'followers' => $user->followers()
+                ->count(),
+            'following' => $user->following()
+                ->count(),
+        ];
     }
 
     public function storeUser(StoreUserRequest $request): User
