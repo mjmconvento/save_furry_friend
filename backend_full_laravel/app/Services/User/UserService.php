@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\User;
 
+use App\Http\Requests\Auth\RegisterRequest;
 use App\Http\Requests\User\StoreUserRequest;
 use App\Http\Requests\User\UpdateUserRequest;
 use App\Jobs\SyncAuthorName;
@@ -53,6 +54,20 @@ class UserService
     }
 
     public function storeUser(StoreUserRequest $request): User
+    {
+        return $this->createAccount($request);
+    }
+
+    /**
+     * The one place accounts are created, shared by admin creation
+     * (`StoreUserRequest`) and public registration (`RegisterRequest`).
+     *
+     * The two requests validate the same field names but answer different
+     * questions - who may call them - so they stay separate classes while the
+     * writing lives here. Neither can set `roles` or `preferences`: they are not
+     * fillable, and nothing below touches them.
+     */
+    public function createAccount(StoreUserRequest|RegisterRequest $request): User
     {
         $user = new User();
         $user->id = (string) Str::uuid();

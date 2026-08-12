@@ -1,5 +1,9 @@
 <?php
 
+// The SPA origin, in one place: CORS allows it, and email verification hands the
+// browser back to it once a signed link has been opened.
+$frontendUrl = env('FRONTEND_URL', 'http://localhost:3000');
+
 return [
     /*
     |--------------------------------------------------------------------------
@@ -20,7 +24,9 @@ return [
 
     // Single source of truth for the SPA origin; the compose stack injects
     // FRONTEND_URL so remapping the SPA port cannot silently break login.
-    'allowed_origins' => [env('FRONTEND_URL', 'http://localhost:3000')],
+    'frontend_url' => $frontendUrl,
+
+    'allowed_origins' => [$frontendUrl],
 
     'allowed_origins_patterns' => [],
 

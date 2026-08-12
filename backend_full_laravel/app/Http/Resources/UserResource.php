@@ -49,6 +49,7 @@ class UserResource extends JsonResource
      *     middle_name: ?string,
      *     last_name: string,
      *     email: string,
+     *     email_verified: bool,
      *     avatar: ?string,
      *     roles: list<string>,
      *     preferences: array<string, bool>,
@@ -64,6 +65,10 @@ class UserResource extends JsonResource
             'middle_name' => $this->user->middle_name,
             'last_name' => $this->user->last_name,
             'email' => $this->user->email,
+            // A boolean, not the timestamp: the SPA only decides whether to show
+            // the "unverified" banner, and a date it never renders is one more
+            // thing to keep in step.
+            'email_verified' => $this->user->hasVerifiedEmail(),
             // Stored as a bare object key, like post media, so the bucket can
             // move without a data migration.
             'avatar' => $this->user->avatar === null

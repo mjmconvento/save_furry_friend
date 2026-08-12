@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Auth\EmailVerificationController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\User\AvatarController;
@@ -12,12 +13,30 @@ use Illuminate\Support\Facades\Route;
 
 Route::post('login', [AuthController::class, 'login'])->middleware('throttle:login')->name('login');
 
+// Public, and separate from the admin-only `POST /api/users` on purpose:
+// registration creates an account for the caller, account administration creates
+// one for somebody else.
+Route::post('register', [AuthController::class, 'register'])
+    ->middleware('throttle:5,1')
+    ->name('register');
+
+// Opened from an email in a browser, so it cannot require a bearer token: the
+// signature in the URL is its authority. `signed` rejects a tampered or expired
+// link before the controller runs.
+Route::get('email/verify/{id}/{hash}', [EmailVerificationController::class, 'verify'])
+    ->middleware(['signed', 'throttle:6,1'])
+    ->name('verification.verify');
+
 Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('logout', [AuthController::class, 'logout'])->name('logout');
 
     // These MUST be declared BEFORE apiResource('users'), or `search` is
     // swallowed by the {user} wildcard.
     Route::get('users/search/{keyword}', [UserController::class, 'search'])->name('users.search');
+
+    Route::post('email/verification-notification', [EmailVerificationController::class, 'send'])
+        ->middleware('throttle:6,1')
+        ->name('verification.send');
     Route::post('users/{user}/follow', [FollowController::class, 'follow'])->name('users.follow');
     Route::post('users/{user}/unfollow', [FollowController::class, 'unfollow'])->name('users.unfollow');
 

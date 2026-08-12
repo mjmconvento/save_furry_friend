@@ -8,6 +8,7 @@ use App\Casts\UserRoles;
 use App\Enums\UserPreference;
 use App\Enums\UserRole;
 use Database\Factories\Eloquent\UserFactory;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -28,7 +29,7 @@ use Laravel\Sanctum\HasApiTokens;
  * @property array<string, mixed> $preferences
  * @property ?string $avatar bare S3 object key, rendered to a URL by UserResource
  */
-class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmail
 {
     use HasApiTokens;
     /** @use HasFactory<UserFactory> */
