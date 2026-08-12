@@ -9,6 +9,7 @@ import {
   Typography,
   Alert,
 } from '@mui/material';
+import { Link } from 'react-router-dom';
 
 const LoginForm = () => {
   const { login } = useAuth()!;
@@ -73,6 +74,9 @@ const LoginForm = () => {
               Login
             </Button>
           </form>
+          <Typography variant="body2" sx={{ mt: 2 }}>
+            New here? <Link to="/register">Create an account</Link>
+          </Typography>
         </CardContent>
       </Card>
     </Box>

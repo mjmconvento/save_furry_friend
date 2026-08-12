@@ -16,6 +16,7 @@ export interface User {
   middle_name: string | null;
   last_name: string;
   email: string;
+  email_verified: boolean;
   /** Additive, so an admin carries `user` too. Test membership, not equality. */
   roles: UserRole[];
   preferences: UserPreferences;

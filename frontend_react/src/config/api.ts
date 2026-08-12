@@ -15,3 +15,5 @@ export const POSTS_ENDPOINT = 'api/posts';
 // `api/users` collection, and takes no id.
 export const PREFERENCES_ENDPOINT = 'api/user/preferences';
 export const AVATAR_ENDPOINT = 'api/user/avatar';
+export const REGISTER_ENDPOINT = 'api/register';
+export const VERIFICATION_ENDPOINT = 'api/email/verification-notification';

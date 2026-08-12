@@ -1,6 +1,7 @@
 import { lazy } from 'react';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import LoginRoute from './route/LoginRoute';
+import RegisterRoute from './route/RegisterRoute';
 import AdminRoute from './route/AdminRoute';
 import ProtectedLayout from './route/ProtectedLayout';
 
@@ -24,6 +25,7 @@ const App = () => (
   <BrowserRouter>
     <Routes>
       <Route path="/login" element={<LoginRoute />} />
+      <Route path="/register" element={<RegisterRoute />} />
       <Route element={<ProtectedLayout />}>
         <Route index element={<HomePage />} />
         <Route path="/happy_posts" element={<HappyPostPage />} />

@@ -783,3 +783,141 @@ describe('profile picture and header', () => {
     ).not.toBeNull();
   });
 });
+
+describe('registration and email verification', () => {
+  const account = (over: Record<string, unknown> = {}) => ({
+    id: 'user-1',
+    first_name: 'New',
+    middle_name: null,
+    last_name: 'Volunteer',
+    email: 'new@user.com',
+    email_verified: false,
+    avatar: null,
+    roles: ['user'],
+    preferences: { hide_heartbreaking_warning: false },
+    is_following: false,
+    stats: { posts: 0, followers: 0, following: 0 },
+    ...over,
+  });
+
+  const fillForm = async () => {
+    await userEvent.type(await screen.findByLabelText(/first name/i), 'New');
+    await userEvent.type(screen.getByLabelText(/last name/i), 'Volunteer');
+    await userEvent.type(screen.getByLabelText(/email/i), 'new@user.com');
+    await userEvent.type(screen.getByLabelText(/^password/i), 'password112233');
+    await userEvent.type(
+      screen.getByLabelText(/confirm password/i),
+      'password112233'
+    );
+    await userEvent.click(
+      screen.getByRole('button', { name: /create account/i })
+    );
+  };
+
+  it('offers a way to register from the login screen', async () => {
+    window.history.pushState({}, '', '/login');
+    renderApp();
+
+    expect(
+      await screen.findByRole('link', { name: /create an account/i })
+    ).toHaveAttribute('href', '/register');
+  });
+
+  it('registers and signs the new account straight in', async () => {
+    routes = {
+      'api/register': {
+        status: 201,
+        body: { message: 'Registered', token: 'new-token', user: account() },
+      },
+      ...routes,
+    };
+    window.history.pushState({}, '', '/register');
+    renderApp();
+
+    await fillForm();
+
+    // No second trip through login: the register response carried a token.
+    await waitFor(() =>
+      expect(localStorage.getItem('token')).toBe('new-token')
+    );
+    await screen.findByRole('navigation', { name: /sidebar/i });
+  });
+
+  it('reports why a registration was refused', async () => {
+    routes = {
+      'api/register': {
+        status: 422,
+        body: {
+          message: 'The email has already been taken.',
+          errors: { email: ['The email has already been taken.'] },
+        },
+      },
+      ...routes,
+    };
+    window.history.pushState({}, '', '/register');
+    renderApp();
+
+    await fillForm();
+
+    expect(await screen.findByText(/already been taken/i)).toBeInTheDocument();
+    expect(localStorage.getItem('token')).toBeNull();
+  });
+
+  it('nags an unverified account on every page', async () => {
+    signIn();
+    localStorage.setItem('loggedInUserVerified', '0');
+    renderApp();
+
+    expect(await screen.findByText(/not confirmed yet/i)).toBeInTheDocument();
+  });
+
+  it('says nothing once the address is verified', async () => {
+    signIn();
+    renderApp();
+
+    await screen.findByRole('navigation', { name: /sidebar/i });
+
+    expect(screen.queryByText(/not confirmed yet/i)).not.toBeInTheDocument();
+  });
+
+  it('re-reads the account when the reader says they have verified', async () => {
+    // The link is opened outside this tab, so the flag cannot update itself.
+    signIn();
+    localStorage.setItem('loggedInUserVerified', '0');
+    routes = {
+      'api/users/user-1': {
+        status: 200,
+        body: { data: account({ email_verified: true }) },
+      },
+      ...routes,
+    };
+    renderApp();
+
+    await userEvent.click(
+      await screen.findByRole('button', { name: /i have verified/i })
+    );
+
+    await waitFor(() =>
+      expect(screen.queryByText(/not confirmed yet/i)).not.toBeInTheDocument()
+    );
+    expect(localStorage.getItem('loggedInUserVerified')).toBe('1');
+  });
+
+  it('confirms and clears the flag when arriving from a verification link', async () => {
+    signIn();
+    localStorage.setItem('loggedInUserVerified', '0');
+    routes = {
+      'api/users/user-1': {
+        status: 200,
+        body: { data: account({ email_verified: true }) },
+      },
+      ...routes,
+    };
+    window.history.pushState({}, '', '/?verified=1');
+    renderApp();
+
+    expect(await screen.findByText(/address confirmed/i)).toBeInTheDocument();
+    // Stripped, so a reload does not toast again.
+    await waitFor(() => expect(window.location.search).toBe(''));
+  });
+});
