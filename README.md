@@ -216,6 +216,7 @@ no CSRF, no cookies. Errors are always JSON.
 | PUT/DELETE | `/api/users/{user}` | bearer, **admin only** (`UserPolicy`) |
 | GET | `/api/users/{user}` | bearer — any signed-in user, for profile pages |
 | GET | `/api/users/search/{keyword}` | bearer — any signed-in user |
+| PATCH | `/api/user/preferences` | bearer — **your own** account, display preferences only |
 | POST | `/api/users/{user}/follow`, `/api/users/{user}/unfollow` | bearer — any signed-in user |
 | GET | `/api/posts/summary` | bearer — today's post count per tone, feed-scoped |
 | GET/POST | `/api/posts` | bearer |
@@ -303,6 +304,36 @@ which redirects — hiding a link does not stop anyone typing the URL. Both are 
 read from `localStorage`, which the user can edit, and editing them just buys an empty page full of
 403s. A stored list with nothing recognisable in it — including sessions predating the field — ends
 the session at the login form rather than rendering a half-known identity.
+
+## Preferences and the content warning
+
+`/heartbreaking_posts` opens behind a content warning: those posts are about
+abandonment, illness and endings that are not happy ones, and the feed is worth an explicit yes.
+
+The feed is rendered **inside** the warning rather than beside it, because `PostFeed` fetches on
+mount — a banner layered over a live feed would load the posts and their photos behind the notice
+warning about them. Verified: no `tags[]=heartbreaking_post` request is made until the reader
+continues.
+
+Dismissal works at two levels:
+
+- **Continuing** is remembered for the tab (`sessionStorage`), so leaving the feed and coming back a
+  minute later does not warn again;
+- **"Don't show this warning again"** is remembered on the **account**, in `users.preferences`, so it
+  follows you to another browser or device.
+
+That second one needs a self-service write, which is awkward next to admin-only account CRUD — hence
+`PATCH /api/user/preferences` rather than an exception inside `PUT /api/users/{user}`. Singular
+`user` means the token's own account, and **the route has no `{user}` parameter at all**, so there is
+nothing to aim elsewhere. It merges only keys defined by `App\Enums\UserPreference`; a payload
+carrying `email`, `first_name` or `roles` alongside a preference writes the preference and ignores
+the rest, and one carrying no known preference is a `422` rather than a silent no-op that would look
+saved. There are tests for each of those.
+
+Every preference is a boolean defaulting to **off**, and off is always the safe answer: an account or
+cached session that has never heard of a preference shows the warning rather than suppressing it. The
+save is deliberately not awaited before revealing the feed — consent was already given — but a
+failure is reported, because silence would look like the checkbox did not work.
 
 ## Troubleshooting
 
