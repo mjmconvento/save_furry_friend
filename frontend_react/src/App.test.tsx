@@ -8,6 +8,7 @@ import App from './App';
 import theme from './theme';
 import { API_BASE_URL } from './config/api';
 import type { Post } from './interface/Post';
+import type { UserRole } from './interface/User';
 
 /**
  * `fetch` is stubbed rather than the service modules, so `apiClient`, the
@@ -43,15 +44,20 @@ const renderApp = () =>
   );
 
 /**
- * The role is part of the stored session: without it `AuthContext` treats the
+ * Roles are part of the stored session: without them `AuthContext` treats the
  * session as incomplete and sends it back through login, which is what happens
  * to sessions predating the field.
+ *
+ * Admins carry `user` too, matching what the seeder and the API produce.
  */
-const signIn = (role: 'admin' | 'user' = 'user') => {
+const signIn = (...roles: UserRole[]) => {
   localStorage.setItem('token', 'test-token');
   localStorage.setItem('loggedInUserId', 'user-1');
   localStorage.setItem('loggedInUserName', 'Test User');
-  localStorage.setItem('loggedInUserRole', role);
+  localStorage.setItem(
+    'loggedInUserRoles',
+    JSON.stringify(roles.length > 0 ? roles : ['user'])
+  );
 };
 
 beforeEach(() => {
@@ -262,8 +268,8 @@ describe('roles', () => {
     await waitFor(() => expect(window.location.pathname).toBe('/happy_posts'));
   });
 
-  it('offers user administration to an admin', async () => {
-    signIn('admin');
+  it('offers user administration to an admin, who also carries the user role', async () => {
+    signIn('admin', 'user');
     window.history.pushState({}, '', '/users');
     renderApp();
 
@@ -274,17 +280,56 @@ describe('roles', () => {
     expect(window.location.pathname).toBe('/users');
   });
 
-  it('ends a session whose stored role is missing or unrecognised', async () => {
-    // Sessions predating the role field, and anyone who edits the value by hand,
-    // go back through login rather than rendering a half-known identity.
+  it('reads admin from membership, whatever else the list holds', async () => {
+    // The list is unordered and open-ended: `admin` anywhere in it is an admin.
+    signIn('user', 'admin');
+    renderApp();
+
+    expect(
+      await screen.findByRole('link', { name: /users/i })
+    ).toBeInTheDocument();
+  });
+
+  it('ignores an unrecognised role instead of trusting it', async () => {
+    // Mirrors the API's cast: an unknown value is not an implicit grant, but the
+    // known roles beside it still count, so the session survives.
+    localStorage.setItem('token', 'test-token');
+    localStorage.setItem('loggedInUserId', 'user-1');
+    localStorage.setItem('loggedInUserName', 'Test User');
+    localStorage.setItem(
+      'loggedInUserRoles',
+      JSON.stringify(['superuser', 'user'])
+    );
+    renderApp();
+
+    await screen.findByRole('navigation', { name: /sidebar/i });
+
+    expect(
+      screen.queryByRole('link', { name: /users/i })
+    ).not.toBeInTheDocument();
+  });
+
+  it('ends a session whose stored roles are missing or all unrecognised', async () => {
+    // Sessions predating the field, and anyone who edits the value by hand into
+    // nonsense, go back through login rather than rendering a half-known identity.
     signIn('user');
-    localStorage.setItem('loggedInUserRole', 'superuser');
+    localStorage.setItem('loggedInUserRoles', JSON.stringify(['superuser']));
     renderApp();
 
     expect(
       await screen.findByRole('button', { name: /login/i })
     ).toBeInTheDocument();
     expect(localStorage.getItem('token')).toBeNull();
+  });
+
+  it('ends a session whose stored roles are not even valid json', async () => {
+    signIn('user');
+    localStorage.setItem('loggedInUserRoles', 'admin');
+    renderApp();
+
+    expect(
+      await screen.findByRole('button', { name: /login/i })
+    ).toBeInTheDocument();
   });
 });
 

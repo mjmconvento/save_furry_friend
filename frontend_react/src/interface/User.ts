@@ -7,7 +7,8 @@ export interface User {
   middle_name: string | null;
   last_name: string;
   email: string;
-  role: UserRole;
+  /** Additive, so an admin carries `user` too. Test membership, not equality. */
+  roles: UserRole[];
   /** Present only on `GET /api/users/{id}`; absent from list and search. */
   is_following?: boolean;
 }

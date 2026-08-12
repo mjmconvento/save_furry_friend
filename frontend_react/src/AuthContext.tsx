@@ -15,7 +15,7 @@ import type { UserRole } from './interface/User';
 export interface CurrentUser {
   id: string;
   name: string;
-  role: UserRole;
+  roles: UserRole[];
 }
 
 interface AuthContextType {
@@ -27,9 +27,9 @@ interface AuthContextType {
   currentUser: CurrentUser | null;
   /**
    * Whether to offer administration UI. A convenience so consumers do not each
-   * repeat the string comparison - and emphatically not a security boundary:
-   * this is derived from `localStorage`, which the user can edit. The API's 403
-   * is what actually protects user administration.
+   * repeat the membership test - and emphatically not a security boundary: this
+   * is derived from `localStorage`, which the user can edit. The API's 403 is
+   * what actually protects user administration.
    */
   isAdmin: boolean;
 }
@@ -38,15 +38,38 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 const USER_ID_KEY = 'loggedInUserId';
 const USER_NAME_KEY = 'loggedInUserName';
-const USER_ROLE_KEY = 'loggedInUserRole';
+const USER_ROLES_KEY = 'loggedInUserRoles';
 
 /**
- * A stored role that is not one of the two known values is treated as missing,
- * which drops `currentUser` to null and sends the session back through login.
- * That is also what happens to sessions predating this field.
+ * Unknown entries are dropped rather than trusted, mirroring the enum cast on
+ * the API. A list with nothing recognisable in it counts as missing, which drops
+ * `currentUser` to null and sends the session back through login - the same
+ * thing that happens to sessions predating this field.
  */
-const readRole = (value: string | null): UserRole | null =>
-  value === 'admin' || value === 'user' ? value : null;
+const toRoles = (value: unknown): UserRole[] | null => {
+  if (!Array.isArray(value)) {
+    return null;
+  }
+
+  const roles = value.filter(
+    (role): role is UserRole => role === 'admin' || role === 'user'
+  );
+
+  return roles.length > 0 ? roles : null;
+};
+
+const readStoredRoles = (raw: string | null): UserRole[] | null => {
+  if (raw === null) {
+    return null;
+  }
+
+  try {
+    return toRoles(JSON.parse(raw));
+  } catch {
+    // Hand-edited or truncated storage, which is not a crash.
+    return null;
+  }
+};
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
@@ -60,8 +83,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(() => {
     const id = localStorage.getItem(USER_ID_KEY);
     const name = localStorage.getItem(USER_NAME_KEY);
-    const role = readRole(localStorage.getItem(USER_ROLE_KEY));
-    return id && name && role ? { id, name, role } : null;
+    const roles = readStoredRoles(localStorage.getItem(USER_ROLES_KEY));
+    return id && name && roles ? { id, name, roles } : null;
   });
 
   const login = async (email: string, password: string) => {
@@ -83,22 +106,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const name = [data.user.first_name, data.user.last_name]
       .filter(Boolean)
       .join(' ');
-    // The same guard the rehydrate path uses. Failing loudly beats storing an
-    // unrecognised role: silently treating it as non-admin would look like a
+    // The same validator the rehydrate path uses. Failing loudly beats storing
+    // nothing recognisable: silently treating it as non-admin would look like a
     // permissions bug, and trusting it would be worse.
-    const role = readRole(data.user.role);
+    const roles = toRoles(data.user.roles);
 
-    if (role === null) {
-      throw new Error('Login failed: the server sent an unknown role');
+    if (roles === null) {
+      throw new Error('Login failed: the server sent no recognisable role');
     }
 
     setToken(data.token);
     localStorage.setItem('token', data.token);
     localStorage.setItem(USER_ID_KEY, data.user.id);
     localStorage.setItem(USER_NAME_KEY, name);
-    localStorage.setItem(USER_ROLE_KEY, role);
+    localStorage.setItem(USER_ROLES_KEY, JSON.stringify(roles));
 
-    setCurrentUser({ id: data.user.id, name, role });
+    setCurrentUser({ id: data.user.id, name, roles });
     setIsAuthenticated(true);
   };
 
@@ -126,7 +149,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       localStorage.removeItem('token');
       localStorage.removeItem(USER_ID_KEY);
       localStorage.removeItem(USER_NAME_KEY);
-      localStorage.removeItem(USER_ROLE_KEY);
+      localStorage.removeItem(USER_ROLES_KEY);
       setIsAuthenticated(false);
       loggingOut.current = false;
     }
@@ -155,7 +178,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         logout,
         token,
         currentUser,
-        isAdmin: currentUser?.role === 'admin',
+        isAdmin: currentUser?.roles.includes('admin') ?? false,
       }}
     >
       {children}
