@@ -10,10 +10,12 @@ import {
 import { API_BASE_URL } from './config/api';
 import { apiRequest } from './service/apiClient';
 import { setUnauthorizedHandler } from './service/authBridge';
+import type { UserRole } from './interface/User';
 
 export interface CurrentUser {
   id: string;
   name: string;
+  role: UserRole;
 }
 
 interface AuthContextType {
@@ -23,12 +25,28 @@ interface AuthContextType {
   token: string | null;
   /** Author identity for anything the user creates. Null only mid-logout. */
   currentUser: CurrentUser | null;
+  /**
+   * Whether to offer administration UI. A convenience so consumers do not each
+   * repeat the string comparison - and emphatically not a security boundary:
+   * this is derived from `localStorage`, which the user can edit. The API's 403
+   * is what actually protects user administration.
+   */
+  isAdmin: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
 const USER_ID_KEY = 'loggedInUserId';
 const USER_NAME_KEY = 'loggedInUserName';
+const USER_ROLE_KEY = 'loggedInUserRole';
+
+/**
+ * A stored role that is not one of the two known values is treated as missing,
+ * which drops `currentUser` to null and sends the session back through login.
+ * That is also what happens to sessions predating this field.
+ */
+const readRole = (value: string | null): UserRole | null =>
+  value === 'admin' || value === 'user' ? value : null;
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
@@ -42,7 +60,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(() => {
     const id = localStorage.getItem(USER_ID_KEY);
     const name = localStorage.getItem(USER_NAME_KEY);
-    return id && name ? { id, name } : null;
+    const role = readRole(localStorage.getItem(USER_ROLE_KEY));
+    return id && name && role ? { id, name, role } : null;
   });
 
   const login = async (email: string, password: string) => {
@@ -64,13 +83,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const name = [data.user.first_name, data.user.last_name]
       .filter(Boolean)
       .join(' ');
+    // The same guard the rehydrate path uses. Failing loudly beats storing an
+    // unrecognised role: silently treating it as non-admin would look like a
+    // permissions bug, and trusting it would be worse.
+    const role = readRole(data.user.role);
+
+    if (role === null) {
+      throw new Error('Login failed: the server sent an unknown role');
+    }
 
     setToken(data.token);
     localStorage.setItem('token', data.token);
     localStorage.setItem(USER_ID_KEY, data.user.id);
     localStorage.setItem(USER_NAME_KEY, name);
+    localStorage.setItem(USER_ROLE_KEY, role);
 
-    setCurrentUser({ id: data.user.id, name });
+    setCurrentUser({ id: data.user.id, name, role });
     setIsAuthenticated(true);
   };
 
@@ -98,6 +126,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       localStorage.removeItem('token');
       localStorage.removeItem(USER_ID_KEY);
       localStorage.removeItem(USER_NAME_KEY);
+      localStorage.removeItem(USER_ROLE_KEY);
       setIsAuthenticated(false);
       loggingOut.current = false;
     }
@@ -120,7 +149,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <AuthContext.Provider
-      value={{ isAuthenticated, login, logout, token, currentUser }}
+      value={{
+        isAuthenticated,
+        login,
+        logout,
+        token,
+        currentUser,
+        isAdmin: currentUser?.role === 'admin',
+      }}
     >
       {children}
     </AuthContext.Provider>

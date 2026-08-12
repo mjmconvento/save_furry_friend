@@ -42,10 +42,16 @@ const renderApp = () =>
     </ThemeProvider>
   );
 
-const signIn = () => {
+/**
+ * The role is part of the stored session: without it `AuthContext` treats the
+ * session as incomplete and sends it back through login, which is what happens
+ * to sessions predating the field.
+ */
+const signIn = (role: 'admin' | 'user' = 'user') => {
   localStorage.setItem('token', 'test-token');
   localStorage.setItem('loggedInUserId', 'user-1');
   localStorage.setItem('loggedInUserName', 'Test User');
+  localStorage.setItem('loggedInUserRole', role);
 };
 
 beforeEach(() => {
@@ -89,7 +95,9 @@ describe('unauthenticated', () => {
 });
 
 describe('authenticated', () => {
-  beforeEach(signIn);
+  // Wrapped, not passed by reference: `beforeEach` hands its callback a test
+  // context, which would arrive as the `role` argument.
+  beforeEach(() => signIn());
 
   it('renders the app shell and lands on the happy feed', async () => {
     renderApp();
@@ -229,6 +237,54 @@ describe('authenticated', () => {
         screen.queryByRole('button', { name: /load more/i })
       ).not.toBeInTheDocument()
     );
+  });
+});
+
+describe('roles', () => {
+  it('hides user administration from a non-admin', async () => {
+    signIn('user');
+    renderApp();
+
+    await screen.findByRole('navigation', { name: /sidebar/i });
+
+    expect(
+      screen.queryByRole('link', { name: /users/i })
+    ).not.toBeInTheDocument();
+  });
+
+  it('keeps a non-admin off /users even by direct navigation', async () => {
+    // Hiding the link is not the gate: the path stays typeable.
+    signIn('user');
+    window.history.pushState({}, '', '/users');
+    renderApp();
+
+    await screen.findByRole('navigation', { name: /sidebar/i });
+    await waitFor(() => expect(window.location.pathname).toBe('/happy_posts'));
+  });
+
+  it('offers user administration to an admin', async () => {
+    signIn('admin');
+    window.history.pushState({}, '', '/users');
+    renderApp();
+
+    expect(
+      await screen.findByRole('link', { name: /users/i })
+    ).toBeInTheDocument();
+    // Stayed put rather than being redirected away.
+    expect(window.location.pathname).toBe('/users');
+  });
+
+  it('ends a session whose stored role is missing or unrecognised', async () => {
+    // Sessions predating the role field, and anyone who edits the value by hand,
+    // go back through login rather than rendering a half-known identity.
+    signIn('user');
+    localStorage.setItem('loggedInUserRole', 'superuser');
+    renderApp();
+
+    expect(
+      await screen.findByRole('button', { name: /login/i })
+    ).toBeInTheDocument();
+    expect(localStorage.getItem('token')).toBeNull();
   });
 });
 

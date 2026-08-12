@@ -14,11 +14,12 @@ import HeartBrokenIcon from '@mui/icons-material/HeartBroken';
 import MoodIcon from '@mui/icons-material/Mood';
 import HouseIcon from '@mui/icons-material/House';
 import { Link, useLocation } from 'react-router-dom';
+import { useAuth } from '../../AuthContext';
 
 const drawerWidth = 240;
 
 type NavItem = { label: string; to: string; icon: ReactNode };
-type NavGroup = { label: string; items: NavItem[] };
+type NavGroup = { label: string; items: NavItem[]; adminOnly?: boolean };
 type SidebarProps = {
   /** Overlay drawer state - only consulted below `md`. */
   open: boolean;
@@ -44,11 +45,16 @@ const navGroups: NavGroup[] = [
   {
     label: 'Community',
     items: [{ label: 'Users', to: '/users', icon: <PeopleIcon /> }],
+    // User administration. `AdminRoute` guards the path itself as well, because
+    // dropping a link does not stop anyone typing the URL.
+    adminOnly: true,
   },
 ];
 
 const Sidebar = ({ open, onClose }: SidebarProps) => {
   const location = useLocation();
+  const { isAdmin } = useAuth();
+  const groups = navGroups.filter((group) => !group.adminOnly || isAdmin);
 
   // One nav tree, two hosts: the temporary overlay below `md` and the
   // permanent rail from `md` up. Group data and item props live here only.
@@ -58,7 +64,7 @@ const Sidebar = ({ open, onClose }: SidebarProps) => {
       aria-label="Sidebar"
       sx={{ overflow: 'auto', py: 2.5, px: 1.5 }}
     >
-      {navGroups.map((group, groupIndex) => (
+      {groups.map((group, groupIndex) => (
         <React.Fragment key={group.label}>
           <Typography
             component="div"

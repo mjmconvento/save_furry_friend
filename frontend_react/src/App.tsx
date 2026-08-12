@@ -1,6 +1,7 @@
 import { lazy } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import LoginRoute from './route/LoginRoute';
+import AdminRoute from './route/AdminRoute';
 import ProtectedLayout from './route/ProtectedLayout';
 
 // Pages load on demand: the login screen no longer pays for photoswipe,
@@ -32,7 +33,9 @@ const App = () => (
         />
         <Route path="/my_profile" element={<MyProfilePage />} />
         <Route path="/profile/:id" element={<ProfilePage />} />
-        <Route path="/users" element={<UserPage />} />
+        <Route element={<AdminRoute />}>
+          <Route path="/users" element={<UserPage />} />
+        </Route>
         <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>
