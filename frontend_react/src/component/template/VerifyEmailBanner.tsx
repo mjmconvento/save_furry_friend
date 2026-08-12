@@ -52,7 +52,9 @@ const VerifyEmailBanner: React.FC = () => {
   return (
     <Alert
       severity="info"
-      sx={{ borderRadius: 0 }}
+      // Sits at the top of the content column rather than spanning the window,
+      // so it clears the fixed sidebar. Rounded to match the cards below it.
+      sx={{ mb: 3 }}
       action={
         <Stack direction="row" spacing={1}>
           <Button color="inherit" size="small" loading={busy} onClick={resend}>

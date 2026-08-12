@@ -68,13 +68,18 @@ const ProtectedLayout = () => {
   return (
     <>
       <Topbar onMenuClick={() => setNavOpen(true)} />
-      <VerifyEmailBanner />
       <Box sx={{ display: 'flex' }}>
         <Sidebar open={navOpen} onClose={() => setNavOpen(false)} />
         <Box
           component="main"
           sx={{ flexGrow: 1, minWidth: 0, p: { xs: 2, md: 3 } }}
         >
+          {/* Inside `main`, not above this row: the permanent drawer is
+              `position: fixed` with a z-index above the content, so a full-width
+              banner out here had its first 240px painted over - unreadable from
+              `md` up, fine on mobile where the drawer is display:none. */}
+          <VerifyEmailBanner />
+
           {/* One boundary for every lazily loaded page: the shell stays
               painted while the next page's chunk arrives. */}
           <Suspense fallback={<LoadingIndicator />}>

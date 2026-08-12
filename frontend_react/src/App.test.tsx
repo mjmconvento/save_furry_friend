@@ -868,7 +868,13 @@ describe('registration and email verification', () => {
     localStorage.setItem('loggedInUserVerified', '0');
     renderApp();
 
-    expect(await screen.findByText(/not confirmed yet/i)).toBeInTheDocument();
+    const banner = await screen.findByText(/not confirmed yet/i);
+
+    expect(banner).toBeInTheDocument();
+    // Regression: rendered above the shell's flex row, the fixed sidebar painted
+    // over its first 240px and ate the start of the sentence. Inside `main` it
+    // sits in the column that already reserves the drawer's width.
+    expect(banner.closest('main')).not.toBeNull();
   });
 
   it('says nothing once the address is verified', async () => {
