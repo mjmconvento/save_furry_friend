@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
+use App\Enums\PostTag;
 use Illuminate\Database\Seeder;
 use Illuminate\Http\File;
 use Illuminate\Support\Facades\DB;
@@ -23,22 +24,17 @@ use Illuminate\Support\Str;
  */
 class SamplePostSeeder extends Seeder
 {
-    /**
-     * The canonical vocabulary lives in the SPA (`app/src/config/tags.ts`); the
-     * API never validates tag values, so this is the only place the backend
-     * names them. Keep the two in step.
-     */
-    private const TAG_HAPPY = 'happy_post';
-
-    private const TAG_NEUTRAL = 'neutral_post';
-
-    private const TAG_HEARTBREAKING = 'heartbreaking_post';
-
     /** Marks a document as this seeder's output. */
     private const MARKER = 'sample';
 
     /** Fixed so the sample corpus is identical on every machine and deploy. */
     private const RANDOM_SEED = 20260812;
+
+    /**
+     * How many of the 50 land inside today, so the home page summary has
+     * something to count on a fresh install.
+     */
+    private const POSTS_TODAY = 6;
 
     /**
      * Content is grouped by tone rather than assigned randomly: a
@@ -50,7 +46,7 @@ class SamplePostSeeder extends Seeder
     private function bodies(): array
     {
         return [
-            self::TAG_HAPPY => [
+            PostTag::Happy->value => [
                 'Found her under the porch on Saturday, all ribs and no trust. Ten days later she sleeps on her back with her paws in the air.',
                 'Three weeks missing and he turned up two streets away, sitting on a stranger wall like nothing happened. The microchip did its job.',
                 'Bramble went home this morning. Twelve years old, and the family drove four hours to collect him.',
@@ -72,7 +68,7 @@ class SamplePostSeeder extends Seeder
                 'Back where he belongs, three days after the storm scattered half the neighbourhood pets.',
                 'Home visit passed. She leaves on Friday with the blanket she has slept on since March.',
             ],
-            self::TAG_NEUTRAL => [
+            PostTag::Neutral->value => [
                 'Intake for the week: four cats, two dogs, one very indignant rabbit. All vaccinated, all chipped.',
                 'Reminder that the Saturday clinic moves to the community hall while the roof is repaired.',
                 'We are short on medium-sized crates. If anyone has one gathering dust, we will collect.',
@@ -92,7 +88,7 @@ class SamplePostSeeder extends Seeder
                 'Reception hours change next month: nine to four on weekdays, closed bank holidays.',
                 'If you have applied and not heard back, we are three days behind on the inbox rather than ignoring you.',
             ],
-            self::TAG_HEARTBREAKING => [
+            PostTag::Heartbreaking->value => [
                 'She waited by the gate every evening for a family that was never coming back. Fourteen years old.',
                 'Brought in as a stray, but she was groomed, chipped to a disconnected number, and knew every command we tried.',
                 'He was found tied to the railings outside with a bag of his own food and no note.',
@@ -288,8 +284,22 @@ class SamplePostSeeder extends Seeder
             }
         }
 
+        // Tone order in `bodies()` would otherwise become chronological order:
+        // every recent post happy, every old one heartbreaking, and the home
+        // page's "today" counts all in one column. Shuffle before dating.
+        for ($i = count($entries) - 1; $i > 0; $i--) {
+            $j = mt_rand(0, $i);
+            [$entries[$i], $entries[$j]] = [$entries[$j], $entries[$i]];
+        }
+
         $total = count($entries);
         $plan = [];
+
+        // Minutes since midnight in the app timezone, which is the window the
+        // daily summary counts. Seeding at 01:00 leaves an hour to place posts
+        // in; seeding at 23:00 leaves a full day.
+        $elapsedToday = (int) now()
+            ->diffInMinutes(now()->copy()->startOfDay(), true);
 
         // A balanced bag rather than an independent draw per post: plain
         // mt_rand() clustered badly enough to give one author twice another's
@@ -318,10 +328,14 @@ class SamplePostSeeder extends Seeder
                 default => mt_rand(2, 4),
             };
 
-            // Newest first, walking back roughly 90 days with jitter so the
-            // ordering is not suspiciously regular.
-            $minutesAgo = (int) round(120 + ($position / max($total - 1, 1)) * 90 * 24 * 60)
-                + mt_rand(0, 240);
+            // The newest few are placed inside today deliberately: a fresh
+            // install whose home page reads all zeros makes the summary look
+            // broken rather than empty. The rest walk back over 90 days with
+            // jitter, so the ordering is not suspiciously regular.
+            $minutesAgo = $position < self::POSTS_TODAY
+                ? (int) round($elapsedToday * ($position + 1) / (self::POSTS_TODAY + 1))
+                : (int) round(24 * 60 + (($position - self::POSTS_TODAY) / max($total - self::POSTS_TODAY - 1, 1)) * 89 * 24 * 60)
+                    + mt_rand(0, 240);
 
             $plan[] = [
                 'authorId' => $author['id'],

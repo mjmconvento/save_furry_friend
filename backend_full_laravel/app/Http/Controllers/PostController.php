@@ -12,6 +12,7 @@ use App\Models\Eloquent\User;
 use App\Models\Mongo\Post;
 use App\Services\PostService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class PostController extends Controller
@@ -40,6 +41,28 @@ class PostController extends Controller
         // Without this the `links.next` URL drops the filters and page 2 is a
         // different query than page 1.
         return PostResource::collection($posts->appends($filters));
+    }
+
+    /**
+     * Today's post count per tone, for the home page.
+     *
+     * `date` travels with the counts because "today" is midnight in the API's
+     * timezone, not the browser's: without it the client would caption someone
+     * else's day as its own.
+     */
+    public function summary(Request $request): JsonResponse
+    {
+        /** @var User $viewer */
+        $viewer = $request->user();
+
+        $today = now();
+
+        return response()->json([
+            'data' => [
+                'date' => $today->toDateString(),
+                'counts' => $this->postService->countTodayByTone($viewer, $today),
+            ],
+        ]);
     }
 
     public function show(Post $post): PostResource

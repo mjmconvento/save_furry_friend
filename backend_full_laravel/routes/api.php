@@ -19,6 +19,10 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('users/{user}/follow', [FollowController::class, 'follow'])->name('users.follow');
     Route::post('users/{user}/unfollow', [FollowController::class, 'unfollow'])->name('users.unfollow');
 
+    // Same rule as `users/search` above: declared before apiResource('posts'),
+    // or `summary` is swallowed by the {post} wildcard.
+    Route::get('posts/summary', [PostController::class, 'summary'])->name('posts.summary');
+
     Route::apiResource('posts', PostController::class);
     // `store` lives in this group now: creating an account is an admin action,
     // so there is no public registration endpoint left to rate-limit.

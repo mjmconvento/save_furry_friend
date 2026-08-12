@@ -73,6 +73,21 @@ it('spreads the corpus across every author, tone and media count', function (): 
         ->toBeTrue();
 });
 
+it('puts several of today\'s posts in more than one tone', function (): void {
+    // The home page counts today per tone. A corpus dated entirely in the past
+    // makes that summary read all zeros on a fresh install, and dating it in
+    // tone order made every recent post the same tone - which read as a bug.
+    $this->seed(SampleUserSeeder::class);
+    $this->seed(SamplePostSeeder::class);
+
+    $today = Post::where('createdAt', '>=', now()->startOfDay())->get();
+
+    expect($today->count())
+        ->toBeGreaterThanOrEqual(3)
+        ->and($today->pluck('tags')->flatten()->unique()->count())
+        ->toBeGreaterThan(1);
+});
+
 it('gives every sample author a media object of its own per image', function (): void {
     $this->seed(SampleUserSeeder::class);
     $this->seed(SamplePostSeeder::class);

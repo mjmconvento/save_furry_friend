@@ -4,13 +4,17 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Enums\PostTag;
 use App\Http\Requests\Post\StorePostRequest;
 use App\Http\Requests\Post\UpdatePostRequest;
 use App\Models\Eloquent\User;
 use App\Models\Mongo\Post;
+use Carbon\CarbonInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use MongoDB\BSON\UTCDateTime;
+use MongoDB\Laravel\Connection as MongoConnection;
 use Throwable;
 
 class PostService
@@ -36,6 +40,94 @@ class PostService
             ->paginate($perPage);
 
         return $paginator;
+    }
+
+    /**
+     * Counts today's posts per tone, scoped exactly like the feeds - people the
+     * viewer follows, plus themselves - so the number on the home page matches
+     * what clicking through to the feed actually shows.
+     *
+     * "Today" is midnight in the application timezone (`config/app.php`), which
+     * is why the caller reports the date alongside the counts rather than
+     * letting the client assume its own.
+     *
+     * One aggregation rather than three counts, and `$unwind` rather than
+     * grouping on `tags` directly, because the field is an array: grouping on it
+     * would key by the whole array and miscount the moment a post carries two
+     * tags. Served by the existing `{authorId: 1, createdAt: -1}` index.
+     *
+     * @return array<string, int> every tone in `PostTag`, zeros included
+     */
+    public function countTodayByTone(User $viewer, CarbonInterface $today): array
+    {
+        $counts = [];
+
+        foreach (PostTag::cases() as $tag) {
+            $counts[$tag->value] = 0;
+        }
+
+        $post = new Post();
+        /** @var MongoConnection $connection */
+        $connection = $post->getConnection();
+        // Straight to the driver: this is an aggregation pipeline, not something
+        // the Eloquent builder models.
+        $collection = $connection->getCollection($post->getTable());
+
+        $rows = $collection->aggregate([
+            [
+                '$match' => [
+                    'authorId' => [
+                        '$in' => $this->visibleAuthorIds($viewer),
+                    ],
+                    'createdAt' => [
+                        '$gte' => new UTCDateTime($today->copy()->startOfDay()),
+                        '$lt' => new UTCDateTime($today->copy()->addDay()->startOfDay()),
+                    ],
+                ],
+            ],
+            [
+                '$unwind' => '$tags',
+            ],
+            [
+                '$match' => [
+                    'tags' => [
+                        '$in' => array_keys($counts),
+                    ],
+                ],
+            ],
+            [
+                '$group' => [
+                    '_id' => '$tags',
+                    'count' => [
+                        '$sum' => 1,
+                    ],
+                ],
+            ],
+        ], [
+            // Plain arrays rather than BSONDocument objects, so the rows below
+            // are ordinary offsets.
+            'typeMap' => [
+                'root' => 'array',
+                'document' => 'array',
+            ],
+        ]);
+
+        foreach ($rows as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+
+            $tone = $row['_id'] ?? null;
+            $count = $row['count'] ?? null;
+
+            // A tone outside the vocabulary cannot reach here - the pipeline
+            // filters on it - so anything unexpected is a shape change, not data.
+            if (is_string($tone) && is_int($count) && array_key_exists($tone, $counts)) {
+                $counts[$tone] = $count;
+            }
+        }
+
+        return $counts;
     }
 
     public function storePost(StorePostRequest $request, User $author): Post
