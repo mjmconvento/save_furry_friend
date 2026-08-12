@@ -11,13 +11,13 @@ attachments. Split into a Laravel API and a React SPA, with a polyglot data laye
 
 ```mermaid
 graph LR
-  Browser -->|":3000"| React[react_app Vite dev server]
+  Browser -->|":3000"| React[Vite dev server]
   React -->|"http://localhost:8081"| Nginx[nginx]
   Nginx -->|"fastcgi app:9000"| App[php-fpm / Laravel]
   App --> PG[(postgres:5432)]
   App --> Mongo[(mongo:27017)]
   App --> Minio[(minio:9000)]
-  Browser -->|"media http://localhost:9001"| Minio
+  Browser -->|"media http://localhost:9101"| Minio
 ```
 
 ## Layout
@@ -32,90 +32,49 @@ docker-compose.yml      app, db, mongo, nginx, react, minio
 
 ## Ports
 
-| URL | What |
-| --- | --- |
-| http://localhost:3000 | React app |
-| http://localhost:8081 | Laravel API (through nginx) |
-| http://localhost:9001 | MinIO S3 API (media URLs point here) |
-| http://localhost:9002 | MinIO console — `admin` / `password123` |
-| localhost:5432 | PostgreSQL — `root` / `password`, db `blog` |
-| localhost:27017 | MongoDB — `admin` / `password`, db `sff` |
+Every host port is a variable in the root `./.env`, so a clash with another
+stack is a one-line edit rather than a compose-file diff.
+
+| URL | What | `./.env` |
+| --- | --- | --- |
+| http://localhost:3000 | React app | `REACT_PORT` |
+| http://localhost:8081 | Laravel API (through nginx) | `NGINX_PORT` |
+| http://localhost:9101 | MinIO S3 API (media URLs point here) | `MINIO_API_PORT` |
+| http://localhost:9102 | MinIO console | `MINIO_CONSOLE_PORT` |
+| 127.0.0.1:5432 | PostgreSQL, loopback only — db `blog` | `POSTGRES_PORT` |
+| *(not published)* | MongoDB — `docker compose exec mongo mongosh` | — |
+
+Credentials live in `./.env` (copied from `.env.docker.example`), not in the compose file.
+php-fpm is deliberately not published: fastcgi has no authentication and only nginx needs it.
+MinIO sits on 9101/9102 rather than the conventional 9000/9001 because those are commonly taken by
+other local stacks; `MINIO_API_PORT` and `AWS_URL` in `backend_full_laravel/.env` must move together.
 
 ## Running locally
 
-Prerequisite: Docker Desktop. Nothing else is needed on the host — PHP, Composer and Node all
-live in containers.
-
-`docker compose up` alone is **not** enough: the backend source is bind-mounted over the image,
-so `vendor/`, `.env` and the database schema have to be created once, by hand.
-
-### 1. Start the containers
+Prerequisite: Docker Desktop and `make`. Nothing else is needed on the host — PHP, Composer and
+Node all live in containers.
 
 ```bash
-docker compose up -d --build
+cp .env.docker.example .env          # compose credentials and published ports
+make bootstrap                       # ~2 min on a cold cache
 ```
 
-### 2. Create the backend `.env`
+`docker compose up` on its own is still not enough — the backend source is bind-mounted over the
+image, so `vendor/`, `.env` and the schema have to be created once. `make bootstrap` is that once:
 
-`.env.example` still carries pre-Docker defaults (`DB_HOST=127.0.0.1`, no Mongo/MinIO keys).
-Inside the `app` container the services resolve by Compose service name:
+1. creates `backend_full_laravel/.env` from `.env.example`, and `./.env` from
+   `.env.docker.example` if you skipped the `cp` above — neither is overwritten if it exists;
+2. `docker compose up -d --build --wait`. `--wait` blocks until every healthcheck reports healthy,
+   so the next step cannot race Postgres creating its cluster on a fresh `pgdata` volume;
+3. `composer install`, plus `php artisan key:generate` when `APP_KEY` is still empty;
+4. `php artisan migrate --seed` — `DatabaseSeeder` calls `TestUserSeeder`, which matches on email,
+   so re-running `make bootstrap` against a live stack is safe;
+5. prints the URLs and the seeded login.
 
-```bash
-cd backend_full_laravel
-cp .env.example .env
-```
+Creating the `uploads` bucket is no longer a manual click: the `minio-init` service creates it and
+applies the anonymous-download policy as soon as MinIO reports healthy.
 
-Then set these values in `backend_full_laravel/.env`:
-
-```dotenv
-APP_URL=http://localhost:8081
-
-DB_CONNECTION=pgsql
-DB_HOST=db
-DB_PORT=5432
-DB_DATABASE=blog
-DB_USERNAME=root
-DB_PASSWORD=password
-
-MONGODB_URI=mongodb://mongo:27017
-MONGODB_DATABASE=sff
-MONGODB_USERNAME=admin
-MONGODB_PASSWORD=password
-
-# MinIO. AWS_ENDPOINT is the in-container address Laravel writes through;
-# AWS_URL is the browser-reachable base that Storage::url() builds media URLs
-# from. Mongo stores bare object keys, so changing the public host is an .env
-# edit rather than a data migration.
-AWS_ACCESS_KEY_ID=admin
-AWS_SECRET_ACCESS_KEY=password123
-AWS_DEFAULT_REGION=us-east-1
-AWS_BUCKET=uploads
-AWS_ENDPOINT=http://minio:9000
-AWS_URL=http://localhost:9001/uploads
-AWS_USE_PATH_STYLE_ENDPOINT=true
-
-# Tokens now expire. Minutes; default is 14 days.
-SANCTUM_TOKEN_EXPIRATION=20160
-```
-
-### 3. Install dependencies, key, schema, seed data
-
-```bash
-cd ..
-docker compose exec app composer install
-docker compose exec app php artisan key:generate
-docker compose exec app php artisan migrate
-docker compose exec app php artisan db:seed --class=TestUserSeeder
-```
-
-There is no `DatabaseSeeder`, so the seeder class must be named explicitly.
-
-### 4. Create the MinIO bucket (fresh volume only)
-
-Media uploads write to a bucket named `uploads`. If the `minio-data` volume is new, create it:
-open http://localhost:9002 (`admin` / `password123`) → **Buckets** → **Create Bucket** → `uploads`.
-
-### 5. Check it
+Check it:
 
 ```bash
 curl -i http://localhost:8081/up          # Laravel health check
@@ -129,12 +88,16 @@ Log in with a seeded account:
 | test@user.com | password112233 |
 | test2@user.com | password112233 |
 
+`make help` lists the rest: `up`, `down`, `env`, `deps`, `fresh`, `logs`, `shell`, `test`, `lint`.
+Datastore credentials and the published ports live in `./.env` (gitignored, template in
+`.env.docker.example`); everything Laravel reads lives in `backend_full_laravel/.env`.
+
 ## Day-to-day commands
 
 Backend (all inside the `app` container):
 
 ```bash
-docker compose exec app php artisan migrate:fresh --seed --seeder=TestUserSeeder
+docker compose exec app php artisan migrate:fresh --seed
 docker compose exec app php artisan tinker
 docker compose exec app composer test        # Pest, against real Postgres + Mongo
 docker compose exec app composer phpstan
@@ -142,6 +105,9 @@ docker compose exec app composer ecs-check   # ecs-fix to apply
 docker compose exec app composer rector      # rector-fix to apply
 docker compose logs -f app
 ```
+
+`make fresh` is the first line; `make test` and `make lint` run the backend checks above *and* the
+frontend ones below in one go.
 
 `composer test` needs two dedicated databases, not sqlite: a Postgres database named `testing` and
 a Mongo database named `sff_testing` (see `phpunit.xml`). `RefreshDatabase` only migrates and
@@ -230,27 +196,30 @@ curl -s -H "Authorization: Bearer $TOKEN" \
   http://localhost:8081/api/posts
 ```
 
-CORS (`config/cors.php`) only allows `http://localhost:3000`, so the SPA must be served from that
-origin.
+CORS (`config/cors.php`) allows exactly one origin, `env('FRONTEND_URL', 'http://localhost:3000')`,
+so the SPA must be served from wherever `FRONTEND_URL` in `backend_full_laravel/.env` points.
 
 ## Troubleshooting
 
-**`bind: address already in use` / `port is already allocated`** — this project publishes 3000,
-5432, 8081, 9000, 9001, 9002 and 27017. One clash aborts the whole `docker compose up` and leaves
-the other services stopped. Which fix applies depends on *what* clashes:
+**`bind: address already in use` / `port is already allocated`** — the stack publishes only what a
+browser or a local client needs: `REACT_PORT` (3000), `NGINX_PORT` (8081), `MINIO_API_PORT` (9101),
+`MINIO_CONSOLE_PORT` (9102) and Postgres on `127.0.0.1:5432`. php-fpm and MongoDB are not published
+at all. One clash still aborts the whole `up`, but the fix is now a variable, not a file edit:
 
-- **Only :3000 (the SPA)** — start everything else and deal with the SPA separately:
-  `docker compose up -d app db mongo nginx minio`.
-- **A datastore port** (another Compose project's MinIO on 9001 or Mongo on 27017 is the usual
-  culprit) — selective start does *not* help, since those services publish the clashing port
-  themselves. Stop the other stack, or remap the port in `docker-compose.yml` / a local
-  `docker-compose.override.yml`. Nothing in this app needs host access to Mongo, so dropping its
-  `ports:` entry is the cheapest fix.
+```bash
+# ./.env
+REACT_PORT=3100
+```
 
-Two caveats when remapping: moving the SPA off 3000 means adding the new origin to
-`config/cors.php`, and moving MinIO off host 9001 means updating `AWS_URL`. Media URLs are no longer
-baked into the database — Mongo stores bare object keys and `PostResource` builds the URL from
-`AWS_URL` at render time — so that is a one-line `.env` change rather than a data migration.
+then `make up`. For anything more involved than a port number, copy
+`docker-compose.override.yml.example` to `docker-compose.override.yml` (gitignored, merged
+automatically) rather than editing the tracked compose file.
+
+Two couplings to respect when remapping. Moving the SPA means moving `FRONTEND_URL` in
+`backend_full_laravel/.env` too, or login fails the CORS preflight with nothing in the Laravel log.
+Moving MinIO's API port means moving `AWS_URL` — media URLs are not baked into the database (Mongo
+stores bare object keys and `PostResource` builds the URL at render time), so that is a one-line
+`.env` change rather than a data migration.
 
 **A container is `Up` but unreachable by service name** — long-lived containers can be left attached
 to a deleted network (`docker inspect -f '{{.NetworkSettings.Networks}}' <name>` prints empty), which
@@ -258,20 +227,24 @@ shows up as `Could not resolve host: minio` or `could not translate host name "d
 `docker compose rm -sf <service> && docker compose up -d <service>`.
 
 **`could not translate host name "db"`** — the `db` container is not running. `docker compose ps -a`;
-if Postgres exited, check `docker logs postgres`.
+if Postgres exited, check `docker compose logs db`.
 
 **Postgres refuses to start after an image bump** — the `db` service is pinned to `postgres:16` on
 purpose. Postgres 18 changed its data directory layout and will not start against the existing
 `pgdata` volume. Wiping local DB data is `docker compose down -v` followed by migrate + seed again.
 
-**`vite: not found` in the react container** — the `/app/node_modules` anonymous volume is
-missing or was removed. Rebuild: `docker compose up -d --build --force-recreate react`.
+**`vite: not found` in the react container** — the `/app/node_modules` anonymous volume is stale and
+shadows the image's own `node_modules`, so a rebuild alone does not help. Discard the volume too:
+`docker compose up -d --build --force-recreate --renew-anon-volumes react`.
 
-**Uploads fail with a bucket error** — the `uploads` bucket does not exist yet; see step 4.
+**Uploads fail with a bucket error** — the `minio-init` service creates the `uploads` bucket and sets
+its anonymous download policy on every `up`; if uploads still fail, it exited non-zero:
+`docker compose logs minio-init`.
 
-**Upload returns 413 Request Entity Too Large** — `nginx/conf.d/default.conf` sets no
-`client_max_body_size`, so nginx caps request bodies at its 1 MB default. Add
-`client_max_body_size 20m;` to the `server` block (and restart nginx) before uploading real photos.
+**Upload returns 413 Request Entity Too Large** — the ceiling is 32 MB, set in two places that must
+agree: `client_max_body_size 32m` in `nginx/conf.d/default.conf` and `upload_max_filesize=32M` /
+`post_max_size=40M` in `php/uploads.ini`. The smaller of the two wins, so raise both. Changing
+`php/uploads.ini` needs an image rebuild (`docker compose up -d --build app`).
 
 **Frontend serves but shows a compile error overlay** — read `docker compose logs react`. The
 container's filesystem is case-sensitive, so import paths whose casing differs from the file on
@@ -279,11 +252,19 @@ disk fail there while working fine on macOS.
 
 ## CI
 
-`.github/workflows/main.yml` runs PHPStan, ECS, Rector (dry-run) and Pest against
-`backend_full_laravel` on every push and pull request. There is no frontend job.
+`.github/workflows/main.yml` runs three jobs on every push and pull request:
 
-Pest needs real databases, so the job runs `postgres:16` and `mongo:8.0` service containers and
-installs the `mongodb` PHP extension. `phpunit.xml` carries the Compose hostnames (`db`, `mongo`)
-and the job exports `DB_HOST` / `MONGODB_URI` to point at `127.0.0.1` instead — PHPUnit does not
-overwrite variables that already exist in the environment, so the exports win.
+| Job | What it proves |
+| --- | --- |
+| `code-quality` | PHPStan, ECS, Rector (dry-run) and Pest against `backend_full_laravel`, with Composer downloads cached on `composer.lock` |
+| `frontend` | `yarn typecheck`, `yarn lint`, `yarn format:check`, `yarn test` and `yarn build` against `frontend_react` |
+| `compose` | `docker compose config -q` and `docker compose build` — a broken bind mount, a floating image tag or a key missing from `.env.docker.example` fails here instead of on someone's first clone |
+
+Pest needs real databases, so `code-quality` runs `postgres:16` and `mongo:8.0` service containers
+and installs the `mongodb` PHP extension. `phpunit.xml` carries the Compose hostnames (`db`,
+`mongo`) and the job exports `DB_HOST` / `MONGODB_URI` to point at `127.0.0.1` instead — PHPUnit
+does not overwrite variables that already exist in the environment, so the exports win.
+
+`compose` copies `.env.docker.example` to `.env` first, because compose interpolation aborts on the
+`${VAR:?}` form when a credential is missing.
 
