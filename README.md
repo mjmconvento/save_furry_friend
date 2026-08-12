@@ -250,6 +250,12 @@ Shapes worth knowing:
   page rather than replacing the list; `apiClient` exposes `apiPage` for that, beside `apiRequest`
   which peels the envelope and is right for everything unpaginated.
 - The feed is always scoped to the follow graph plus your own posts. There is no "everything" mode.
+- `GET /api/users/search/{keyword}` matches **one word at a time**: every word in the keyword must
+  appear somewhere in the name, in any order, so "Daniel Okafor" finds `Daniel Chukwu Okafor` and
+  "Okafor Daniel" finds him too. A single `ILIKE '%keyword%'` over the joined name was wrong twice —
+  a middle name broke contiguity, and a null middle name left two spaces, so `Marisol Vega` was
+  unsearchable by the name the app displays. Capped at five words and ten results, and it never
+  returns the person searching.
 - `GET /api/posts/summary` powers the home page: `{ data: { date, counts } }`, where `counts` always
   carries all three tones, zeros included, so the client never fills a gap. `date` is the day the API
   counted, in **its own** timezone (`config/app.php`) — the page states it rather than assuming the
@@ -379,6 +385,19 @@ carries a job for. Avatars deliberately do not repeat that: `PostService::attach
 them in from Postgres with one `whereIn` per page, so replacing your picture updates every post you
 have ever written, immediately, with nothing to backfill. Verified in the browser: a new upload
 appears in the feed on the next navigation.
+
+### Finding people
+
+The Topbar search is an MUI `Autocomplete` over `GET /api/users/search/{keyword}`, debounced at
+300ms with one `AbortController` per window, so a slow answer for an earlier keystroke can never
+overwrite a newer result set.
+
+The popup opens as soon as anything is typed rather than only when there are rows, because it is also
+what carries **Searching…** and **No people match "…"** — gated on results, an empty search showed
+nothing at all and read as a dead field. The spinner is set on the keystroke rather than when the
+request leaves, or it flashes for the 200ms the network takes and looks like a glitch. Each row shows
+the person's picture, name and address; picking one navigates to their profile by mouse or keyboard,
+and Escape closes without navigating.
 
 ## Preferences and the content warning
 
