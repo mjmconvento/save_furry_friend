@@ -119,6 +119,12 @@ four, so the feed layout is exercised rather than just populated. Images come fr
 on each run, one object per post per image — sharing objects would mean deleting one post blanked
 another's photos.
 
+Dates matter as much as the mix: six of the fifty are placed inside **today**, spread across the
+hours already elapsed, and the corpus is shuffled before it is dated. Without the shuffle the tone
+order in the seeder became chronological order — every recent post happy — and without today's six
+the home page's daily summary read all zeros on a fresh install, which looks broken rather than
+empty. The remaining forty-four walk back over ninety days.
+
 Two properties make it safe to re-run, which matters because `make bootstrap` seeds every time:
 
 - users are matched on a **fixed UUID**, not on email, so changing a name or address updates the
@@ -211,6 +217,7 @@ no CSRF, no cookies. Errors are always JSON.
 | GET | `/api/users/{user}` | bearer — any signed-in user, for profile pages |
 | GET | `/api/users/search/{keyword}` | bearer — any signed-in user |
 | POST | `/api/users/{user}/follow`, `/api/users/{user}/unfollow` | bearer — any signed-in user |
+| GET | `/api/posts/summary` | bearer — today's post count per tone, feed-scoped |
 | GET/POST | `/api/posts` | bearer |
 | GET/PUT/DELETE | `/api/posts/{post}` | bearer, own posts only for writes (`PostPolicy`) |
 
@@ -228,6 +235,10 @@ Shapes worth knowing:
   page rather than replacing the list; `apiClient` exposes `apiPage` for that, beside `apiRequest`
   which peels the envelope and is right for everything unpaginated.
 - The feed is always scoped to the follow graph plus your own posts. There is no "everything" mode.
+- `GET /api/posts/summary` powers the home page: `{ data: { date, counts } }`, where `counts` always
+  carries all three tones, zeros included, so the client never fills a gap. `date` is the day the API
+  counted, in **its own** timezone (`config/app.php`) — the page states it rather than assuming the
+  browser's. It is scoped like the feeds, so a card reading 3 and its feed showing 3 are one claim.
 - `medias` is stored in Mongo as bare object keys and rendered to absolute URLs by `PostResource`.
 - Validation failures are `422` with `{ message, errors: { field: [...] } }`; missing records are `404` JSON.
 
