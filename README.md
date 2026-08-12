@@ -114,10 +114,14 @@ Datastore credentials and the published ports live in `./.env` (gitignored, temp
 | `SamplePostSeeder` | 50 posts across those four authors, three tones and 90 days |
 
 The posts are a deliberate mix: roughly 40% text-only, 40% one image and 20% a gallery of two to
-four, so the feed layout is exercised rather than just populated. Images come from
-`backend_full_laravel/database/seeders/samples/` (eight JPEGs, committed) and are uploaded to MinIO
-on each run, one object per post per image — sharing objects would mean deleting one post blanked
-another's photos.
+four, so the feed layout is exercised rather than just populated.
+
+**No two posts share a photo.** `samples/` holds 60 committed JPEGs and the seeder consumes that
+queue rather than cycling it, spending one photo per media slot — 57 of the 60 at the current
+distribution. If the plan ever needs more slots than there are photos the seeder throws, naming both
+numbers, because silently cycling is exactly the repetition the queue exists to prevent. Each is
+uploaded as its own S3 object per post: sharing objects would be smaller, but deleting one post would
+blank another's pictures. `samples/avatars/` holds four more, one per sample account.
 
 Dates matter as much as the mix: six of the fifty are placed inside **today**, spread across the
 hours already elapsed, and the corpus is shuffled before it is dated. Without the shuffle the tone
@@ -217,6 +221,7 @@ no CSRF, no cookies. Errors are always JSON.
 | GET | `/api/users/{user}` | bearer — any signed-in user, for profile pages |
 | GET | `/api/users/search/{keyword}` | bearer — any signed-in user |
 | PATCH | `/api/user/preferences` | bearer — **your own** account, display preferences only |
+| POST/DELETE | `/api/user/avatar` | bearer — **your own** picture only |
 | POST | `/api/users/{user}/follow`, `/api/users/{user}/unfollow` | bearer — any signed-in user |
 | GET | `/api/posts/summary` | bearer — today's post count per tone, feed-scoped |
 | GET/POST | `/api/posts` | bearer |
@@ -241,6 +246,10 @@ Shapes worth knowing:
   counted, in **its own** timezone (`config/app.php`) — the page states it rather than assuming the
   browser's. It is scoped like the feeds, so a card reading 3 and its feed showing 3 are one claim.
 - `medias` is stored in Mongo as bare object keys and rendered to absolute URLs by `PostResource`.
+  `avatar` on a user and `authorAvatar` on a post work the same way.
+- `stats` on a user (`posts` / `followers` / `following`) is **null on lists and search** and filled
+  in only by `GET /api/users/{id}`, which is the only surface that displays it — three extra queries
+  per row would be an N+1 nobody notices until the list grows.
 - Validation failures are `422` with `{ message, errors: { field: [...] } }`; missing records are `404` JSON.
 
 No CSRF dance is needed any more:
@@ -304,6 +313,27 @@ which redirects — hiding a link does not stop anyone typing the URL. Both are 
 read from `localStorage`, which the user can edit, and editing them just buys an empty page full of
 403s. A stored list with nothing recognisable in it — including sessions predating the field — ends
 the session at the login form rather than rendering a half-known identity.
+
+## Profiles and pictures
+
+`/my_profile` and `/profile/:id` share one `ProfileHeader`: picture, name, and post / follower /
+following counts. They differ only by their action — an upload control on your own, a follow button
+on somebody else's — so they are one component rather than two that drift.
+
+Uploading is the **second** narrow self-service exception, alongside preferences: `POST` and `DELETE
+/api/user/avatar` act on the token's own account, take no `{user}` parameter, and write one column.
+Name, email, password and roles remain admin-only. Limits are tighter than post media on purpose —
+4 MB, JPEG/PNG/WebP only — because an avatar renders at 40px.
+
+`users.avatar` holds a bare object key, and the previous object is deleted when a picture is replaced
+or removed, so changing your picture ten times leaves one file rather than ten.
+
+**Author pictures on posts are read, not denormalized.** `authorName` *is* denormalized into every
+post document and needs `SyncAuthorName` to fan out on rename — the staleness this codebase already
+carries a job for. Avatars deliberately do not repeat that: `PostService::attachAuthorAvatars()` fills
+them in from Postgres with one `whereIn` per page, so replacing your picture updates every post you
+have ever written, immediately, with nothing to backfill. Verified in the browser: a new upload
+appears in the feed on the next navigation.
 
 ## Preferences and the content warning
 
