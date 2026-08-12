@@ -16,15 +16,19 @@ export interface Post {
 }
 
 /**
- * Today's post count per tone, as `GET /api/posts/summary` reports it.
+ * Post counts per tone over the last week, as `GET /api/posts/summary` reports
+ * it.
  *
- * `date` is the day the API counted, in its own timezone - which need not be the
- * browser's, so the page shows this rather than assuming "today" locally.
+ * `from` and `to` are the inclusive days the API counted, in its own timezone -
+ * which need not be the browser's, so the page shows these rather than working
+ * the week out locally. The API owns the window length: widen it there and this
+ * needs no change.
  *
  * Counts are partial by declaration: the API sends every tone, and reading with
  * `?? 0` keeps a future tone from rendering `undefined`.
  */
 export interface PostSummary {
-  date: string;
+  from: string;
+  to: string;
   counts: Partial<Record<string, number>>;
 }

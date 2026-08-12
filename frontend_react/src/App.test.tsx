@@ -72,7 +72,8 @@ beforeEach(() => {
       status: 200,
       body: {
         data: {
-          date: '2026-08-12',
+          from: '2026-08-06',
+          to: '2026-08-12',
           counts: { happy_post: 0, neutral_post: 0, heartbreaking_post: 0 },
         },
       },
@@ -276,12 +277,12 @@ describe('home page summary', () => {
       ...routes,
       'api/posts/summary': {
         status: 200,
-        body: { data: { date: '2026-08-12', counts } },
+        body: { data: { from: '2026-08-06', to: '2026-08-12', counts } },
       },
     };
   };
 
-  it('counts up to each tone total for today', async () => {
+  it('counts up to each tone total for the week', async () => {
     withCounts({ happy_post: 7, neutral_post: 3, heartbreaking_post: 1 });
     renderApp();
 
@@ -289,20 +290,20 @@ describe('home page summary', () => {
     // animates, so this waits for the count-up to land rather than racing it.
     await waitFor(
       () =>
-        expect(screen.getByLabelText('7 happy posts today')).toHaveTextContent(
-          '7'
-        ),
+        expect(
+          screen.getByLabelText('7 happy posts this week')
+        ).toHaveTextContent('7'),
       { timeout: 5000 }
     );
     await waitFor(() =>
-      expect(screen.getByLabelText('3 neutral posts today')).toHaveTextContent(
-        '3'
-      )
+      expect(
+        screen.getByLabelText('3 neutral posts this week')
+      ).toHaveTextContent('3')
     );
     // Singular, because one post is not "1 posts".
     await waitFor(() =>
       expect(
-        screen.getByLabelText('1 heartbreaking post today')
+        screen.getByLabelText('1 heartbreaking post this week')
       ).toHaveTextContent('1')
     );
   });
@@ -311,7 +312,9 @@ describe('home page summary', () => {
     withCounts({ happy_post: 2, neutral_post: 0, heartbreaking_post: 0 });
     renderApp();
 
-    const links = await screen.findAllByRole('link', { name: /posts today/i });
+    const links = await screen.findAllByRole('link', {
+      name: /posts this week/i,
+    });
     const targets = links.map((link) => link.getAttribute('href'));
 
     expect(targets).toEqual([
@@ -321,22 +324,23 @@ describe('home page summary', () => {
     ]);
   });
 
-  it('says so when nobody has posted today', async () => {
+  it('says so when nobody has posted all week', async () => {
     withCounts({ happy_post: 0, neutral_post: 0, heartbreaking_post: 0 });
     renderApp();
 
     expect(
-      await screen.findByText(/nothing shared today yet/i)
+      await screen.findByText(/nothing shared this past week/i)
     ).toBeInTheDocument();
   });
 
-  it("reports the day the API counted rather than assuming the browser's", async () => {
-    // The API counts its own midnight; the browser may already be on the next day.
+  it('reports the window the API counted rather than working it out locally', async () => {
+    // Both ends, and from the payload: the browser's clock may already be on the
+    // next day, and it does not know how many days the API spans.
     withCounts({ happy_post: 1, neutral_post: 0, heartbreaking_post: 0 });
     renderApp();
 
     expect(
-      await screen.findByText(/counted for 2026-08-12/i)
+      await screen.findByText(/counted from 2026-08-06 to 2026-08-12/i)
     ).toBeInTheDocument();
   });
 
@@ -361,7 +365,7 @@ describe('home page summary', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(/server error/i);
     // The cards still render, at zero, rather than the page collapsing.
     expect(
-      await screen.findByLabelText('0 happy posts today')
+      await screen.findByLabelText('0 happy posts this week')
     ).toBeInTheDocument();
   });
 });

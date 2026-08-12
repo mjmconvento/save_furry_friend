@@ -80,14 +80,14 @@ const ToneCard: React.FC<ToneCardProps> = ({
             sx={{ color: `tone.${tone}.main`, lineHeight: 1.2 }}
             // The animated value changes on every frame, so the accessible name
             // would be read as it ticks. Expose the real number instead.
-            aria-label={`${count} ${label.toLowerCase()} ${count === 1 ? 'post' : 'posts'} today`}
+            aria-label={`${count} ${label.toLowerCase()} ${count === 1 ? 'post' : 'posts'} this week`}
           >
             {shown}
           </Typography>
         )}
 
         <Typography variant="body2" color="text.muted" sx={{ mt: 0.5 }}>
-          {count === 1 ? 'post today' : 'posts today'}
+          {count === 1 ? 'post this week' : 'posts this week'}
         </Typography>
 
         {caution !== undefined && (
@@ -107,8 +107,10 @@ const ToneCard: React.FC<ToneCardProps> = ({
  * The landing page. `/` used to redirect straight to the happy feed, so the
  * sidebar's Home entry went nowhere of its own.
  *
- * The counts are scoped like the feeds - people you follow plus yourself - so a
- * card reading 3 and its feed showing 3 are the same claim.
+ * The counts cover a rolling week and are scoped like the feeds - people you
+ * follow plus yourself - so a card reading 12 and its feed are the same claim.
+ * The API decides the window and reports the dates it used; this page states
+ * them rather than working them out from the browser's clock.
  */
 const HomePage: React.FC = () => {
   const { token, currentUser } = useAuth();
@@ -147,8 +149,8 @@ const HomePage: React.FC = () => {
       </Typography>
       <Typography variant="body1" color="text.muted" sx={{ mb: 3 }}>
         {loading || total > 0
-          ? 'Here is what the people you follow have shared today.'
-          : 'Nothing shared today yet. Yours could be the first.'}
+          ? 'Here is what the people you follow have shared this past week.'
+          : 'Nothing shared this past week. Yours could be the first.'}
       </Typography>
 
       <ErrorList errors={errors} />
@@ -171,10 +173,10 @@ const HomePage: React.FC = () => {
       </Stack>
 
       {summary && (
-        // The API counts its own midnight, which need not be the browser's, so
-        // the day it measured is stated rather than implied.
+        // The window is bounded by the API's midnight, which need not be the
+        // browser's, so the days it measured are stated rather than implied.
         <Typography variant="body2" color="text.muted" sx={{ mt: 2 }}>
-          Counted for {summary.date}.
+          Counted from {summary.from} to {summary.to}.
         </Typography>
       )}
     </Container>
