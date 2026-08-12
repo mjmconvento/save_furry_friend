@@ -1,0 +1,35 @@
+# The build context is the repo root (php/Dockerfile needs php/*.ini), so
+# without this every build ships node_modules, vendor, .git and .env.
+# NOTE: php/ must stay included — the image COPYs php/*.ini and php/*.conf.
+
+**/node_modules
+**/vendor
+**/.git
+**/.gitignore
+**/.gitattributes
+
+# Secrets: .env is compose credentials at the root and app credentials in
+# backend_full_laravel. Examples stay in the context.
+**/.env
+**/.env.*
+!**/.env.example
+
+**/.idea
+**/.ai
+**/.DS_Store
+
+backend_full_laravel/storage/logs/*
+backend_full_laravel/storage/framework/cache/data/*
+backend_full_laravel/storage/framework/sessions/*
+backend_full_laravel/storage/framework/views/*
+backend_full_laravel/.phpunit.cache
+frontend_react/build
+frontend_react/coverage
+frontend_react/yarn-error.log
+frontend_react/npm-debug.log
+
+ai_docs
+.github
+docker-compose.yml
+docker-compose.override.yml
+docker-compose.override.yml.example

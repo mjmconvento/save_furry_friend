@@ -1,2 +1,10 @@
+# yarn.lock is deliberately NOT ignored: the image installs from it with
+# `yarn install --frozen-lockfile`.
 node_modules
+build
+coverage
+.git
+.env*
+.idea
+yarn-error.log
 npm-debug.log
