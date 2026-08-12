@@ -80,13 +80,13 @@ class PostService
     }
 
     /**
-     * Counts today's posts per tone, scoped exactly like the feeds - people the
-     * viewer follows, plus themselves - so the number on the home page matches
-     * what clicking through to the feed actually shows.
+     * Counts posts per tone over a window of whole days, scoped exactly like the
+     * feeds - people the viewer follows, plus themselves - so the number on the
+     * home page matches what clicking through to the feed actually shows.
      *
-     * "Today" is midnight in the application timezone (`config/app.php`), which
-     * is why the caller reports the date alongside the counts rather than
-     * letting the client assume its own.
+     * `$from` and `$to` are **inclusive** day boundaries in the application
+     * timezone (`config/app.php`), which is why the caller reports both dates
+     * alongside the counts rather than letting the client assume its own.
      *
      * One aggregation rather than three counts, and `$unwind` rather than
      * grouping on `tags` directly, because the field is an array: grouping on it
@@ -95,7 +95,7 @@ class PostService
      *
      * @return array<string, int> every tone in `PostTag`, zeros included
      */
-    public function countTodayByTone(User $viewer, CarbonInterface $today): array
+    public function countByTone(User $viewer, CarbonInterface $from, CarbonInterface $to): array
     {
         $counts = [];
 
@@ -117,8 +117,10 @@ class PostService
                         '$in' => $this->visibleAuthorIds($viewer),
                     ],
                     'createdAt' => [
-                        '$gte' => new UTCDateTime($today->copy()->startOfDay()),
-                        '$lt' => new UTCDateTime($today->copy()->addDay()->startOfDay()),
+                        '$gte' => new UTCDateTime($from->copy()->startOfDay()),
+                        // Exclusive upper bound on the *next* midnight, so a post
+                        // made at 23:59:59 on the final day still counts.
+                        '$lt' => new UTCDateTime($to->copy()->addDay()->startOfDay()),
                     ],
                 ],
             ],

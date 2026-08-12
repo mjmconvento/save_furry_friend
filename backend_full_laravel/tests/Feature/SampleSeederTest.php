@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\PostController;
 use App\Models\Eloquent\User;
 use App\Models\Mongo\Post;
 use App\Services\User\UserService;
@@ -75,18 +76,23 @@ it('spreads the corpus across every author, tone and media count', function (): 
         ->toBeTrue();
 });
 
-it('puts several of today\'s posts in more than one tone', function (): void {
-    // The home page counts today per tone. A corpus dated entirely in the past
-    // makes that summary read all zeros on a fresh install, and dating it in
-    // tone order made every recent post the same tone - which read as a bug.
+it('dates recent posts across more than one tone', function (): void {
+    // The home page counts a rolling week per tone. A corpus dated entirely in
+    // the past makes that summary read all zeros on a fresh install, and dating
+    // it in tone order made every recent post the same tone - which read as a bug.
     $this->seed(SampleUserSeeder::class);
     $this->seed(SamplePostSeeder::class);
 
-    $today = Post::where('createdAt', '>=', now()->startOfDay())->get();
+    $recent = Post::where(
+        'createdAt',
+        '>=',
+        now()
+            ->subDays(PostController::SUMMARY_DAYS - 1)->startOfDay()
+    )->get();
 
-    expect($today->count())
+    expect($recent->count())
         ->toBeGreaterThanOrEqual(3)
-        ->and($today->pluck('tags')->flatten()->unique()->count())
+        ->and($recent->pluck('tags')->flatten()->unique()->count())
         ->toBeGreaterThan(1);
 });
 

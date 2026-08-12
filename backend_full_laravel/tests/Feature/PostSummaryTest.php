@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\PostTag;
+use App\Http\Controllers\PostController;
 use App\Models\Eloquent\User;
 use App\Models\Mongo\Post;
 use Illuminate\Support\Carbon;
@@ -29,12 +30,12 @@ function summaryPost(User $author, PostTag $tag, ?Carbon $createdAt = null, ?arr
     return $post;
 }
 
-it('counts today\'s posts by tone', function (): void {
+it('counts the week\'s posts by tone', function (): void {
     $viewer = User::factory()->create();
 
     summaryPost($viewer, PostTag::Happy);
-    summaryPost($viewer, PostTag::Happy);
-    summaryPost($viewer, PostTag::Heartbreaking);
+    summaryPost($viewer, PostTag::Happy, now()->subDays(4));
+    summaryPost($viewer, PostTag::Heartbreaking, now()->subDays(6));
 
     $this->actingAs($viewer)
         ->getJson('/api/posts/summary')
@@ -45,17 +46,28 @@ it('counts today\'s posts by tone', function (): void {
             PostTag::Neutral->value => 0,
             PostTag::Heartbreaking->value => 1,
         ])
-        ->assertJsonPath('data.date', now()->toDateString());
+        ->assertJsonPath('data.to', now()->toDateString())
+        ->assertJsonPath('data.from', now()->subDays(6)->toDateString());
 });
 
-it('ignores posts from before today', function (): void {
-    // The whole point of the card is "today": a post from yesterday evening, or
-    // one a second before midnight, must not be counted.
+it('reports a window of exactly seven days, both ends included', function (): void {
+    // `subDays(7)` would span eight. The endpoint states the dates it used, so
+    // this is the arithmetic the caption depends on.
+    $this->actingAs(User::factory()->create())
+        ->getJson('/api/posts/summary')
+        ->assertOk()
+        ->assertJsonPath('data.from', now()->subDays(PostController::SUMMARY_DAYS - 1)->toDateString());
+});
+
+it('ignores posts from before the window', function (): void {
+    // A rolling week, so the boundary moves: a post one second before the seventh
+    // day back began is out, however recently it looks.
     $viewer = User::factory()->create();
 
     summaryPost($viewer, PostTag::Happy);
-    summaryPost($viewer, PostTag::Happy, now()->subDay());
-    summaryPost($viewer, PostTag::Happy, now()->startOfDay()->subSecond());
+    summaryPost($viewer, PostTag::Happy, now()->subDays(7));
+    summaryPost($viewer, PostTag::Happy, now()->subDays(6)->startOfDay()->subSecond());
+    summaryPost($viewer, PostTag::Happy, now()->subDays(30));
 
     $this->actingAs($viewer)
         ->getJson('/api/posts/summary')
@@ -63,15 +75,18 @@ it('ignores posts from before today', function (): void {
         ->assertJsonPath('data.counts.' . PostTag::Happy->value, 1);
 });
 
-it('counts a post made at the first second of today', function (): void {
+it('counts the whole of the first and last day in the window', function (): void {
+    // Whole days, not a 168-hour window measured from the current clock time:
+    // midnight seven days back through the final second of today.
     $viewer = User::factory()->create();
 
-    summaryPost($viewer, PostTag::Neutral, now()->startOfDay());
+    summaryPost($viewer, PostTag::Neutral, now()->subDays(6)->startOfDay());
+    summaryPost($viewer, PostTag::Neutral, now()->endOfDay());
 
     $this->actingAs($viewer)
         ->getJson('/api/posts/summary')
         ->assertOk()
-        ->assertJsonPath('data.counts.' . PostTag::Neutral->value, 1);
+        ->assertJsonPath('data.counts.' . PostTag::Neutral->value, 2);
 });
 
 it('is scoped like the feeds: followed authors plus yourself', function (): void {
@@ -140,6 +155,6 @@ it('is not swallowed by the {post} route', function (): void {
         ->getJson('/api/posts/summary')
         ->assertOk()
         ->assertJsonStructure([
-            'data' => ['date', 'counts'],
+            'data' => ['from', 'to', 'counts'],
         ]);
 });

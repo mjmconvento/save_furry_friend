@@ -17,6 +17,12 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class PostController extends Controller
 {
+    /**
+     * Days the home page summary spans, counting today. The endpoint reports the
+     * dates it used, so a change here needs no client change.
+     */
+    public const SUMMARY_DAYS = 7;
+
     public function __construct(
         private readonly PostService $postService
     ) {
@@ -44,23 +50,32 @@ class PostController extends Controller
     }
 
     /**
-     * Today's post count per tone, for the home page.
+     * Post counts per tone over the last week, for the home page.
      *
-     * `date` travels with the counts because "today" is midnight in the API's
-     * timezone, not the browser's: without it the client would caption someone
-     * else's day as its own.
+     * A **rolling** seven days rather than a calendar week: Monday to Sunday
+     * would collapse to near-zero every Monday morning, which is the emptiness a
+     * single day already suffered from.
+     *
+     * `from` and `to` travel with the counts because the window is bounded by
+     * midnight in the API's timezone, not the browser's: without them the client
+     * would caption someone else's week as its own.
      */
     public function summary(Request $request): JsonResponse
     {
         /** @var User $viewer */
         $viewer = $request->user();
 
-        $today = now();
+        $to = now();
+        // Inclusive of both ends, so `SUMMARY_DAYS` days are counted rather than
+        // one more than that.
+        $from = $to->copy()
+            ->subDays(self::SUMMARY_DAYS - 1);
 
         return response()->json([
             'data' => [
-                'date' => $today->toDateString(),
-                'counts' => $this->postService->countTodayByTone($viewer, $today),
+                'from' => $from->toDateString(),
+                'to' => $to->toDateString(),
+                'counts' => $this->postService->countByTone($viewer, $from, $to),
             ],
         ]);
     }
