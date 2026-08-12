@@ -221,6 +221,9 @@ no CSRF, no cookies. Errors are always JSON.
 | Method | Path | Auth |
 | --- | --- | --- |
 | POST | `/api/login` | public, `throttle:login` (5/min per email+IP, 20/min per IP) |
+| POST | `/api/register` | **public**, `throttle:5,1` — creates an unverified account |
+| GET | `/api/email/verify/{id}/{hash}` | **public but signed** — opened from the email |
+| POST | `/api/email/verification-notification` | bearer — resend, for your own address |
 | POST | `/api/logout` | bearer — revokes the presented token |
 | GET/POST | `/api/users` | bearer, **admin only** (`UserPolicy`) |
 | PUT/DELETE | `/api/users/{user}` | bearer, **admin only** (`UserPolicy`) |
@@ -292,8 +295,10 @@ follow graph, which are the product rather than its administration.
 
 Three consequences worth knowing:
 
-- **There is no public registration.** `POST /api/users` used to be unauthenticated; it now needs an
-  admin token. Accounts come from the seeder or from an admin on the Users page.
+- **Signing yourself up and administering accounts are different endpoints.** `POST /api/users` needs
+  an admin token; `POST /api/register` is public. Sharing one route would mean a single edit could
+  make account administration public by accident, so they stay apart — see
+  [Registration and email verification](#registration-and-email-verification).
 - **There is no self-service exception.** A non-admin cannot edit or delete even their own account.
   Nothing in the SPA offers that, and an exception nobody exercises is one to forget about. Note
   `UpdateUserRequest`'s `current_password` rule validates against the *authenticated* user, so an
@@ -319,6 +324,40 @@ which redirects — hiding a link does not stop anyone typing the URL. Both are 
 read from `localStorage`, which the user can edit, and editing them just buys an empty page full of
 403s. A stored list with nothing recognisable in it — including sessions predating the field — ends
 the session at the login form rather than rendering a half-known identity.
+
+## Registration and email verification
+
+`/register` sits beside `/login` and each links to the other. Registering **signs you straight in** —
+the response carries a token, exactly as login does — so there is no "now go and log in" step. The
+address starts unverified.
+
+Verification is **reported, not enforced**: an unverified account can do everything, and a banner in
+the app shell says the address is not confirmed. Tightening that later means adding Laravel's
+`verified` middleware to the write routes; nothing here assumes it never will.
+
+### Seeing the link locally
+
+`MAIL_MAILER=log`, so nothing is sent anywhere — the whole email lands in
+`backend_full_laravel/storage/logs/laravel.log`. Finding the URL in there means reading a few hundred
+lines of inlined CSS, so there is a command:
+
+```bash
+docker compose exec app php artisan email:verification-link you@example.com
+```
+
+It builds the same signed URL, with the same lifetime, and grants nothing reading the log does not —
+both need shell access to the container. Paste it into a browser: it verifies the address and
+redirects to the SPA with `?verified=1`, which toasts, re-reads the account and strips the parameter.
+
+### Why not Laravel's own request class
+
+`Illuminate\Foundation\Auth\EmailVerificationRequest` reads `$request->user()`. A link opened from an
+email carries no bearer token and this app keeps no session, so that dies on null — it returned a 500
+the first time it was tried here. `EmailVerificationController` instead resolves the account from the
+route id, which is safe because the `signed` middleware has already proved the URL was not tampered
+with, and still compares the hash: the hash is of the address, so a link stops working once the
+address changes. Tests cover the tampered signature, a hash pointed at another account, a deleted
+account, a changed address, and opening a valid link twice.
 
 ## Profiles and pictures
 
