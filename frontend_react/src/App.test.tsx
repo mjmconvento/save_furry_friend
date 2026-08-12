@@ -927,3 +927,107 @@ describe('registration and email verification', () => {
     await waitFor(() => expect(window.location.search).toBe(''));
   });
 });
+
+describe('people search', () => {
+  const person = (over: Record<string, unknown> = {}) => ({
+    id: 'user-9',
+    first_name: 'Daniel',
+    middle_name: 'Chukwu',
+    last_name: 'Okafor',
+    email: 'daniel@user.com',
+    email_verified: true,
+    avatar: null,
+    roles: ['user'],
+    preferences: { hide_heartbreaking_warning: false },
+    is_following: false,
+    stats: null,
+    ...over,
+  });
+
+  const withResults = (data: unknown[]) => {
+    routes = {
+      'api/users/search': { status: 200, body: { data } },
+      ...routes,
+    };
+  };
+
+  const type = async (text: string) => {
+    const field = await screen.findByPlaceholderText(/search people/i);
+    await userEvent.type(field, text);
+
+    return field;
+  };
+
+  beforeEach(() => signIn());
+
+  it('shows a match with its picture', async () => {
+    withResults([person({ avatar: 'http://minio/uploads/daniel.jpg' })]);
+    renderApp();
+
+    await type('Daniel Okafor');
+
+    expect(
+      await screen.findByText('Daniel Okafor', {}, { timeout: 5000 })
+    ).toBeInTheDocument();
+    expect(
+      document.querySelector('img[src="http://minio/uploads/daniel.jpg"]')
+    ).not.toBeNull();
+  });
+
+  it('says so when nobody matches, rather than looking dead', async () => {
+    // The popup used to be gated on having rows, so an empty result set showed
+    // nothing at all and read as a broken field.
+    withResults([]);
+    renderApp();
+
+    await type('zzznobody');
+
+    expect(
+      await screen.findByText(/no people match/i, {}, { timeout: 5000 })
+    ).toBeInTheDocument();
+  });
+
+  it('reports that it is searching before the results land', async () => {
+    withResults([person()]);
+    renderApp();
+
+    await type('Dan');
+
+    // Before the debounce elapses, the field is already saying something.
+    expect(await screen.findByText(/searching/i)).toBeInTheDocument();
+  });
+
+  it('offers a way to clear the field', async () => {
+    withResults([person()]);
+    renderApp();
+
+    const field = await type('Daniel');
+
+    await userEvent.click(
+      await screen.findByRole('button', { name: /clear search/i })
+    );
+
+    expect(field).toHaveValue('');
+  });
+
+  it('sends the whole phrase to the API, spaces included', async () => {
+    // The fix is server-side, so what matters here is that the client does not
+    // mangle or split the query on its way out.
+    withResults([person()]);
+    renderApp();
+
+    await type('Daniel Okafor');
+
+    await waitFor(() =>
+      expect(
+        vi
+          .mocked(fetch)
+          .mock.calls.some(([url]) =>
+            decodeURIComponent(String(url)).includes(
+              'api/users/search/Daniel Okafor'
+            )
+          )
+      ).toBe(true)
+    );
+  });
+});
