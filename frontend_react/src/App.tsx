@@ -1,5 +1,5 @@
 import { lazy } from 'react';
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import LoginRoute from './route/LoginRoute';
 import AdminRoute from './route/AdminRoute';
 import ProtectedLayout from './route/ProtectedLayout';
@@ -14,6 +14,7 @@ const HeartbreakingPostPage = lazy(
 );
 const MyProfilePage = lazy(() => import('./page/MyProfilePage'));
 const ProfilePage = lazy(() => import('./page/ProfilePage'));
+const HomePage = lazy(() => import('./page/HomePage'));
 const UserPage = lazy(() => import('./page/UserPage'));
 const NotFoundPage = lazy(() => import('./page/NotFoundPage'));
 
@@ -24,7 +25,7 @@ const App = () => (
     <Routes>
       <Route path="/login" element={<LoginRoute />} />
       <Route element={<ProtectedLayout />}>
-        <Route index element={<Navigate to="/happy_posts" replace />} />
+        <Route index element={<HomePage />} />
         <Route path="/happy_posts" element={<HappyPostPage />} />
         <Route path="/neutral_posts" element={<NeutralPostPage />} />
         <Route

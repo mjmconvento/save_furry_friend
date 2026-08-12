@@ -23,11 +23,11 @@ export type PostTag = (typeof POST_TAGS)[keyof typeof POST_TAGS];
  */
 export type ToneKey = keyof Theme['palette']['tone'];
 
-/** A post whose tags match nothing here gets no badge at all. */
-export const POST_TONE_BY_TAG: Record<
-  string,
-  { tone: ToneKey; label: string }
-> = {
+/**
+ * Total over `PostTag`, so one of our own tones always resolves. Prefer this
+ * wherever the tag is known to be ours.
+ */
+export const TONE_BY_TAG: Record<PostTag, { tone: ToneKey; label: string }> = {
   [POST_TAGS.happy]: { tone: 'happy', label: 'Happy' },
   [POST_TAGS.neutral]: { tone: 'neutral', label: 'Neutral' },
   [POST_TAGS.heartbreaking]: {
@@ -35,3 +35,12 @@ export const POST_TONE_BY_TAG: Record<
     label: 'Heartbreaking',
   },
 };
+
+/**
+ * The same data, widened for lookups by arbitrary post tag: a post may carry
+ * anything, and one whose tags match nothing here gets no badge at all.
+ */
+export const POST_TONE_BY_TAG: Record<
+  string,
+  { tone: ToneKey; label: string } | undefined
+> = TONE_BY_TAG;

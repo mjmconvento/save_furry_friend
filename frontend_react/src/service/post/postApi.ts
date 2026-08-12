@@ -1,5 +1,5 @@
 import { POSTS_ENDPOINT } from '../../config/api';
-import { Post } from '../../interface/Post';
+import { Post, PostSummary } from '../../interface/Post';
 import { apiPage, apiRequest, Page } from '../apiClient';
 
 /**
@@ -18,6 +18,19 @@ export const fetchPosts = async (
     token: bearerToken,
     // Page 1 is the default, so it stays out of the URL.
     query: { tags, authorId, page: page > 1 ? String(page) : null },
+    signal,
+  });
+
+/**
+ * Scoped exactly like the feeds - people you follow plus yourself - so the home
+ * page numbers match what clicking through to a feed shows.
+ */
+export const fetchPostSummary = async (
+  bearerToken: string | null,
+  signal?: AbortSignal
+): Promise<PostSummary> =>
+  apiRequest<PostSummary>(`${POSTS_ENDPOINT}/summary`, {
+    token: bearerToken,
     signal,
   });
 

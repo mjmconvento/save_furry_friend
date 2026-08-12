@@ -64,6 +64,16 @@ beforeEach(() => {
   localStorage.clear();
   window.history.pushState({}, '', '/');
   routes = {
+    // Registered before `api/posts`, which would otherwise match this URL too.
+    'api/posts/summary': {
+      status: 200,
+      body: {
+        data: {
+          date: '2026-08-12',
+          counts: { happy_post: 0, neutral_post: 0, heartbreaking_post: 0 },
+        },
+      },
+    },
     'api/posts': { status: 200, body: { data: [], links: {}, meta: {} } },
     'api/users': { status: 200, body: { data: [], links: {}, meta: {} } },
     'api/logout': { status: 200, body: { message: 'Logout successful' } },
@@ -105,13 +115,16 @@ describe('authenticated', () => {
   // context, which would arrive as the `role` argument.
   beforeEach(() => signIn());
 
-  it('renders the app shell and lands on the happy feed', async () => {
+  it('renders the app shell and stays on the home page', async () => {
+    // `/` used to redirect to the happy feed, which left the sidebar's Home
+    // entry pointing at another page's content.
     renderApp();
 
     expect(
       await screen.findByRole('navigation', { name: /sidebar/i })
     ).toBeInTheDocument();
-    await waitFor(() => expect(window.location.pathname).toBe('/happy_posts'));
+    expect(await screen.findByText(/welcome back/i)).toBeInTheDocument();
+    expect(window.location.pathname).toBe('/');
   });
 
   it('sends the bearer token and no cookies', async () => {
@@ -147,6 +160,9 @@ describe('authenticated', () => {
       body: { message: 'Unauthenticated.' },
     };
 
+    // Explicitly a feed: `/` is the home page now, and its summary request is a
+    // different route than the one stubbed above.
+    window.history.pushState({}, '', '/happy_posts');
     renderApp();
 
     expect(
@@ -218,6 +234,8 @@ describe('authenticated', () => {
       },
     };
 
+    // The home page does not render a feed, so ask for one.
+    window.history.pushState({}, '', '/happy_posts');
     renderApp();
 
     expect(await screen.findByText('First page post')).toBeInTheDocument();
@@ -243,6 +261,93 @@ describe('authenticated', () => {
         screen.queryByRole('button', { name: /load more/i })
       ).not.toBeInTheDocument()
     );
+  });
+});
+
+describe('home page summary', () => {
+  beforeEach(() => signIn());
+
+  const withCounts = (counts: Record<string, number>) => {
+    routes = {
+      ...routes,
+      'api/posts/summary': {
+        status: 200,
+        body: { data: { date: '2026-08-12', counts } },
+      },
+    };
+  };
+
+  it('counts up to each tone total for today', async () => {
+    withCounts({ happy_post: 7, neutral_post: 3, heartbreaking_post: 1 });
+    renderApp();
+
+    // The label carries the real number immediately; the rendered text is what
+    // animates, so this waits for the count-up to land rather than racing it.
+    await waitFor(
+      () =>
+        expect(screen.getByLabelText('7 happy posts today')).toHaveTextContent(
+          '7'
+        ),
+      { timeout: 5000 }
+    );
+    await waitFor(() =>
+      expect(screen.getByLabelText('3 neutral posts today')).toHaveTextContent(
+        '3'
+      )
+    );
+    // Singular, because one post is not "1 posts".
+    await waitFor(() =>
+      expect(
+        screen.getByLabelText('1 heartbreaking post today')
+      ).toHaveTextContent('1')
+    );
+  });
+
+  it('links each tone to its feed', async () => {
+    withCounts({ happy_post: 2, neutral_post: 0, heartbreaking_post: 0 });
+    renderApp();
+
+    const links = await screen.findAllByRole('link', { name: /posts today/i });
+    const targets = links.map((link) => link.getAttribute('href'));
+
+    expect(targets).toEqual([
+      '/happy_posts',
+      '/neutral_posts',
+      '/heartbreaking_posts',
+    ]);
+  });
+
+  it('says so when nobody has posted today', async () => {
+    withCounts({ happy_post: 0, neutral_post: 0, heartbreaking_post: 0 });
+    renderApp();
+
+    expect(
+      await screen.findByText(/nothing shared today yet/i)
+    ).toBeInTheDocument();
+  });
+
+  it("reports the day the API counted rather than assuming the browser's", async () => {
+    // The API counts its own midnight; the browser may already be on the next day.
+    withCounts({ happy_post: 1, neutral_post: 0, heartbreaking_post: 0 });
+    renderApp();
+
+    expect(
+      await screen.findByText(/counted for 2026-08-12/i)
+    ).toBeInTheDocument();
+  });
+
+  it('surfaces a failed summary without blanking the page', async () => {
+    routes = {
+      ...routes,
+      'api/posts/summary': { status: 500, body: { message: 'Server error' } },
+    };
+    renderApp();
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/server error/i);
+    // The cards still render, at zero, rather than the page collapsing.
+    expect(
+      await screen.findByLabelText('0 happy posts today')
+    ).toBeInTheDocument();
   });
 });
 
