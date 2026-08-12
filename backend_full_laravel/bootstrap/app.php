@@ -17,6 +17,15 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->throttleApi();
+
+        // nginx is the only thing that can reach php-fpm: the container publishes
+        // no host port (finding 2), so `at: '*'` cannot be spoofed from outside the
+        // compose network. Behind a real edge (ALB/Caddy/ngrok) narrow this to the
+        // proxy subnet before shipping to production.
+        $middleware->trustProxies(at: '*', headers: Request::HEADER_X_FORWARDED_FOR
+            | Request::HEADER_X_FORWARDED_HOST
+            | Request::HEADER_X_FORWARDED_PORT
+            | Request::HEADER_X_FORWARDED_PROTO);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

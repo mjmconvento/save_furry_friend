@@ -18,7 +18,9 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['http://localhost:3000'],
+    // Single source of truth for the SPA origin; the compose stack injects
+    // FRONTEND_URL so remapping the SPA port cannot silently break login.
+    'allowed_origins' => [env('FRONTEND_URL', 'http://localhost:3000')],
 
     'allowed_origins_patterns' => [],
 
