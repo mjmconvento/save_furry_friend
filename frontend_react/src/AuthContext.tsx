@@ -9,8 +9,13 @@ import {
 } from 'react';
 import { API_BASE_URL } from './config/api';
 import { apiRequest } from './service/apiClient';
+import { updatePreference } from './service/user/userApi';
 import { setUnauthorizedHandler } from './service/authBridge';
-import type { UserRole } from './interface/User';
+import type {
+  UserPreferenceKey,
+  UserPreferences,
+  UserRole,
+} from './interface/User';
 
 export interface CurrentUser {
   id: string;
@@ -32,6 +37,17 @@ interface AuthContextType {
    * what actually protects user administration.
    */
   isAdmin: boolean;
+  /**
+   * Account-level display preferences, cached from the login payload. Absent
+   * keys are off, so a session predating a preference behaves as if it were
+   * never set rather than being ended.
+   */
+  preferences: UserPreferences;
+  /**
+   * Writes one preference to the account and updates the cache. Rejects if the
+   * API refused, so a caller can say the setting did not stick.
+   */
+  setPreference: (key: UserPreferenceKey, value: boolean) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -39,6 +55,36 @@ const AuthContext = createContext<AuthContextType | null>(null);
 const USER_ID_KEY = 'loggedInUserId';
 const USER_NAME_KEY = 'loggedInUserName';
 const USER_ROLES_KEY = 'loggedInUserRoles';
+const USER_PREFERENCES_KEY = 'loggedInUserPreferences';
+
+/**
+ * Only known keys, and only booleans. Anything else is dropped, which keeps a
+ * hand-edited value from turning into a truthy preference.
+ */
+const toPreferences = (value: unknown): UserPreferences => {
+  if (value === null || typeof value !== 'object') {
+    return {};
+  }
+
+  const source = value as Record<string, unknown>;
+
+  return source.hide_heartbreaking_warning === true
+    ? { hide_heartbreaking_warning: true }
+    : {};
+};
+
+const readStoredPreferences = (raw: string | null): UserPreferences => {
+  if (raw === null) {
+    return {};
+  }
+
+  try {
+    return toPreferences(JSON.parse(raw));
+  } catch {
+    // Truncated or hand-edited storage means "no preferences set", not a crash.
+    return {};
+  }
+};
 
 /**
  * Unknown entries are dropped rather than trusted, mirroring the enum cast on
@@ -86,6 +132,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const roles = readStoredRoles(localStorage.getItem(USER_ROLES_KEY));
     return id && name && roles ? { id, name, roles } : null;
   });
+  const [preferences, setPreferences] = useState<UserPreferences>(() =>
+    readStoredPreferences(localStorage.getItem(USER_PREFERENCES_KEY))
+  );
 
   const login = async (email: string, password: string) => {
     const loginBody = { email, password };
@@ -115,13 +164,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       throw new Error('Login failed: the server sent no recognisable role');
     }
 
+    // Unlike roles, an unreadable preference map is not fatal: everything
+    // defaults to off, which is the safe behaviour for a content warning.
+    const loginPreferences = toPreferences(data.user.preferences);
+
     setToken(data.token);
     localStorage.setItem('token', data.token);
     localStorage.setItem(USER_ID_KEY, data.user.id);
     localStorage.setItem(USER_NAME_KEY, name);
     localStorage.setItem(USER_ROLES_KEY, JSON.stringify(roles));
+    localStorage.setItem(
+      USER_PREFERENCES_KEY,
+      JSON.stringify(loginPreferences)
+    );
 
     setCurrentUser({ id: data.user.id, name, roles });
+    setPreferences(loginPreferences);
     setIsAuthenticated(true);
   };
 
@@ -146,14 +204,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       setToken(null);
       setCurrentUser(null);
+      setPreferences({});
       localStorage.removeItem('token');
       localStorage.removeItem(USER_ID_KEY);
       localStorage.removeItem(USER_NAME_KEY);
       localStorage.removeItem(USER_ROLES_KEY);
+      localStorage.removeItem(USER_PREFERENCES_KEY);
       setIsAuthenticated(false);
       loggingOut.current = false;
     }
   }, [token]);
+
+  const setPreference = useCallback(
+    async (key: UserPreferenceKey, value: boolean): Promise<void> => {
+      // The account is the source of truth; this cache only spares every render
+      // a round trip. Writing it before the API confirmed would make a failed
+      // save look successful until the next login.
+      const saved = await updatePreference(token, key, value);
+
+      setPreferences(saved);
+      localStorage.setItem(USER_PREFERENCES_KEY, JSON.stringify(saved));
+    },
+    [token]
+  );
 
   // `apiRequest` runs outside React and cannot call `useAuth`, so it reports a
   // 401 through a module-level handler instead. Registering `logout` here is
@@ -179,6 +252,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         token,
         currentUser,
         isAdmin: currentUser?.roles.includes('admin') ?? false,
+        preferences,
+        setPreference,
       }}
     >
       {children}

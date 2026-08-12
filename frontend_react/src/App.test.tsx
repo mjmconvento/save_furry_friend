@@ -62,6 +62,9 @@ const signIn = (...roles: UserRole[]) => {
 
 beforeEach(() => {
   localStorage.clear();
+  // The content warning remembers acknowledgement per tab, which would
+  // otherwise leak between tests.
+  sessionStorage.clear();
   window.history.pushState({}, '', '/');
   routes = {
     // Registered before `api/posts`, which would otherwise match this URL too.
@@ -348,6 +351,147 @@ describe('home page summary', () => {
     expect(
       await screen.findByLabelText('0 happy posts today')
     ).toBeInTheDocument();
+  });
+});
+
+describe('heartbreaking content warning', () => {
+  beforeEach(() => {
+    signIn();
+    window.history.pushState({}, '', '/heartbreaking_posts');
+  });
+
+  const askedForTheFeed = (): boolean =>
+    vi
+      .mocked(fetch)
+      .mock.calls.some(([input]) =>
+        String(input).includes('heartbreaking_post')
+      );
+
+  it('warns before the feed, and does not load it yet', async () => {
+    renderApp();
+
+    expect(await screen.findByText(/before you read on/i)).toBeInTheDocument();
+    // The point of the gate: `PostFeed` fetches on mount, so the posts must not
+    // have been requested behind the warning.
+    expect(askedForTheFeed()).toBe(false);
+  });
+
+  it('offers a way out that is not the feed', async () => {
+    renderApp();
+
+    await screen.findByText(/before you read on/i);
+
+    // The sidebar links to the same feed, so match the warning's own wording.
+    expect(
+      screen.getByRole('link', { name: /take me to happy posts/i })
+    ).toHaveAttribute('href', '/happy_posts');
+  });
+
+  it('loads the feed once the reader continues', async () => {
+    renderApp();
+
+    await userEvent.click(
+      await screen.findByRole('button', { name: /show the posts/i })
+    );
+
+    await waitFor(() => expect(askedForTheFeed()).toBe(true));
+    expect(screen.queryByText(/before you read on/i)).not.toBeInTheDocument();
+  });
+
+  it('does not save anything when the box is left unticked', async () => {
+    renderApp();
+
+    await userEvent.click(
+      await screen.findByRole('button', { name: /show the posts/i })
+    );
+    await waitFor(() => expect(askedForTheFeed()).toBe(true));
+
+    const saved = vi
+      .mocked(fetch)
+      .mock.calls.some(([input]) => String(input).includes('user/preferences'));
+
+    expect(saved).toBe(false);
+  });
+
+  it('saves the preference to the account when the box is ticked', async () => {
+    routes = {
+      ...routes,
+      'user/preferences': {
+        status: 200,
+        body: {
+          data: { preferences: { hide_heartbreaking_warning: true } },
+        },
+      },
+    };
+    renderApp();
+
+    await userEvent.click(
+      await screen.findByRole('checkbox', { name: /don't show this warning/i })
+    );
+    await userEvent.click(
+      screen.getByRole('button', { name: /show the posts/i })
+    );
+
+    await waitFor(() => {
+      const [url, init] =
+        vi
+          .mocked(fetch)
+          .mock.calls.find(([input]) =>
+            String(input).includes('user/preferences')
+          ) ?? [];
+
+      expect(url).toBeDefined();
+      expect(init?.method).toBe('PATCH');
+      expect(String(init?.body)).toContain('hide_heartbreaking_warning');
+    });
+
+    // Cached locally too, so the next page load does not need the round trip.
+    await waitFor(() =>
+      expect(localStorage.getItem('loggedInUserPreferences')).toContain(
+        'hide_heartbreaking_warning'
+      )
+    );
+  });
+
+  it('skips the warning entirely once the account has dismissed it', async () => {
+    localStorage.setItem(
+      'loggedInUserPreferences',
+      JSON.stringify({ hide_heartbreaking_warning: true })
+    );
+    renderApp();
+
+    await waitFor(() => expect(askedForTheFeed()).toBe(true));
+    expect(screen.queryByText(/before you read on/i)).not.toBeInTheDocument();
+  });
+
+  it('does not warn twice in the same tab', async () => {
+    // Acknowledgement is per tab, so leaving and coming back a minute later must
+    // not warn again even without the box ticked.
+    sessionStorage.setItem('heartbreakingWarningAcknowledged', 'true');
+    renderApp();
+
+    await waitFor(() => expect(askedForTheFeed()).toBe(true));
+    expect(screen.queryByText(/before you read on/i)).not.toBeInTheDocument();
+  });
+
+  it('still shows the posts when saving the preference fails', async () => {
+    // Consent was given; a failed save must not hold the reader up, but it must
+    // not pass silently either.
+    routes = {
+      ...routes,
+      'user/preferences': { status: 500, body: { message: 'Nope' } },
+    };
+    renderApp();
+
+    await userEvent.click(
+      await screen.findByRole('checkbox', { name: /don't show this warning/i })
+    );
+    await userEvent.click(
+      screen.getByRole('button', { name: /show the posts/i })
+    );
+
+    await waitFor(() => expect(askedForTheFeed()).toBe(true));
+    expect(await screen.findByText(/could not save that/i)).toBeInTheDocument();
   });
 });
 

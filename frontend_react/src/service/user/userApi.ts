@@ -1,6 +1,28 @@
-import { USERS_ENDPOINT } from '../../config/api';
-import { User } from '../../interface/User';
+import { PREFERENCES_ENDPOINT, USERS_ENDPOINT } from '../../config/api';
+import { User, UserPreferenceKey, UserPreferences } from '../../interface/User';
 import { apiRequest } from '../apiClient';
+
+/**
+ * Self-service, and deliberately its own endpoint: `PUT /api/users/{id}` is
+ * admin-only, and this must not become the exception to that. It writes one
+ * boolean on the token's own account and nothing else.
+ *
+ * Returns the account's full preference map, since the API merges rather than
+ * replaces.
+ */
+export const updatePreference = async (
+  token: string | null,
+  key: UserPreferenceKey,
+  value: boolean
+): Promise<UserPreferences> => {
+  const updated = await apiRequest<User>(PREFERENCES_ENDPOINT, {
+    method: 'PATCH',
+    token,
+    json: { [key]: value },
+  });
+
+  return updated.preferences;
+};
 
 export const fetchUsers = async (
   token: string | null,

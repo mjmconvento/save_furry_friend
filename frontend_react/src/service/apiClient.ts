@@ -25,7 +25,7 @@ export class ApiError extends Error {
 type Query = Record<string, string | string[] | null | undefined>;
 
 interface RequestOptions {
-  method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   token: string | null;
   /** Sent as JSON. Mutually exclusive with `form`. */
   json?: unknown;
