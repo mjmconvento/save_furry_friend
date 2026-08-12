@@ -1,16 +1,23 @@
 import { POSTS_ENDPOINT } from '../../config/api';
 import { Post } from '../../interface/Post';
-import { apiRequest } from '../apiClient';
+import { apiPage, apiRequest, Page } from '../apiClient';
 
+/**
+ * The feed is paginated server-side (20 per page), so this returns the page
+ * rather than a bare array - dropping the paging would make everything past the
+ * first 20 posts unreachable.
+ */
 export const fetchPosts = async (
   bearerToken: string | null,
   tags: string[],
   authorId: string | null = null,
-  signal?: AbortSignal
-): Promise<Post[]> =>
-  apiRequest<Post[]>(POSTS_ENDPOINT, {
+  signal?: AbortSignal,
+  page = 1
+): Promise<Page<Post>> =>
+  apiPage<Post>(POSTS_ENDPOINT, {
     token: bearerToken,
-    query: { tags, authorId },
+    // Page 1 is the default, so it stays out of the URL.
+    query: { tags, authorId, page: page > 1 ? String(page) : null },
     signal,
   });
 

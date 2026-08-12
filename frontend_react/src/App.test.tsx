@@ -7,6 +7,7 @@ import { ToastProvider } from './component/template/ToastProvider';
 import App from './App';
 import theme from './theme';
 import { API_BASE_URL } from './config/api';
+import type { Post } from './interface/Post';
 
 /**
  * `fetch` is stubbed rather than the service modules, so `apiClient`, the
@@ -107,7 +108,7 @@ describe('authenticated', () => {
     // The feed page is a lazy chunk behind a Suspense boundary, so the first
     // request cannot fire until the shell has mounted.
     await screen.findByRole('navigation', { name: /sidebar/i });
-    await waitFor(() => expect(fetch).toHaveBeenCalled(), { timeout: 5000 });
+    await waitFor(() => expect(fetch).toHaveBeenCalled(), { timeout: 15_000 });
 
     const [, init] = vi.mocked(fetch).mock.calls[0] ?? [];
     // The client builds a plain object literal for headers, which is what the
@@ -167,6 +168,67 @@ describe('authenticated', () => {
       expect(localStorage.getItem('loggedInUserId')).toBeNull();
       expect(localStorage.getItem('loggedInUserName')).toBeNull();
     });
+  });
+
+  it('appends the next page of a feed instead of hiding it', async () => {
+    // The feed is paginated at 20 server-side, and the client used to type the
+    // response as a bare array - so every post past the first page was
+    // unreachable once the sample corpus grew past 20.
+    const post = (id: string, content: string): Post => ({
+      id,
+      content,
+      authorId: 'user-9',
+      authorName: 'Other Author',
+      tags: ['happy_post'],
+      createdAt: '2026-08-01T10:00:00.000Z',
+      updatedAt: '2026-08-01T10:00:00.000Z',
+      medias: [],
+    });
+
+    // First match wins, so the narrower `page=2` fragment is registered first.
+    routes = {
+      'page=2': {
+        status: 200,
+        body: {
+          data: [post('p2', 'Second page post')],
+          meta: { current_page: 2, last_page: 2 },
+        },
+      },
+      ...routes,
+      'api/posts': {
+        status: 200,
+        body: {
+          data: [post('p1', 'First page post')],
+          meta: { current_page: 1, last_page: 2 },
+        },
+      },
+    };
+
+    renderApp();
+
+    expect(await screen.findByText('First page post')).toBeInTheDocument();
+    expect(screen.queryByText('Second page post')).not.toBeInTheDocument();
+
+    await userEvent.click(
+      await screen.findByRole('button', { name: /load more/i })
+    );
+
+    expect(await screen.findByText('Second page post')).toBeInTheDocument();
+    // Appended, not replaced.
+    expect(screen.getByText('First page post')).toBeInTheDocument();
+
+    const askedForPage2 = vi
+      .mocked(fetch)
+      .mock.calls.some(([input]) => String(input).includes('page=2'));
+
+    expect(askedForPage2).toBe(true);
+
+    // The last page has been reached, so there is nothing left to offer.
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', { name: /load more/i })
+      ).not.toBeInTheDocument()
+    );
   });
 });
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   Box,
@@ -84,6 +84,10 @@ const PostFeed: React.FC<PostFeedProps> = ({
   const [imageSizes, setImageSizes] = useState<
     Record<string, { width: number; height: number }>
   >({});
+  const [page, setPage] = useState<number>(1);
+  const [lastPage, setLastPage] = useState<number>(1);
+  const [loadingMore, setLoadingMore] = useState<boolean>(false);
+  const moreRequest = useRef<AbortController | null>(null);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     accept: { 'image/*': [] },
@@ -147,13 +151,19 @@ const PostFeed: React.FC<PostFeedProps> = ({
       setLoading(true);
 
       try {
-        const data: Post[] = await fetchPosts(
+        const {
+          items,
+          page: current,
+          lastPage: last,
+        } = await fetchPosts(
           token,
           tag ? [tag] : [],
           authorId ?? null,
           controller.signal
         );
-        setPosts(data);
+        setPosts(items);
+        setPage(current);
+        setLastPage(last);
         setError(null);
       } catch (error) {
         if (isAbort(error)) return;
@@ -168,8 +178,50 @@ const PostFeed: React.FC<PostFeedProps> = ({
 
     loadPosts();
 
-    return () => controller.abort();
+    // A load-more still in flight belongs to the feed being left, so it is
+    // abandoned here too rather than appending its posts to the new one.
+    return () => {
+      controller.abort();
+      moreRequest.current?.abort();
+    };
   }, [token, tag, authorId]);
+
+  const handleLoadMore = async () => {
+    const controller = new AbortController();
+    moreRequest.current = controller;
+    setLoadingMore(true);
+
+    try {
+      const {
+        items,
+        page: current,
+        lastPage: last,
+      } = await fetchPosts(
+        token,
+        tag ? [tag] : [],
+        authorId ?? null,
+        controller.signal,
+        page + 1
+      );
+
+      // Rows shift between pages when anyone posts while the feed is open, so
+      // page 2 can repeat something already on screen. React would then throw
+      // on the duplicate key.
+      setPosts((prevPosts) => {
+        const seen = new Set(prevPosts.map((post) => post.id));
+
+        return [...prevPosts, ...items.filter((post) => !seen.has(post.id))];
+      });
+      setPage(current);
+      setLastPage(last);
+    } catch (error) {
+      if (isAbort(error)) return;
+
+      notify({ message: errorSummary(error).join(' '), severity: 'error' });
+    } finally {
+      if (!controller.signal.aborted) setLoadingMore(false);
+    }
+  };
 
   const handleOpenEditDialog = (post: Post) => {
     setEditingPost(post);
@@ -348,6 +400,18 @@ const PostFeed: React.FC<PostFeedProps> = ({
           );
         })}
       </Stack>
+
+      {page < lastPage && (
+        <Box mt={3} textAlign="center">
+          <Button
+            variant="outlined"
+            loading={loadingMore}
+            onClick={handleLoadMore}
+          >
+            Load more
+          </Button>
+        </Box>
+      )}
 
       <EditPostDialog
         open={isEditDialogOpen}

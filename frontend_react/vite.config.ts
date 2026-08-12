@@ -21,5 +21,9 @@ export default defineConfig({
     globals: true,
     setupFiles: './src/setupTests.ts',
     css: true,
+    // Every route is a lazy chunk, and the first test to await one pays for
+    // Vite transforming it. On a cold run - which is every CI run - that
+    // exceeded the 5s default and failed a test that passes in isolation.
+    testTimeout: 20_000,
   },
 });

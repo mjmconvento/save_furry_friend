@@ -95,10 +95,14 @@ const readErrorBag = (detail: object): Record<string, string[]> | undefined => {
   return bag;
 };
 
-export const apiRequest = async <T>(
+/**
+ * The transport. Both readers below share it: the difference between them is
+ * only how much of a successful envelope they keep.
+ */
+const send = async (
   path: string,
   { method = 'GET', token, json, form, query, signal }: RequestOptions
-): Promise<T> => {
+): Promise<unknown> => {
   const headers: Record<string, string> = {
     Accept: 'application/json',
     Authorization: `Bearer ${token}`,
@@ -135,8 +139,47 @@ export const apiRequest = async <T>(
     );
   }
 
-  return unwrap<T>(payload);
+  return payload;
 };
+
+export const apiRequest = async <T>(
+  path: string,
+  options: RequestOptions
+): Promise<T> => unwrap<T>(await send(path, options));
+
+/** One page of a paginated collection, as the feed needs to walk it. */
+export interface Page<T> {
+  items: T[];
+  page: number;
+  lastPage: number;
+}
+
+/**
+ * Laravel's paginator reports the position in `meta`, so a caller can ask for
+ * the next page without trusting the absolute URLs in `links` - those are built
+ * from the API's own `APP_URL`, which need not match the browser's origin.
+ */
+const readPage = <T>(payload: unknown): Page<T> => {
+  const envelope =
+    payload !== null && typeof payload === 'object'
+      ? (payload as { data?: unknown; meta?: Record<string, unknown> })
+      : {};
+
+  // Same unchecked cast as `unwrap`: the envelope key is the contract.
+  const items = Array.isArray(envelope.data) ? (envelope.data as T[]) : [];
+  const meta = envelope.meta ?? {};
+
+  const at = (key: string, fallback: number): number =>
+    typeof meta[key] === 'number' ? (meta[key] as number) : fallback;
+
+  // An unpaginated collection has no `meta`, and reads as a single full page.
+  return { items, page: at('current_page', 1), lastPage: at('last_page', 1) };
+};
+
+export const apiPage = async <T>(
+  path: string,
+  options: RequestOptions
+): Promise<Page<T>> => readPage<T>(await send(path, options));
 
 /**
  * A request cancelled through its `signal` rejects with an `AbortError`
