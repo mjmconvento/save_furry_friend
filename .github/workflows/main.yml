@@ -153,3 +153,36 @@ jobs:
 
             - name: Build images
               run: docker compose build
+
+            # Compose only ever builds the `base` target, so the deployable
+            # `prod` stage had no coverage at all - and it broke twice without CI
+            # noticing: `config:cache` froze the build's empty env, and the image
+            # spoke FastCGI when every host needs HTTP. Both are boot-time
+            # failures, so booting it is the test.
+            - name: Build the deployable image
+              run: docker build -f php/Dockerfile --target prod -t sff-prod .
+
+            - name: Refuse to start without APP_KEY
+              run: |
+                  if docker run --rm sff-prod true 2>/dev/null; then
+                      echo "expected a missing APP_KEY to fail the boot" >&2
+                      exit 1
+                  fi
+
+            # No databases here on purpose: /up does not touch them, so this
+            # isolates "does the container serve HTTP on the injected port".
+            - name: Serve HTTP on the injected port
+              run: |
+                  docker run -d --name sff-prod-smoke -p 8099:9187 \
+                      -e PORT=9187 \
+                      -e APP_KEY="base64:$(openssl rand -base64 32)" \
+                      -e LOG_CHANNEL=stderr \
+                      sff-prod
+                  for i in $(seq 1 30); do
+                      code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8099/up || true)
+                      [ "$code" = "200" ] && echo "/up -> 200 after ${i}s" && exit 0
+                      sleep 1
+                  done
+                  echo "/up never returned 200; last code=${code}" >&2
+                  docker logs sff-prod-smoke
+                  exit 1

@@ -1,0 +1,76 @@
+# Single-container nginx: the shape every PaaS free tier needs.
+#
+# Compose runs nginx as its own service against `fastcgi_pass app:9000`. A free
+# PaaS instance gives you ONE container that must answer HTTP on ONE injected
+# port, so this config puts nginx in front of php-fpm over loopback instead.
+#
+# Kept deliberately in step with `nginx/conf.d/default.conf` - that file is the
+# dev vhost and this one is its deployable twin. If you change a limit or a
+# location there, change it here. The differences are only these three:
+#   * `listen ${PORT}` instead of 80, rendered by envsubst at container start
+#   * `fastcgi_pass 127.0.0.1:9000` instead of the `app` service name
+#   * pid/temp paths under /tmp, because the image runs as www-data
+# `fastcgi_param HTTPS` below needs a value that is empty for plain http, so a
+# map rather than the raw header: `if_not_empty` tests emptiness, and passing
+# the client's header through verbatim would let a request claim `HTTPS=off`.
+map $http_x_forwarded_proto $forwarded_https {
+    default '';
+    https   'on';
+}
+
+server {
+    listen ${PORT};
+    server_name _;
+    root /var/www/public;
+
+    index index.php;
+
+    client_max_body_size 32m;          # must stay <= php post_max_size (php/uploads.ini)
+    client_body_timeout  60s;
+
+    gzip on;
+    gzip_vary on;
+    gzip_min_length 512;
+    gzip_proxied any;
+    gzip_types application/json application/javascript text/css text/plain
+               image/svg+xml application/xml;
+
+    # Hidden files are denied before any other regex location can serve them.
+    location ~ /\.(?!well-known) {
+        deny all;
+    }
+
+    # Health route. The platform polls this, and because it is served through
+    # php-fpm a dead fpm shows up as a failed health check rather than a silent
+    # 502 - which is what gets the container restarted.
+    location = /up {
+        access_log off;
+        try_files $uri /index.php?$query_string;
+    }
+
+    location ~* \.(css|js|woff2?|png|jpe?g|gif|svg|ico)$ {
+        expires 30d;
+        add_header Cache-Control "public, immutable";
+        access_log off;
+        try_files $uri /index.php?$query_string;
+    }
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location ~ \.php$ {
+        include fastcgi_params;
+        fastcgi_split_path_info ^(.+\.php)(/.+)$;
+        fastcgi_pass 127.0.0.1:9000;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        fastcgi_param PATH_INFO       $fastcgi_path_info;
+        # Behind the platform's TLS terminator: without this Laravel builds
+        # http:// URLs, and the signed verification links break.
+        fastcgi_param HTTPS           $forwarded_https if_not_empty;
+        fastcgi_read_timeout 120s;
+        fastcgi_buffers 16 16k;
+        fastcgi_buffer_size 32k;
+        fastcgi_hide_header X-Powered-By;
+    }
+}

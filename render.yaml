@@ -1,0 +1,95 @@
+# Render Blueprint for the Laravel API. See ai_docs/deployment.md.
+#
+# Only the API lives here. The React SPA goes to Cloudflare Pages, and the
+# databases and object storage are external managed services - Render's own free
+# Postgres deletes itself 44 days after creation, so it is deliberately not used.
+services:
+    - type: web
+      name: sff-api
+      runtime: docker
+      plan: free
+      region: oregon
+
+      # The Dockerfile sits in php/ but COPYs from php/ AND backend_full_laravel/,
+      # so the build context has to be the repo root. Do not set rootDir.
+      dockerfilePath: ./php/Dockerfile
+      dockerContext: .
+
+      # Served by php-fpm, so a dead fpm fails the check rather than silently
+      # returning 502s.
+      healthCheckPath: /up
+
+      envVars:
+          # Render injects PORT itself; the entrypoint renders it into the nginx
+          # vhost. Declared here only to document that the image reads it.
+          - key: PORT
+            value: 10000
+
+          - key: APP_NAME
+            value: Save Furry Friend
+          - key: APP_ENV
+            value: production
+          - key: APP_DEBUG
+            value: false
+
+          # Container platform: no writable log directory worth keeping, and this
+          # puts Laravel's log into `render logs` alongside nginx and php-fpm.
+          - key: LOG_CHANNEL
+            value: stderr
+
+          # `database` for either of these polls Postgres continuously, which
+          # keeps Neon's compute awake and burns its 100 CU-hour monthly
+          # allowance in about 17 days. `sync` runs the one queued job
+          # (SyncAuthorName, on user rename) inline - Render's free tier has no
+          # worker process anyway.
+          - key: QUEUE_CONNECTION
+            value: sync
+          - key: CACHE_STORE
+            value: file
+          - key: SESSION_DRIVER
+            value: file
+
+          - key: DB_CONNECTION
+            value: pgsql
+
+          # Required by the AWS SDK, ignored by R2.
+          - key: AWS_DEFAULT_REGION
+            value: auto
+          # config/filesystems.php defaults this to true for MinIO; R2 needs
+          # virtual-hosted style.
+          - key: AWS_USE_PATH_STYLE_ENDPOINT
+            value: false
+
+          # Everything below is prompted for on Blueprint sync and stored
+          # encrypted - nothing sensitive, and nothing environment-specific,
+          # belongs in this file.
+          #
+          # APP_URL       this service's own public URL
+          # FRONTEND_URL  the Pages origin; CORS rejects every other origin
+          # DB_URL        Neon POOLED endpoint, with ?sslmode=require
+          # MONGODB_URI   Atlas mongodb+srv:// string
+          # AWS_URL       R2 public base URL, WITHOUT the bucket name appended
+          - key: APP_KEY
+            sync: false
+          - key: APP_URL
+            sync: false
+          - key: FRONTEND_URL
+            sync: false
+          - key: DB_URL
+            sync: false
+          - key: MONGODB_URI
+            sync: false
+          - key: MONGODB_DATABASE
+            sync: false
+          - key: FILESYSTEM_DISK
+            sync: false
+          - key: AWS_ACCESS_KEY_ID
+            sync: false
+          - key: AWS_SECRET_ACCESS_KEY
+            sync: false
+          - key: AWS_BUCKET
+            sync: false
+          - key: AWS_ENDPOINT
+            sync: false
+          - key: AWS_URL
+            sync: false
