@@ -17,7 +17,11 @@ return RectorConfig::configure()
         __DIR__ . '/tests',
     ])
     ->withSkip([
-        __DIR__ . '/bootstrap/cache/**/*',
+        // The directory, not `cache/**/*`: that glob needs at least one nested
+        // level, so it missed `bootstrap/cache/services.php` - a generated
+        // package-manifest file that reappears on every `composer require` and
+        // failed the Rector check with a diff nobody should apply.
+        __DIR__ . '/bootstrap/cache',
     ])
     ->withPhpSets(php82: true)
     // Turns a whole class of silent scalar coercions into TypeErrors.

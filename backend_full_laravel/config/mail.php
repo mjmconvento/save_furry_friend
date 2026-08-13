@@ -29,12 +29,23 @@ return [
     | your mailers below. You may also add additional mailers if needed.
     |
     | Supported: "smtp", "sendmail", "mailgun", "ses", "ses-v2",
-    |            "postmark", "resend", "log", "array",
+    |            "postmark", "resend", "brevo", "log", "array",
     |            "failover", "roundrobin"
     |
     */
 
     'mailers' => [
+        // Not a first-party Laravel transport: registered by hand in
+        // AppServiceProvider via `Mail::extend`, which is the pattern Laravel's
+        // own mail documentation uses - with Brevo as its worked example.
+        //
+        // It sends over the HTTPS API on 443, deliberately. Brevo's SMTP relay is
+        // port 465, which the free tiers of most PaaS hosts block outright, so an
+        // `smtp` mailer pointed at Brevo cannot work there.
+        'brevo' => [
+            'transport' => 'brevo',
+        ],
+
         'smtp' => [
             'transport' => 'smtp',
             'scheme' => env('MAIL_SCHEME'),

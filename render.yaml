@@ -69,6 +69,8 @@ services:
           # DB_URL        Neon POOLED endpoint, with ?sslmode=require
           # MONGODB_URI   Atlas mongodb+srv:// string
           # AWS_URL       R2 public base URL, WITHOUT the bucket name appended
+          # BREVO_API_KEY Brevo API key (xkeysib-...), NOT the SMTP key
+          # MAIL_FROM_*   must exactly match a validated Brevo sender
           - key: APP_KEY
             sync: false
           - key: APP_URL
@@ -92,4 +94,12 @@ services:
           - key: AWS_ENDPOINT
             sync: false
           - key: AWS_URL
+            sync: false
+          - key: MAIL_MAILER
+            sync: false
+          - key: BREVO_API_KEY
+            sync: false
+          - key: MAIL_FROM_ADDRESS
+            sync: false
+          - key: MAIL_FROM_NAME
             sync: false

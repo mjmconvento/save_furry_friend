@@ -23,6 +23,14 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    // Read by the `brevo` mailer, which is registered as a custom Symfony
+    // transport in AppServiceProvider. This is the **API key**, not the SMTP key:
+    // both live on the same Brevo settings page and only the API key works over
+    // HTTPS. See ai_docs/deployment.md.
+    'brevo' => [
+        'key' => env('BREVO_API_KEY'),
+    ],
+
     'resend' => [
         'key' => env('RESEND_KEY'),
     ],
