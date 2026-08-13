@@ -507,9 +507,27 @@ shows up as `Could not resolve host: minio` or `could not translate host name "d
 **`could not translate host name "db"`** — the `db` container is not running. `docker compose ps -a`;
 if Postgres exited, check `docker compose logs db`.
 
-**Postgres refuses to start after an image bump** — the `db` service is pinned to `postgres:16` on
-purpose. Postgres 18 changed its data directory layout and will not start against the existing
-`pgdata` volume. Wiping local DB data is `docker compose down -v` followed by migrate + seed again.
+**Postgres starts but the data is gone after a recreate** — check the `db` volume mount. Postgres 18
+moved `PGDATA` to `/var/lib/postgresql/18/docker` and moved its declared `VOLUME` up to the parent, so
+`docker-compose.yml` mounts `pgdata:/var/lib/postgresql`, **not** `/var/lib/postgresql/data` as it did
+on 16. With the old path the server initialises into the container's own writable layer, works
+perfectly, and loses everything the next time the container is replaced.
+
+**Upgrading a `pgdata` volume from an older Postgres** — major versions are not in-place compatible;
+18 refuses a 16 data directory outright. Dump with the *newer* client, then restore into a fresh
+volume:
+
+```bash
+docker run --rm --network save_furry_friend_data -e PGPASSWORD=<pw> postgres:18 \
+    pg_dump -h db -U root -d blog --no-owner --no-privileges > blog.sql
+docker compose down db && docker volume rm save_furry_friend_pgdata
+docker compose up -d db                       # initialises an empty 18 cluster
+docker compose exec -T db psql -U root -d blog -v ON_ERROR_STOP=1 < blog.sql
+docker compose exec db createdb -U root testing   # not in the per-database dump
+```
+
+Throwing the data away instead is `docker compose down -v`, then migrate + seed. That also discards
+any account you created by hand, which the seeder cannot recreate.
 
 **`vite: not found` in the react container** — the `/app/node_modules` anonymous volume is stale and
 shadows the image's own `node_modules`, so a rebuild alone does not help. Discard the volume too:
@@ -536,9 +554,9 @@ disk fail there while working fine on macOS.
 | --- | --- |
 | `code-quality` | PHPStan, ECS, Rector (dry-run) and Pest against `backend_full_laravel`, with Composer downloads cached on `composer.lock` |
 | `frontend` | `yarn typecheck`, `yarn lint`, `yarn format:check`, `yarn test` and `yarn build` against `frontend_react` |
-| `compose` | `docker compose config -q` and `docker compose build` — a broken bind mount, a floating image tag or a key missing from `.env.docker.example` fails here instead of on someone's first clone |
+| `compose` | `docker compose config -q` and `docker compose build`, then builds the `prod` target and boots it — a broken bind mount, a floating image tag, a key missing from `.env.docker.example`, or a deployable image that cannot serve HTTP all fail here instead of on someone's first clone |
 
-Pest needs real databases, so `code-quality` runs `postgres:16` and `mongo:8.0` service containers
+Pest needs real databases, so `code-quality` runs `postgres:18` and `mongo:8.0` service containers
 and installs the `mongodb` PHP extension. `phpunit.xml` carries the Compose hostnames (`db`,
 `mongo`) and the job exports `DB_HOST` / `MONGODB_URI` to point at `127.0.0.1` instead — PHPUnit
 does not overwrite variables that already exist in the environment, so the exports win.

@@ -42,9 +42,14 @@ services:
 
     db:
         <<: *svc
-        image: postgres:16
+        image: postgres:18
         volumes:
-            - pgdata:/var/lib/postgresql/data
+            # Mounted at /var/lib/postgresql, NOT /var/lib/postgresql/data. The
+            # 18 image moved PGDATA to /var/lib/postgresql/18/docker and moved its
+            # declared VOLUME up to the parent, so the old path would mount
+            # somewhere Postgres never writes: it would initialise into the
+            # container's own layer and lose every row on the next recreate.
+            - pgdata:/var/lib/postgresql
         # Loopback-only: reachable for a psql client on this machine, not from
         # the network the laptop happens to be on.
         ports:
