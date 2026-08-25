@@ -1,0 +1,17 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "sff-web",
+  "compatibility_date": "2026-08-20",
+  "observability": {
+    "enabled": true
+  },
+  "assets": {
+    // vite.config.ts overrides Vite's default outDir ("dist") to "build".
+    "directory": "./build",
+    // SPA history fallback: a hard load of /profile/<id>/followers asks for a
+    // file that does not exist; this serves index.html (200, URL unchanged)
+    // and React Router resolves the path. Replaces the classic Pages
+    // `public/_redirects` catch-all, which Workers static assets rejects.
+    "not_found_handling": "single-page-application"
+  }
+}

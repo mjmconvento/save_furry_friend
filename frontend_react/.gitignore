@@ -5,6 +5,9 @@
 /.pnp
 .pnp.js
 
+# wrangler deploy artifacts
+/.wrangler
+
 # testing
 /coverage
 
