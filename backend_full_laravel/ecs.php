@@ -17,6 +17,11 @@ return ECSConfig::configure()
         __DIR__ . '/tests',
     ])
     ->withSkip([
+        // fnmatch: `*` never crosses `/`, so the old `cache/**/*` pattern only
+        // matched files in SUBdirectories and let the flat, generated
+        // `cache/services.php` through - locally that file predates the check,
+        // but CI regenerates it on every `composer install` and failed on it.
+        __DIR__ . '/bootstrap/cache/*',
         __DIR__ . '/bootstrap/cache/**/*',
     ])
     ->withRules([
