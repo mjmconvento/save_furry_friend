@@ -10,12 +10,20 @@ import {
 } from '@mui/material';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
-import { POST_TAGS, PostTag, TONE_BY_TAG } from '../config/tags';
+import { POST_TAGS, PostTag, TONE_BY_TAG, ToneKey } from '../config/tags';
 import { PostSummary } from '../interface/Post';
 import { fetchPostSummary } from '../service/post/postApi';
 import { errorSummary, isAbort } from '../service/apiClient';
 import { useCountUp } from '../hook/useCountUp';
 import ErrorList from '../component/template/ErrorList';
+import TriviaCard from '../component/trivia/TriviaCard';
+
+/**
+ * Dashboard trivia stays light on purpose: happy and neutral only, per the
+ * product call that heartbreaking facts belong on their page, behind its
+ * warning. Module-level so a re-render never hands `TriviaCard` a fresh array.
+ */
+const TRIVIA_TONES: ToneKey[] = ['happy', 'neutral'];
 
 /** Left to right in the order the sidebar lists the feeds. */
 const TONES: { tag: PostTag; to: string; caution?: string }[] = [
@@ -179,6 +187,10 @@ const HomePage: React.FC = () => {
           Counted from {summary.from} to {summary.to}.
         </Typography>
       )}
+
+      <Box sx={{ mt: 3 }}>
+        <TriviaCard tones={TRIVIA_TONES} />
+      </Box>
     </Container>
   );
 };

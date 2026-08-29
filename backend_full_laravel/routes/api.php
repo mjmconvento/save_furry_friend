@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Http\Controllers\Auth\EmailVerificationController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\PostController;
+use App\Http\Controllers\TriviaController;
 use App\Http\Controllers\User\AvatarController;
 use App\Http\Controllers\User\FollowController;
 use App\Http\Controllers\User\UserController;
@@ -55,6 +56,10 @@ Route::middleware('auth:sanctum')->group(function (): void {
     // Same rule as `users/search` above: declared before apiResource('posts'),
     // or `summary` is swallowed by the {post} wildcard.
     Route::get('posts/summary', [PostController::class, 'summary'])->name('posts.summary');
+
+    // Read-only: trivia rows come from the seeder, so there is no resource
+    // controller to grow into.
+    Route::get('trivia', [TriviaController::class, 'index'])->name('trivia.index');
 
     Route::apiResource('posts', PostController::class);
     // `store` lives in this group now: creating an account is an admin action,

@@ -11,9 +11,9 @@ use Illuminate\Database\Seeder;
  * Database\Seeders\DatabaseSeeder, so its absence is what forced every
  * documented command to spell out `--seeder=`.
  *
- * Both children are idempotent - users are matched on a fixed id, and the post
- * seeder removes its own previous output - so `make bootstrap` is safe to run
- * against a live stack.
+ * All children are idempotent - users are matched on a fixed id, and the post
+ * and trivia seeders replace their own previous output - so `make bootstrap`
+ * is safe to run against a live stack.
  */
 class DatabaseSeeder extends Seeder
 {
@@ -22,6 +22,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             SampleUserSeeder::class,
             SamplePostSeeder::class,
+            TriviaSeeder::class,
         ]);
     }
 }

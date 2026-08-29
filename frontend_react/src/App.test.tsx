@@ -1186,3 +1186,125 @@ describe('followers and following', () => {
     expect(screen.queryByText(/who to follow/i)).not.toBeInTheDocument();
   });
 });
+
+describe('trivia', () => {
+  beforeEach(() => signIn());
+
+  const withTrivia = (
+    items: { id: number; text: string; tone: string; species: string }[]
+  ) => {
+    routes = {
+      ...routes,
+      'api/trivia': { status: 200, body: { data: items } },
+    };
+  };
+
+  /** Every trivia request so far, decoded so `tones[]=happy` is greppable. */
+  const triviaRequests = (): string[] =>
+    vi
+      .mocked(fetch)
+      .mock.calls.map(([input]) => decodeURIComponent(String(input)))
+      .filter((url) => url.includes('api/trivia'));
+
+  it('shows a fact on the dashboard, asking for happy and neutral only', async () => {
+    withTrivia([
+      {
+        id: 1,
+        text: 'Kittens start purring when they are only a few days old.',
+        tone: 'happy',
+        species: 'cat',
+      },
+    ]);
+    renderApp();
+
+    expect(
+      await screen.findByText(/kittens start purring/i)
+    ).toBeInTheDocument();
+    // Heartbreaking stays on its own page, behind its warning.
+    const [request] = triviaRequests();
+    expect(request).toContain('tones[]=happy');
+    expect(request).toContain('tones[]=neutral');
+    expect(request).not.toContain('heartbreaking');
+  });
+
+  it('moves to the other fact on Next instead of repeating', async () => {
+    withTrivia([
+      {
+        id: 1,
+        text: 'Fact about dogs number one.',
+        tone: 'happy',
+        species: 'dog',
+      },
+      {
+        id: 2,
+        text: 'Fact about cats number two.',
+        tone: 'neutral',
+        species: 'cat',
+      },
+    ]);
+    renderApp();
+
+    // The deck is shuffled, so pin behavior, not order: whichever fact opens,
+    // Next must show the other, and a third click must still show one of them.
+    const first = (await screen.findByText(/fact about \w+ number/i))
+      .textContent;
+    await userEvent.click(screen.getByRole('button', { name: /next/i }));
+    const second = screen.getByText(/fact about \w+ number/i).textContent;
+
+    expect(second).not.toBe(first);
+
+    await userEvent.click(screen.getByRole('button', { name: /next/i }));
+    expect(screen.getByText(/fact about \w+ number/i)).toBeInTheDocument();
+  });
+
+  it('shows only its own tone on the happy feed page', async () => {
+    window.history.pushState({}, '', '/happy_posts');
+    withTrivia([
+      { id: 1, text: 'A happy dog fact.', tone: 'happy', species: 'dog' },
+    ]);
+    renderApp();
+
+    // 5s, not the default 1s: on a cold module cache the lazy page chunk
+    // pulls the whole PostFeed graph, same as the home summary tests allow.
+    expect(
+      await screen.findByText(/a happy dog fact/i, undefined, {
+        timeout: 5000,
+      })
+    ).toBeInTheDocument();
+    // The species label rides along on the card.
+    expect(screen.getByText('Dog')).toBeInTheDocument();
+    const [request] = triviaRequests();
+    expect(request).toContain('tones[]=happy');
+    expect(request).not.toContain('neutral');
+  });
+
+  it('keeps heartbreaking trivia behind the content warning', async () => {
+    window.history.pushState({}, '', '/heartbreaking_posts');
+    withTrivia([
+      {
+        id: 1,
+        text: 'A heartbreaking cat fact.',
+        tone: 'heartbreaking',
+        species: 'cat',
+      },
+    ]);
+    renderApp();
+
+    // Same rule as the posts: nothing heartbreaking is even requested until
+    // the reader continues past the warning.
+    await screen.findByText(/before you read on/i, undefined, {
+      timeout: 5000,
+    });
+    expect(triviaRequests()).toHaveLength(0);
+
+    await userEvent.click(
+      screen.getByRole('button', { name: /show the posts/i })
+    );
+
+    expect(
+      await screen.findByText(/a heartbreaking cat fact/i)
+    ).toBeInTheDocument();
+    const [request] = triviaRequests();
+    expect(request).toContain('tones[]=heartbreaking');
+  });
+});

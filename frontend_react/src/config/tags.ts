@@ -24,15 +24,25 @@ export type PostTag = (typeof POST_TAGS)[keyof typeof POST_TAGS];
 export type ToneKey = keyof Theme['palette']['tone'];
 
 /**
+ * Display names by tone key, for surfaces keyed by tone rather than post tag -
+ * the trivia card gets its tone straight from the API in this vocabulary.
+ */
+export const TONE_LABEL: Record<ToneKey, string> = {
+  happy: 'Happy',
+  neutral: 'Neutral',
+  heartbreaking: 'Heartbreaking',
+};
+
+/**
  * Total over `PostTag`, so one of our own tones always resolves. Prefer this
  * wherever the tag is known to be ours.
  */
 export const TONE_BY_TAG: Record<PostTag, { tone: ToneKey; label: string }> = {
-  [POST_TAGS.happy]: { tone: 'happy', label: 'Happy' },
-  [POST_TAGS.neutral]: { tone: 'neutral', label: 'Neutral' },
+  [POST_TAGS.happy]: { tone: 'happy', label: TONE_LABEL.happy },
+  [POST_TAGS.neutral]: { tone: 'neutral', label: TONE_LABEL.neutral },
   [POST_TAGS.heartbreaking]: {
     tone: 'heartbreaking',
-    label: 'Heartbreaking',
+    label: TONE_LABEL.heartbreaking,
   },
 };
 
