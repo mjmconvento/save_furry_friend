@@ -548,13 +548,15 @@ disk fail there while working fine on macOS.
 
 ## CI
 
-`.github/workflows/main.yml` runs three jobs on every push and pull request:
+`.github/workflows/main.yml` runs three jobs on every push and pull request, plus one deploy job on
+pushes to `main`:
 
 | Job | What it proves |
 | --- | --- |
 | `code-quality` | PHPStan, ECS, Rector (dry-run) and Pest against `backend_full_laravel`, with Composer downloads cached on `composer.lock` |
 | `frontend` | `yarn typecheck`, `yarn lint`, `yarn format:check`, `yarn test` and `yarn build` against `frontend_react` |
 | `compose` | `docker compose config -q` and `docker compose build`, then builds the `prod` target and boots it — a broken bind mount, a floating image tag, a key missing from `.env.docker.example`, or a deployable image that cannot serve HTTP all fail here instead of on someone's first clone |
+| `deploy-db` | Push to `main` only, gated on `code-quality`: `php artisan migrate --force` plus the trivia seeder against the production database, using the `NEON_DIRECT_DB_URL` repository secret (the direct, non-`-pooler` Neon endpoint — see `ai_docs/deployment.md`) |
 
 Pest needs real databases, so `code-quality` runs `postgres:18` and `mongo:8.0` service containers
 and installs the `mongodb` PHP extension. `phpunit.xml` carries the Compose hostnames (`db`,

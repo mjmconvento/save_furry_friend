@@ -91,6 +91,87 @@ jobs:
               run: vendor/bin/pest
               working-directory: backend_full_laravel
 
+    # Schema and reference data ride every push to main: Render has no free
+    # pre-deploy hook and its runtime DB_URL is the POOLED endpoint, which
+    # PgBouncer makes unusable for `migrate` (advisory locks). So CI, which the
+    # wiring table in ai_docs/deployment.md already names as the migration
+    # runner, applies both against the DIRECT endpoint instead.
+    #
+    # Deliberately TriviaSeeder and not `--seed`: the full DatabaseSeeder
+    # rewrites the sample posts and re-uploads their photos to R2, and would
+    # drag Mongo and R2 secrets into CI. Trivia is Postgres-only and
+    # delete-and-replace idempotent, so re-running it per push is one small
+    # transaction - and it is what makes a fact edit deploy itself.
+    deploy-db:
+        runs-on: ubuntu-latest
+        needs: code-quality
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+        # Two pushes in quick succession must not interleave two `migrate`
+        # runs; queue them instead. Never cancel a migration mid-flight.
+        concurrency:
+            group: deploy-db
+            cancel-in-progress: false
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v7
+
+            - name: Setup PHP
+              uses: shivammathur/setup-php@v2
+              with:
+                  php-version: '8.2'
+                  # mongodb only because composer's platform check requires the
+                  # extension to install at all; nothing here connects to Mongo.
+                  extensions: mbstring, pdo, pdo_pgsql, mongodb
+                  coverage: none
+
+            - name: Cache Composer downloads
+              uses: actions/cache@v4
+              with:
+                  path: ~/.cache/composer
+                  key: composer-${{ hashFiles('backend_full_laravel/composer.lock') }}
+                  restore-keys: composer-
+
+            - name: Install dependencies
+              run: composer install --no-progress --prefer-dist
+              working-directory: backend_full_laravel
+
+            - name: Prepare environment
+              run: |
+                  cp .env.example .env
+                  php artisan key:generate
+              working-directory: backend_full_laravel
+
+            # A missing secret must fail here, with its name, not as an opaque
+            # "connection refused to db:5432" from the migrate step below.
+            - name: Require the NEON_DIRECT_DB_URL secret
+              env:
+                  DB_URL: ${{ secrets.NEON_DIRECT_DB_URL }}
+              run: |
+                  if [ -z "$DB_URL" ]; then
+                      echo "NEON_DIRECT_DB_URL is not set in the repository's Actions secrets." >&2
+                      echo "Add the DIRECT (non -pooler) Neon URL with ?sslmode=require." >&2
+                      exit 1
+                  fi
+                  case "$DB_URL" in
+                      *-pooler*)
+                          echo "NEON_DIRECT_DB_URL points at the -pooler host; migrate needs the direct endpoint." >&2
+                          exit 1
+                          ;;
+                  esac
+
+            # DB_URL as process environment beats the .env copied above -
+            # phpdotenv never overwrites an existing variable - and Laravel's
+            # `url` key overrides host, credentials and sslmode in one go.
+            - name: Migrate and seed trivia
+              env:
+                  DB_URL: ${{ secrets.NEON_DIRECT_DB_URL }}
+              run: |
+                  php artisan migrate --force
+                  php artisan db:seed --class=TriviaSeeder --force
+              working-directory: backend_full_laravel
+
     frontend:
         runs-on: ubuntu-latest
 
