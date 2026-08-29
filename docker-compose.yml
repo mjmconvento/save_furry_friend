@@ -86,6 +86,13 @@ services:
         environment:
             MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:?set MONGO_ROOT_USER in ./.env}
             MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?set MONGO_ROOT_PASSWORD in ./.env}
+            # SERVER-121912: TCMalloc vendored in every mongo 8.x build violates
+            # the rseq ABI on Linux kernels 6.19-7.0.13, and mongod refuses to
+            # start on them (Docker Desktop's linuxkit VM is in that range).
+            # Keeping glibc's own rseq registration makes TCMalloc fall back to
+            # its non-rseq path. Drop this once the Docker Desktop VM kernel is
+            # >= 7.0.14 (`docker info` shows it).
+            GLIBC_TUNABLES: glibc.pthread.rseq=1
         healthcheck:
             test:
                 [
