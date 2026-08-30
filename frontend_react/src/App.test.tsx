@@ -226,6 +226,7 @@ describe('authenticated', () => {
       medias: [],
       likeCount: 0,
       likedByViewer: false,
+      commentCount: 0,
     });
 
     // First match wins, so the narrower `page=2` fragment is registered first.
@@ -2062,5 +2063,272 @@ describe('liking posts', () => {
       .mocked(fetch)
       .mock.calls.some(([input]) => String(input).includes('/likes'));
     expect(asked).toBe(false);
+  });
+});
+
+describe('commenting on posts', () => {
+  beforeEach(() => signIn());
+
+  const post = (over: Record<string, unknown> = {}) => ({
+    id: 'post-1',
+    authorId: 'user-2',
+    authorName: 'Sam Rivera',
+    authorAvatar: null,
+    content: 'A dog found his family today.',
+    tags: ['happy_post'],
+    medias: [],
+    likeCount: 0,
+    likedByViewer: false,
+    commentCount: 2,
+    createdAt: '2026-08-29T10:02:21Z',
+    updatedAt: '2026-08-29T10:02:21Z',
+    ...over,
+  });
+
+  const comment = (over: Record<string, unknown> = {}) => ({
+    id: 'comment-1',
+    postId: 'post-1',
+    authorId: 'user-3',
+    authorName: 'Ada Lovelace',
+    authorAvatar: null,
+    content: 'What a good boy.',
+    createdAt: '2026-08-29T11:00:00Z',
+    ...over,
+  });
+
+  const withThread = (
+    comments: unknown[],
+    postOver: Record<string, unknown> = {},
+    extra: Record<string, unknown> = {}
+  ) => {
+    routes = {
+      ...extra,
+      'api/posts/post-1/comments': {
+        status: 200,
+        body: {
+          data: comments,
+          links: {},
+          meta: { current_page: 1, last_page: 1, total: comments.length },
+        },
+      },
+      ...routes,
+      'api/posts': {
+        status: 200,
+        body: {
+          data: [post(postOver)],
+          links: {},
+          meta: { current_page: 1, last_page: 1 },
+        },
+      },
+    };
+  };
+
+  it('shows the comment count without opening the thread', async () => {
+    window.history.pushState({}, '', '/happy_posts');
+    withThread([comment()]);
+    renderApp();
+
+    expect(
+      await screen.findByRole(
+        'button',
+        { name: /2 comments/i },
+        {
+          timeout: 5000,
+        }
+      )
+    ).toBeInTheDocument();
+    // Collapsed by default: a feed of twenty open threads is unreadable, and
+    // fetching them all would be a lot of bytes nobody asked for.
+    expect(screen.queryByText(/what a good boy/i)).toBeNull();
+
+    const asked = vi
+      .mocked(fetch)
+      .mock.calls.some(([input]) => String(input).includes('/comments'));
+    expect(asked).toBe(false);
+  });
+
+  it('loads the thread when it is opened', async () => {
+    window.history.pushState({}, '', '/happy_posts');
+    withThread([comment()]);
+    renderApp();
+
+    await userEvent.click(
+      await screen.findByRole(
+        'button',
+        { name: /2 comments/i },
+        {
+          timeout: 5000,
+        }
+      )
+    );
+
+    expect(await screen.findByText(/what a good boy/i)).toBeInTheDocument();
+    expect(screen.getByText(/ada lovelace/i)).toBeInTheDocument();
+  });
+
+  it('says the author is missing rather than inventing a name', async () => {
+    window.history.pushState({}, '', '/happy_posts');
+    withThread([comment({ authorName: null })]);
+    renderApp();
+
+    await userEvent.click(
+      await screen.findByRole(
+        'button',
+        { name: /2 comments/i },
+        {
+          timeout: 5000,
+        }
+      )
+    );
+
+    expect(await screen.findByText(/deleted account/i)).toBeInTheDocument();
+    // The comment itself survives; only the name is gone.
+    expect(screen.getByText(/what a good boy/i)).toBeInTheDocument();
+  });
+
+  it('posts a comment and shows it without a reload', async () => {
+    window.history.pushState({}, '', '/happy_posts');
+    // `respond` matches on URL fragment only, not method, so GET and POST of
+    // the thread share one stub. It answers with a single comment: the initial
+    // list reads it as no page (`readPage` needs an array) and the POST reads
+    // it as the created comment, which is exactly what this test needs.
+    routes = {
+      'api/posts/post-1/comments': {
+        status: 200,
+        body: { data: comment({ content: 'Brand new thought.' }) },
+      },
+      ...routes,
+      'api/posts': {
+        status: 200,
+        body: {
+          data: [post({ commentCount: 0 })],
+          links: {},
+          meta: { current_page: 1, last_page: 1 },
+        },
+      },
+    };
+    renderApp();
+
+    await userEvent.click(
+      await screen.findByRole('button', { name: /comment/i }, { timeout: 5000 })
+    );
+
+    await userEvent.type(
+      await screen.findByLabelText(/add a comment/i),
+      'Brand new thought.'
+    );
+    await userEvent.click(
+      screen.getByRole('button', { name: /post comment/i })
+    );
+
+    expect(await screen.findByText(/brand new thought/i)).toBeInTheDocument();
+  });
+
+  it('keeps Post disabled until there is something to say', async () => {
+    window.history.pushState({}, '', '/happy_posts');
+    withThread([]);
+    renderApp();
+
+    await userEvent.click(
+      await screen.findByRole(
+        'button',
+        { name: /2 comments/i },
+        {
+          timeout: 5000,
+        }
+      )
+    );
+
+    expect(await screen.findByLabelText(/add a comment/i)).toBeInTheDocument();
+    // Named distinctly from the feed composer's own Post button, so this needs
+    // no scoping to find the right control.
+    expect(
+      screen.getByRole('button', { name: /post comment/i })
+    ).toBeDisabled();
+  });
+
+  it("offers no delete on somebody else's comment", async () => {
+    window.history.pushState({}, '', '/happy_posts');
+    withThread([comment()]);
+    renderApp();
+
+    await userEvent.click(
+      await screen.findByRole(
+        'button',
+        { name: /2 comments/i },
+        {
+          timeout: 5000,
+        }
+      )
+    );
+    await screen.findByText(/what a good boy/i);
+
+    expect(
+      screen.queryByRole('button', { name: /delete comment/i })
+    ).toBeNull();
+  });
+
+  it('lets you delete your own comment', async () => {
+    window.history.pushState({}, '', '/happy_posts');
+    withThread(
+      [comment({ authorId: 'user-1', authorName: 'Test User' })],
+      {},
+      {
+        'api/comments/comment-1': {
+          status: 200,
+          body: { message: 'Comment deleted successfully' },
+        },
+      }
+    );
+    renderApp();
+
+    await userEvent.click(
+      await screen.findByRole(
+        'button',
+        { name: /2 comments/i },
+        {
+          timeout: 5000,
+        }
+      )
+    );
+    await userEvent.click(
+      await screen.findByRole('button', { name: /delete comment/i })
+    );
+
+    await waitFor(() =>
+      expect(screen.queryByText(/what a good boy/i)).toBeNull()
+    );
+  });
+
+  it('lets the post author remove a comment on their own story', async () => {
+    window.history.pushState({}, '', '/happy_posts');
+    // The signed-in account owns the post, the comment belongs to someone else.
+    withThread(
+      [comment()],
+      { authorId: 'user-1', authorName: 'Test User' },
+      {
+        'api/comments/comment-1': {
+          status: 200,
+          body: { message: 'Comment deleted successfully' },
+        },
+      }
+    );
+    renderApp();
+
+    await userEvent.click(
+      await screen.findByRole(
+        'button',
+        { name: /2 comments/i },
+        {
+          timeout: 5000,
+        }
+      )
+    );
+    await screen.findByText(/what a good boy/i);
+
+    // Moderation over what hangs off your own story, matching CommentPolicy.
+    expect(
+      screen.getByRole('button', { name: /delete comment/i })
+    ).toBeInTheDocument();
   });
 });

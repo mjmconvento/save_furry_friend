@@ -8,6 +8,7 @@ use App\Enums\PostTag;
 use App\Http\Requests\Post\StorePostRequest;
 use App\Http\Requests\Post\UpdatePostRequest;
 use App\Models\Eloquent\User;
+use App\Models\Mongo\Comment;
 use App\Models\Mongo\Post;
 use Carbon\CarbonInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -20,6 +21,57 @@ use Throwable;
 
 class PostService
 {
+    public function __construct(
+        private readonly CommentService $commentService
+    ) {
+    }
+
+    /**
+     * Everything a rendered post needs that is not in its own document: the
+     * author's current picture and how many comments it has.
+     *
+     * One entry point rather than a call per field, because the fields have to
+     * be attached at *every* place a post is returned - the feed, `show`, and
+     * each mutation's response. A second call site to remember is a count that
+     * silently reads zero on the payload some mutation answered with.
+     *
+     * @param array<int, Post> $posts
+     */
+    public function hydrate(array $posts): void
+    {
+        $this->attachAuthorAvatars($posts);
+        $this->attachCommentCounts($posts);
+    }
+
+    /**
+     * @param array<int, Post> $posts
+     */
+    private function attachCommentCounts(array $posts): void
+    {
+        if ($posts === []) {
+            return;
+        }
+
+        // Mongo document ids read as `mixed` through the model's magic
+        // attribute, so they are narrowed here rather than cast blindly - the
+        // same idiom the follow graph uses for pivot ids.
+        $ids = [];
+
+        foreach ($posts as $post) {
+            if (is_string($post->id)) {
+                $ids[] = $post->id;
+            }
+        }
+
+        $counts = $this->commentService->countsFor(array_values(array_unique($ids)));
+
+        foreach ($posts as $post) {
+            $post->commentCount = is_string($post->id)
+                ? ($counts[$post->id] ?? 0)
+                : 0;
+        }
+    }
+
     /**
      * @param ?array<string> $tags
      * @return LengthAwarePaginator<int, Post>
@@ -40,7 +92,7 @@ class PostService
         $paginator = $query->orderBy('createdAt', 'desc')
             ->paginate($perPage);
 
-        $this->attachAuthorAvatars($paginator->items());
+        $this->hydrate($paginator->items());
 
         return $paginator;
     }
@@ -205,6 +257,11 @@ class PostService
         // best-effort attempt at the objects it referenced.
         $post->delete();
 
+        // Comments live in their own collection, so nothing removes them with
+        // the document. Orphaned threads would otherwise accumulate for ever,
+        // invisible and uncountable.
+        Comment::where('postId', $post->id)->delete();
+
         $this->deleteMedias($keys);
     }
 
@@ -219,7 +276,18 @@ class PostService
             ->pluck('medias')
             ->all();
 
+        /** @var list<string> $postIds */
+        $postIds = Post::query()
+            ->where('authorId', $authorId)
+            ->pluck('id')
+            ->map(static fn (mixed $id): string => is_scalar($id) ? (string) $id : '')
+            ->all();
+
         Post::query()->where('authorId', $authorId)->delete();
+
+        if ($postIds !== []) {
+            Comment::whereIn('postId', $postIds)->delete();
+        }
 
         $this->deleteMedias(array_merge(...array_map(
             static fn (?array $keys): array => $keys ?? [],

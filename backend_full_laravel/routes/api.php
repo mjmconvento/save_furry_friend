@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Http\Controllers\Auth\EmailVerificationController;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CommentController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\TriviaController;
 use App\Http\Controllers\User\AvatarController;
@@ -76,6 +77,12 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('posts/{post}/like', [PostController::class, 'like'])->name('posts.like');
     Route::delete('posts/{post}/like', [PostController::class, 'unlike'])->name('posts.unlike');
     Route::get('posts/{post}/likes', [PostController::class, 'likes'])->name('posts.likes');
+
+    // Threads hang off a post; deleting one is bound to the comment alone, so
+    // `CommentPolicy` resolves the post itself to check story ownership.
+    Route::get('posts/{post}/comments', [CommentController::class, 'index'])->name('comments.index');
+    Route::post('posts/{post}/comments', [CommentController::class, 'store'])->name('comments.store');
+    Route::delete('comments/{comment}', [CommentController::class, 'destroy'])->name('comments.destroy');
 
     // Read-only: trivia rows come from the seeder, so there is no resource
     // controller to grow into.

@@ -88,7 +88,7 @@ class PostController extends Controller
 
     public function show(Post $post): PostResource
     {
-        $this->postService->attachAuthorAvatars([$post]);
+        $this->postService->hydrate([$post]);
 
         return new PostResource($post);
     }
@@ -108,7 +108,7 @@ class PostController extends Controller
         $viewer = $request->user();
 
         $this->postService->like($post, $viewer);
-        $this->postService->attachAuthorAvatars([$post]);
+        $this->postService->hydrate([$post]);
 
         return new PostResource($post);
     }
@@ -119,7 +119,7 @@ class PostController extends Controller
         $viewer = $request->user();
 
         $this->postService->unlike($post, $viewer);
-        $this->postService->attachAuthorAvatars([$post]);
+        $this->postService->hydrate([$post]);
 
         return new PostResource($post);
     }
@@ -162,7 +162,7 @@ class PostController extends Controller
         $author = $request->user();
 
         $post = $this->postService->storePost($request, $author);
-        $this->postService->attachAuthorAvatars([$post]);
+        $this->postService->hydrate([$post]);
 
         return new PostResource($post);
     }
@@ -174,7 +174,7 @@ class PostController extends Controller
         $this->postService->updatePost($request, $post);
         // After the save, never before: the attribute is not persisted, and
         // hydrating first would write it into the document.
-        $this->postService->attachAuthorAvatars([$post]);
+        $this->postService->hydrate([$post]);
 
         return new PostResource($post);
     }

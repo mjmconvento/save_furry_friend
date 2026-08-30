@@ -20,6 +20,8 @@ export interface Post {
   likeCount: number;
   /** Whether the account reading this has affirmed it. */
   likedByViewer: boolean;
+  /** How many comments hang off this post. The thread itself loads on demand. */
+  commentCount: number;
 }
 
 /**

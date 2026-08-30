@@ -11,6 +11,9 @@ if (!base) {
 export const API_BASE_URL: string = base;
 export const USERS_ENDPOINT = 'api/users';
 export const POSTS_ENDPOINT = 'api/posts';
+// Threads hang off a post to read and write, but a single comment is addressed
+// on its own to delete - the API binds that route to the comment alone.
+export const COMMENTS_ENDPOINT = 'api/comments';
 export const TRIVIA_ENDPOINT = 'api/trivia';
 // Singular `user`: the token's own account. Distinct from the admin-only
 // `api/users` collection, and takes no id.

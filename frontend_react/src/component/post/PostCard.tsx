@@ -9,6 +9,7 @@ import {
   Typography,
 } from '@mui/material';
 import {
+  ChatBubbleOutline,
   Delete,
   Edit,
   Favorite,
@@ -25,6 +26,7 @@ import { useNotify } from '../template/ToastProvider';
 import { errorSummary } from '../../service/apiClient';
 import { likePost, unlikePost } from '../../service/post/postApi';
 import PostLikersDialog from './PostLikersDialog';
+import PostComments from './PostComments';
 import {
   POST_TONE_BY_TAG,
   PostTag,
@@ -149,6 +151,8 @@ const PostCard: React.FC<PostCardProps> = ({
 
   const [liked, setLiked] = useState<boolean>(post.likedByViewer);
   const [likes, setLikes] = useState<number>(post.likeCount);
+  const [comments, setComments] = useState<number>(post.commentCount);
+  const [threadOpen, setThreadOpen] = useState<boolean>(false);
   const [rosterOpen, setRosterOpen] = useState<boolean>(false);
 
   const toggleLike = async () => {
@@ -335,6 +339,21 @@ const PostCard: React.FC<PostCardProps> = ({
                 </Button>
               )}
 
+              {/* Collapsed by default: twenty open threads on a feed page is
+                  unreadable, and loading them all would be a lot of bytes
+                  nobody asked for. */}
+              <Button
+                size="small"
+                onClick={() => setThreadOpen((open) => !open)}
+                startIcon={<ChatBubbleOutline fontSize="small" />}
+                aria-label={
+                  comments === 1 ? '1 comment' : `${comments} comments`
+                }
+                sx={{ color: 'text.muted', minWidth: 0 }}
+              >
+                {comments}
+              </Button>
+
               {isOwner && (
                 <Box sx={{ display: 'flex', ml: 'auto' }}>
                   <IconButton aria-label="Edit" onClick={() => onEdit(post)}>
@@ -353,6 +372,16 @@ const PostCard: React.FC<PostCardProps> = ({
           </Box>
         </Box>
       </Gallery>
+
+      {threadOpen && (
+        <Box sx={{ px: 2, pb: 2 }}>
+          <PostComments
+            postId={post.id}
+            postAuthorId={post.authorId}
+            onCountChange={(delta) => setComments((count) => count + delta)}
+          />
+        </Box>
+      )}
 
       {/* Mounted alongside the card, not inside the Gallery: photoswipe owns
           that subtree. Kept mounted so reopening a roster is instant. */}

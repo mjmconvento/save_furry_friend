@@ -52,6 +52,7 @@ pest()
         }
 
         DB::connection('mongodb')->table('posts')->truncate();
+        DB::connection('mongodb')->table('comments')->truncate();
     })->in('Feature');
 
 /*

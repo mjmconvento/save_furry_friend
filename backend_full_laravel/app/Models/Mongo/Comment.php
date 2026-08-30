@@ -9,30 +9,31 @@ use Illuminate\Support\Str;
 use MongoDB\Laravel\Eloquent\Model;
 
 /**
+ * A comment on a post.
+ *
+ * Its own collection rather than an array on the post, for two reasons. A
+ * thread can be paginated, which an embedded array cannot without slicing the
+ * document. And the author's name stays out of it: `Post::authorName` is
+ * denormalized and needs `SyncAuthorName` to fan out and stay honest, so
+ * embedding comments would extend that fan-out into every subdocument. Identity
+ * is resolved from Postgres at render time instead - the rule
+ * `PostService::attachAuthorAvatars` already argues for.
+ *
  * @property string $id
+ * @property string $postId
  * @property string $authorId
- * @property string $authorName
  * @property string $content
  * @property ?Carbon $createdAt
  * @property ?Carbon $updatedAt
- * @property array<string> $tags
- * @property array<string> $medias
- * @property array<string> $likes
- *   Account ids, maintained with atomic `$addToSet` / `$pull` so two taps
- *   cannot double-count. Deliberately absent from `$fillable`: a like is not
- *   something a post payload may set. Absent on every document written before
- *   likes existed, so readers must treat it as `[]`.
+ * @property ?string $authorName
+ *   Not stored: filled in from Postgres by `CommentService::attachAuthors()`.
+ *   Absent from `$fillable`, and these instances are never saved.
  * @property ?string $authorAvatar
- *   Not stored: filled in from Postgres by `PostService::attachAuthorAvatars()`
- *   so a changed picture cannot leave old posts showing the old one. Absent from
- *   `$fillable`, and these instances are never saved.
+ *   Not stored either, same reason.
  *
- * @property int $commentCount
- *   Not stored either: counted from the `comments` collection by
- *   `PostService::hydrate()`.
- * @method static ?Post find(string $id)
+ * @method static ?Comment find(string $id)
  */
-class Post extends Model
+class Comment extends Model
 {
     public const CREATED_AT = 'createdAt';
 
@@ -40,9 +41,9 @@ class Post extends Model
 
     protected $connection = 'mongodb';
 
-    protected $table = 'posts';
+    protected $table = 'comments';
 
-    protected $fillable = ['authorId', 'authorName', 'content', 'tags', 'medias'];
+    protected $fillable = ['postId', 'authorId', 'content'];
 
     public $incrementing = false;
 

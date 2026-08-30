@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Models\Eloquent\User;
+use App\Models\Mongo\Comment;
 use App\Models\Mongo\Post;
+use App\Policies\CommentPolicy;
 use App\Policies\PostPolicy;
 use App\Policies\UserPolicy;
 use Illuminate\Auth\Notifications\ResetPassword;
@@ -33,8 +35,9 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         // The models do not live under App\Models, so policy auto-discovery
-        // cannot find them; register both explicitly.
+        // cannot find them; register all three explicitly.
         Gate::policy(Post::class, PostPolicy::class);
+        Gate::policy(Comment::class, CommentPolicy::class);
         Gate::policy(User::class, UserPolicy::class);
 
         RateLimiter::for('api', fn (Request $request): Limit => Limit::perMinute(60)

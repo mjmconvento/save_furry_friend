@@ -40,6 +40,7 @@ class PostResource extends JsonResource
                 $this->likes ?? [],
                 true,
             ),
+            'commentCount' => $this->commentCount ?? 0,
             'medias' => array_map(
                 static fn (string $key): string => Storage::disk('s3')->url($key),
                 $this->medias ?? [],
