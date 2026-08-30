@@ -17,6 +17,11 @@ use MongoDB\Laravel\Eloquent\Model;
  * @property ?Carbon $updatedAt
  * @property array<string> $tags
  * @property array<string> $medias
+ * @property array<string> $likes
+ *   Account ids, maintained with atomic `$addToSet` / `$pull` so two taps
+ *   cannot double-count. Deliberately absent from `$fillable`: a like is not
+ *   something a post payload may set. Absent on every document written before
+ *   likes existed, so readers must treat it as `[]`.
  * @property ?string $authorAvatar
  *   Not stored: filled in from Postgres by `PostService::attachAuthorAvatars()`
  *   so a changed picture cannot leave old posts showing the old one. Absent from

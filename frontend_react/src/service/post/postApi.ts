@@ -1,5 +1,6 @@
 import { POSTS_ENDPOINT } from '../../config/api';
 import { Post, PostSummary } from '../../interface/Post';
+import { User } from '../../interface/User';
 import { apiPage, apiRequest, Page } from '../apiClient';
 
 /**
@@ -97,3 +98,44 @@ export const deletePost = async ({
 
   return true;
 };
+
+export interface LikePostParams {
+  id: string;
+  token: string | null;
+}
+
+/**
+ * Both directions are idempotent server-side and answer with the whole post,
+ * so the caller can replace its copy rather than reconciling a bare count.
+ */
+export const likePost = async ({ id, token }: LikePostParams): Promise<Post> =>
+  apiRequest<Post>(`${POSTS_ENDPOINT}/${id}/like`, {
+    method: 'POST',
+    token,
+  });
+
+export const unlikePost = async ({
+  id,
+  token,
+}: LikePostParams): Promise<Post> =>
+  apiRequest<Post>(`${POSTS_ENDPOINT}/${id}/like`, {
+    method: 'DELETE',
+    token,
+  });
+
+/**
+ * Who affirmed a post. Its own request, fetched only when the roster is
+ * opened: a feed page carries twenty posts, and inlining every roster would
+ * ship a lot of bytes nobody asked for.
+ */
+export const fetchPostLikers = async (
+  token: string | null,
+  id: string,
+  page = 1,
+  signal?: AbortSignal
+): Promise<Page<User>> =>
+  apiPage<User>(`${POSTS_ENDPOINT}/${id}/likes`, {
+    token,
+    query: { page: page > 1 ? String(page) : null },
+    signal,
+  });

@@ -34,6 +34,40 @@ export const TONE_LABEL: Record<ToneKey, string> = {
 };
 
 /**
+ * The words for affirming a post, per tone.
+ *
+ * "Like" on a story about an animal that ran out of time reads badly, so the
+ * wording follows the tone the way the colour already does. Same data, same
+ * count - only the label and the icon differ.
+ *
+ * `past` completes "See who ___ this" on the control that opens the roster;
+ * `rosterTitle` titles the dialog it opens.
+ */
+export const TONE_AFFIRM: Record<
+  ToneKey,
+  { verb: string; undo: string; past: string; rosterTitle: string }
+> = {
+  happy: {
+    verb: 'Like',
+    undo: 'Unlike',
+    past: 'liked',
+    rosterTitle: 'Liked by',
+  },
+  neutral: {
+    verb: 'Like',
+    undo: 'Unlike',
+    past: 'liked',
+    rosterTitle: 'Liked by',
+  },
+  heartbreaking: {
+    verb: 'Remember',
+    undo: 'Undo remember',
+    past: 'remembered',
+    rosterTitle: 'Remembered by',
+  },
+};
+
+/**
  * Total over `PostTag`, so one of our own tones always resolves. Prefer this
  * wherever the tag is known to be ours.
  */

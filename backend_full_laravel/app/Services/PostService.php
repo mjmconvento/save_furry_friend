@@ -12,6 +12,7 @@ use App\Models\Mongo\Post;
 use Carbon\CarbonInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Pagination\LengthAwarePaginator as Paginator;
 use Illuminate\Support\Facades\Storage;
 use MongoDB\BSON\UTCDateTime;
 use MongoDB\Laravel\Connection as MongoConnection;
@@ -246,6 +247,70 @@ class PostService
         $followingIds[] = $viewer->id;
 
         return $followingIds;
+    }
+
+    /**
+     * Likes are a set on the post document, so both directions are one atomic
+     * operator - no read-modify-write, and therefore no way for a double tap or
+     * two open tabs to double-count. `$addToSet` also makes liking idempotent
+     * for free, which is why the endpoint needs no "already liked?" check.
+     *
+     * The model is refreshed so the caller renders the stored truth rather than
+     * a locally-guessed count.
+     */
+    public function like(Post $post, User $viewer): void
+    {
+        $post->push('likes', $viewer->id, true);
+        $post->refresh();
+    }
+
+    public function unlike(Post $post, User $viewer): void
+    {
+        $post->pull('likes', $viewer->id);
+        $post->refresh();
+    }
+
+    /**
+     * The accounts that liked a post, newest first.
+     *
+     * Paged in PHP rather than by the store: the ids live in an array on the
+     * document, so the set arrives whole and only the account lookup is worth
+     * narrowing. At 36 bytes an id that stays cheap far past any post this app
+     * will see.
+     *
+     * Ids are not references, so an account deleted after liking leaves one
+     * behind. Those simply do not resolve and drop out - hence the count here
+     * comes from the rows found, not from the raw set.
+     *
+     * @return LengthAwarePaginator<int, User>
+     */
+    public function likers(Post $post, int $perPage, int $page): LengthAwarePaginator
+    {
+        /** @var array<string> $ids */
+        $ids = $post->likes ?? [];
+        // `$addToSet` appends, so the stored order is oldest-first.
+        $newestFirst = array_reverse(array_values($ids));
+
+        /** @var array<string, User> $found */
+        $found = User::whereIn('id', $newestFirst)
+            ->get()
+            ->keyBy('id')
+            ->all();
+
+        $resolved = [];
+
+        foreach ($newestFirst as $id) {
+            if (isset($found[$id])) {
+                $resolved[] = $found[$id];
+            }
+        }
+
+        return new Paginator(
+            array_slice($resolved, ($page - 1) * $perPage, $perPage),
+            count($resolved),
+            $perPage,
+            $page,
+        );
     }
 
     /**

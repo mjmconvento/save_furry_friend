@@ -13,6 +13,13 @@ export interface Post {
   createdAt: string;
   updatedAt: string;
   medias: string[];
+  /**
+   * How many accounts have affirmed this post. The roster is deliberately not
+   * served: the count is public, who liked it is not.
+   */
+  likeCount: number;
+  /** Whether the account reading this has affirmed it. */
+  likedByViewer: boolean;
 }
 
 /**

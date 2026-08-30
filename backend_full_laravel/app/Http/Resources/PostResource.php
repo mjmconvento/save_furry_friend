@@ -31,6 +31,15 @@ class PostResource extends JsonResource
                 : Storage::disk('s3')->url($this->authorAvatar),
             'content' => $this->content,
             'tags' => $this->tags ?? [],
+            // The count is public; the roster is not. Exposing `likes` would
+            // let any reader enumerate who liked what, and nothing in the UI
+            // needs it.
+            'likeCount' => count($this->likes ?? []),
+            'likedByViewer' => in_array(
+                $request->user()?->id,
+                $this->likes ?? [],
+                true,
+            ),
             'medias' => array_map(
                 static fn (string $key): string => Storage::disk('s3')->url($key),
                 $this->medias ?? [],

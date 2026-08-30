@@ -1,18 +1,36 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Avatar,
   Box,
   BoxProps,
+  Button,
   Card,
   IconButton,
   Typography,
 } from '@mui/material';
-import { Delete, Edit } from '@mui/icons-material';
+import {
+  Delete,
+  Edit,
+  Favorite,
+  FavoriteBorder,
+  LocalFlorist,
+  LocalFloristOutlined,
+} from '@mui/icons-material';
 import { Link } from 'react-router-dom';
 import { Gallery, Item } from 'react-photoswipe-gallery';
 import 'photoswipe/dist/photoswipe.css';
 import { Post } from '../../interface/Post';
-import { POST_TONE_BY_TAG, PostTag, ToneKey } from '../../config/tags';
+import { useAuth } from '../../AuthContext';
+import { useNotify } from '../template/ToastProvider';
+import { errorSummary } from '../../service/apiClient';
+import { likePost, unlikePost } from '../../service/post/postApi';
+import PostLikersDialog from './PostLikersDialog';
+import {
+  POST_TONE_BY_TAG,
+  PostTag,
+  TONE_AFFIRM,
+  ToneKey,
+} from '../../config/tags';
 
 /**
  * `subtitle2` supplies the uppercase eyebrow treatment; `component="span"` stops
@@ -115,12 +133,47 @@ const PostCard: React.FC<PostCardProps> = ({
   onDelete,
   suppressTone,
 }) => {
+  const { token } = useAuth();
+  const notify = useNotify();
   const [cover, ...moreMedias] = post.medias ?? [];
-  const toneTag = post.tags?.find(
+  const badgeTag = post.tags?.find(
     (tag) => tag in POST_TONE_BY_TAG && tag !== suppressTone
   );
-  const badge = toneTag ? POST_TONE_BY_TAG[toneTag] : undefined;
-  const hasFooter = moreMedias.length > 0 || isOwner;
+  const badge = badgeTag ? POST_TONE_BY_TAG[badgeTag] : undefined;
+
+  // The verb follows the post's own tone, not the feed's, so the badge and the
+  // button always agree - including on a post carrying two tones.
+  const ownTag = post.tags?.find((tag) => tag in POST_TONE_BY_TAG);
+  const tone = ownTag ? POST_TONE_BY_TAG[ownTag]?.tone : undefined;
+  const affirm = TONE_AFFIRM[tone ?? 'neutral'];
+
+  const [liked, setLiked] = useState<boolean>(post.likedByViewer);
+  const [likes, setLikes] = useState<number>(post.likeCount);
+  const [rosterOpen, setRosterOpen] = useState<boolean>(false);
+
+  const toggleLike = async () => {
+    const wasLiked = liked;
+
+    // Optimistic: the count moves under the finger, then the server's own
+    // numbers replace it. A failure puts the old pair back, because a count
+    // left wrong is worse than one that flickers.
+    setLiked(!wasLiked);
+    setLikes((count) => count + (wasLiked ? -1 : 1));
+
+    try {
+      const saved = await (wasLiked ? unlikePost : likePost)({
+        id: post.id,
+        token,
+      });
+
+      setLiked(saved.likedByViewer);
+      setLikes(saved.likeCount);
+    } catch (error) {
+      setLiked(wasLiked);
+      setLikes(post.likeCount);
+      notify({ message: errorSummary(error).join(' '), severity: 'error' });
+    }
+  };
 
   return (
     <Card>
@@ -224,46 +277,91 @@ const PostCard: React.FC<PostCardProps> = ({
               {post.content}
             </Typography>
 
-            {hasFooter && (
-              <Box
+            {/* Always rendered now: every post can be affirmed, so the row is
+                no longer conditional on media or ownership. */}
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                columnGap: 2,
+                rowGap: 1,
+              }}
+            >
+              {moreMedias.map((url, idx) => (
+                <MediaThumb
+                  key={url}
+                  url={url}
+                  alt={`Photo ${idx + 2} from ${post.authorName}'s post`}
+                  width={48}
+                  height={48}
+                  imageSizes={imageSizes}
+                />
+              ))}
+
+              {/* Two controls, one number. Folding the roster into the toggle
+                  would make every attempt to read who liked something a like. */}
+              <IconButton
+                size="small"
+                onClick={toggleLike}
+                aria-label={liked ? affirm.undo : affirm.verb}
                 sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  flexWrap: 'wrap',
-                  columnGap: 2,
-                  rowGap: 1,
+                  color: liked
+                    ? `tone.${tone ?? 'neutral'}.main`
+                    : 'text.muted',
                 }}
               >
-                {moreMedias.map((url, idx) => (
-                  <MediaThumb
-                    key={url}
-                    url={url}
-                    alt={`Photo ${idx + 2} from ${post.authorName}'s post`}
-                    width={48}
-                    height={48}
-                    imageSizes={imageSizes}
-                  />
-                ))}
-
-                {isOwner && (
-                  <Box sx={{ display: 'flex', ml: 'auto' }}>
-                    <IconButton aria-label="Edit" onClick={() => onEdit(post)}>
-                      <Edit />
-                    </IconButton>
-                    <IconButton
-                      color="error"
-                      aria-label="Delete"
-                      onClick={() => onDelete(post)}
-                    >
-                      <Delete />
-                    </IconButton>
-                  </Box>
+                {tone === 'heartbreaking' ? (
+                  liked ? (
+                    <LocalFlorist fontSize="small" />
+                  ) : (
+                    <LocalFloristOutlined fontSize="small" />
+                  )
+                ) : liked ? (
+                  <Favorite fontSize="small" />
+                ) : (
+                  <FavoriteBorder fontSize="small" />
                 )}
-              </Box>
-            )}
+              </IconButton>
+
+              {likes > 0 && (
+                <Button
+                  size="small"
+                  onClick={() => setRosterOpen(true)}
+                  aria-label={`See who ${affirm.past} this, ${likes}`}
+                  sx={{ color: 'text.muted', minWidth: 0, ml: -1.5 }}
+                >
+                  {likes}
+                </Button>
+              )}
+
+              {isOwner && (
+                <Box sx={{ display: 'flex', ml: 'auto' }}>
+                  <IconButton aria-label="Edit" onClick={() => onEdit(post)}>
+                    <Edit />
+                  </IconButton>
+                  <IconButton
+                    color="error"
+                    aria-label="Delete"
+                    onClick={() => onDelete(post)}
+                  >
+                    <Delete />
+                  </IconButton>
+                </Box>
+              )}
+            </Box>
           </Box>
         </Box>
       </Gallery>
+
+      {/* Mounted alongside the card, not inside the Gallery: photoswipe owns
+          that subtree. Kept mounted so reopening a roster is instant. */}
+      <PostLikersDialog
+        postId={post.id}
+        title={affirm.rosterTitle}
+        open={rosterOpen}
+        onClose={() => setRosterOpen(false)}
+      />
     </Card>
   );
 };

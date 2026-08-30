@@ -71,6 +71,12 @@ Route::middleware('auth:sanctum')->group(function (): void {
     // or `summary` is swallowed by the {post} wildcard.
     Route::get('posts/summary', [PostController::class, 'summary'])->name('posts.summary');
 
+    // Before apiResource('posts') for the same reason as `summary`, and both
+    // directions are idempotent, so a retry is never an error.
+    Route::post('posts/{post}/like', [PostController::class, 'like'])->name('posts.like');
+    Route::delete('posts/{post}/like', [PostController::class, 'unlike'])->name('posts.unlike');
+    Route::get('posts/{post}/likes', [PostController::class, 'likes'])->name('posts.likes');
+
     // Read-only: trivia rows come from the seeder, so there is no resource
     // controller to grow into.
     Route::get('trivia', [TriviaController::class, 'index'])->name('trivia.index');

@@ -224,6 +224,8 @@ describe('authenticated', () => {
       createdAt: '2026-08-01T10:00:00.000Z',
       updatedAt: '2026-08-01T10:00:00.000Z',
       medias: [],
+      likeCount: 0,
+      likedByViewer: false,
     });
 
     // First match wins, so the narrower `page=2` fragment is registered first.
@@ -1800,5 +1802,265 @@ describe('discover people', () => {
         }
       )
     ).toHaveAttribute('href', '/discover');
+  });
+});
+
+describe('liking posts', () => {
+  beforeEach(() => signIn());
+
+  const post = (over: Record<string, unknown> = {}) => ({
+    id: 'post-1',
+    authorId: 'user-2',
+    authorName: 'Sam Rivera',
+    authorAvatar: null,
+    content: 'A dog found his family today.',
+    tags: ['happy_post'],
+    medias: [],
+    likeCount: 3,
+    likedByViewer: false,
+    createdAt: '2026-08-29T10:02:21Z',
+    updatedAt: '2026-08-29T10:02:21Z',
+    ...over,
+  });
+
+  const liker = (id: string, first: string) => ({
+    id,
+    first_name: first,
+    last_name: 'Walker',
+    email: `${first.toLowerCase()}@user.com`,
+    roles: ['user'],
+    preferences: {},
+    avatar: null,
+    is_following: false,
+    stats: { posts: 2, followers: 1, following: 1 },
+  });
+
+  const withPost = (body: unknown, extra: Record<string, unknown> = {}) => {
+    routes = {
+      // `extra` first so a narrower fragment like `api/posts/post-1/like` is
+      // matched before `api/posts`. Then the base routes for position, then
+      // `api/posts` LAST so its value is ours rather than the empty feed - in
+      // an object literal the first mention fixes the order and the last one
+      // fixes the value.
+      ...extra,
+      ...routes,
+      'api/posts': {
+        status: 200,
+        body: {
+          data: [body],
+          links: {},
+          meta: { current_page: 1, last_page: 1 },
+        },
+      },
+    };
+  };
+
+  it('separates affirming a post from reading who already did', async () => {
+    window.history.pushState({}, '', '/happy_posts');
+    withPost(post());
+    renderApp();
+
+    // Two controls, one number: the icon toggles, the count opens the roster.
+    // One control doing both would make every roster peek a like.
+    expect(
+      await screen.findByRole('button', { name: /^like$/i }, { timeout: 5000 })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /see who liked this, 3/i })
+    ).toBeInTheDocument();
+  });
+
+  it('offers nothing to open when nobody has affirmed it', async () => {
+    window.history.pushState({}, '', '/happy_posts');
+    withPost(post({ likeCount: 0 }));
+    renderApp();
+
+    await screen.findByRole('button', { name: /^like$/i }, { timeout: 5000 });
+    expect(screen.queryByRole('button', { name: /see who/i })).toBeNull();
+  });
+
+  it('counts up immediately and tells the API', async () => {
+    window.history.pushState({}, '', '/happy_posts');
+    withPost(post(), {
+      'api/posts/post-1/like': {
+        status: 200,
+        body: { data: post({ likeCount: 4, likedByViewer: true }) },
+      },
+    });
+    renderApp();
+
+    await userEvent.click(
+      await screen.findByRole('button', { name: /^like$/i }, { timeout: 5000 })
+    );
+
+    // Optimistic: the number moves before the response lands.
+    expect(
+      await screen.findByRole('button', { name: /^unlike$/i })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /see who liked this, 4/i })
+    ).toBeInTheDocument();
+
+    const called = vi
+      .mocked(fetch)
+      .mock.calls.some(
+        ([input, init]) =>
+          String(input).includes('api/posts/post-1/like') &&
+          (init as RequestInit)?.method === 'POST'
+      );
+    expect(called).toBe(true);
+  });
+
+  it('takes the like back when the API refuses', async () => {
+    window.history.pushState({}, '', '/happy_posts');
+    withPost(post(), {
+      'api/posts/post-1/like': { status: 500, body: { message: 'nope' } },
+    });
+    renderApp();
+
+    await userEvent.click(
+      await screen.findByRole('button', { name: /^like$/i }, { timeout: 5000 })
+    );
+
+    // Back to three: a count that stays wrong is worse than one that flickers.
+    expect(
+      await screen.findByRole('button', { name: /see who liked this, 3/i })
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^like$/i })).toBeInTheDocument();
+  });
+
+  it('unlikes a post it already likes', async () => {
+    window.history.pushState({}, '', '/happy_posts');
+    withPost(post({ likeCount: 5, likedByViewer: true }), {
+      'api/posts/post-1/like': {
+        status: 200,
+        body: { data: post({ likeCount: 4, likedByViewer: false }) },
+      },
+    });
+    renderApp();
+
+    await userEvent.click(
+      await screen.findByRole(
+        'button',
+        { name: /^unlike$/i },
+        {
+          timeout: 5000,
+        }
+      )
+    );
+
+    expect(
+      await screen.findByRole('button', { name: /^like$/i })
+    ).toBeInTheDocument();
+
+    const deleted = vi
+      .mocked(fetch)
+      .mock.calls.some(
+        ([input, init]) =>
+          String(input).includes('api/posts/post-1/like') &&
+          (init as RequestInit)?.method === 'DELETE'
+      );
+    expect(deleted).toBe(true);
+  });
+
+  it('says Remember, not Like, on a heartbreaking post', async () => {
+    // "Like" on a story about an animal that ran out of time reads badly, so
+    // the verb follows the tone the way the colour already does.
+    window.history.pushState({}, '', '/heartbreaking_posts');
+    withPost(post({ tags: ['heartbreaking_post'] }));
+    renderApp();
+
+    await screen.findByText(/before you read on/i, undefined, {
+      timeout: 5000,
+    });
+    await userEvent.click(
+      screen.getByRole('button', { name: /show the posts/i })
+    );
+
+    expect(
+      await screen.findByRole('button', { name: /^remember$/i })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /see who remembered this, 3/i })
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^like$/i })).toBeNull();
+  });
+
+  it('names the people behind the count', async () => {
+    window.history.pushState({}, '', '/happy_posts');
+    withPost(post(), {
+      'api/posts/post-1/likes': {
+        status: 200,
+        body: {
+          data: [liker('u1', 'Ada'), liker('u2', 'Grace')],
+          links: {},
+          meta: { current_page: 1, last_page: 1, total: 2 },
+        },
+      },
+    });
+    renderApp();
+
+    await userEvent.click(
+      await screen.findByRole(
+        'button',
+        { name: /see who liked this, 3/i },
+        {
+          timeout: 5000,
+        }
+      )
+    );
+
+    const dialog = await screen.findByRole('dialog', { name: /liked by/i });
+
+    expect(within(dialog).getByText(/ada walker/i)).toBeInTheDocument();
+    expect(within(dialog).getByText(/grace walker/i)).toBeInTheDocument();
+    // The dialog reuses PersonRow, so it is also a place to follow from.
+    expect(
+      within(dialog).getAllByRole('button', { name: /^follow$/i })
+    ).toHaveLength(2);
+  });
+
+  it('titles the roster for the tone', async () => {
+    window.history.pushState({}, '', '/heartbreaking_posts');
+    withPost(post({ tags: ['heartbreaking_post'] }), {
+      'api/posts/post-1/likes': {
+        status: 200,
+        body: {
+          data: [liker('u1', 'Ada')],
+          links: {},
+          meta: { current_page: 1, last_page: 1, total: 1 },
+        },
+      },
+    });
+    renderApp();
+
+    await screen.findByText(/before you read on/i, undefined, {
+      timeout: 5000,
+    });
+    await userEvent.click(
+      screen.getByRole('button', { name: /show the posts/i })
+    );
+    await userEvent.click(
+      await screen.findByRole('button', { name: /see who remembered this, 3/i })
+    );
+
+    expect(
+      await screen.findByRole('dialog', { name: /remembered by/i })
+    ).toBeInTheDocument();
+  });
+
+  it('does not ask the API for a roster until it is opened', async () => {
+    window.history.pushState({}, '', '/happy_posts');
+    withPost(post());
+    renderApp();
+
+    await screen.findByRole('button', { name: /^like$/i }, { timeout: 5000 });
+
+    // A feed page carries twenty posts; fetching every roster up front would
+    // ship a lot of bytes nobody asked for.
+    const asked = vi
+      .mocked(fetch)
+      .mock.calls.some(([input]) => String(input).includes('/likes'));
+    expect(asked).toBe(false);
   });
 });
