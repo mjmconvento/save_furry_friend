@@ -1,4 +1,9 @@
-import { REGISTER_ENDPOINT, VERIFICATION_ENDPOINT } from '../../config/api';
+import {
+  PASSWORD_FORGOT_ENDPOINT,
+  PASSWORD_RESET_ENDPOINT,
+  REGISTER_ENDPOINT,
+  VERIFICATION_ENDPOINT,
+} from '../../config/api';
 import { User } from '../../interface/User';
 import { apiRequest } from '../apiClient';
 
@@ -50,4 +55,44 @@ export const resendVerification = async (
   apiRequest<{ message: string }>(VERIFICATION_ENDPOINT, {
     method: 'POST',
     token,
+  });
+
+/**
+ * Asks for a reset link. Resolves the same way whether or not the address has
+ * an account - the API answers uniformly on purpose, so the SPA has nothing
+ * more specific it could honestly show.
+ */
+export const requestPasswordReset = async (
+  email: string
+): Promise<{ message: string }> =>
+  apiRequest<{ message: string }>(PASSWORD_FORGOT_ENDPOINT, {
+    method: 'POST',
+    token: null,
+    json: { email },
+  });
+
+export interface ResetPasswordParams {
+  /** Both come from the emailed link's query, not from the person. */
+  token: string;
+  email: string;
+  password: string;
+  passwordConfirmation: string;
+}
+
+export const resetPassword = async ({
+  token,
+  email,
+  password,
+  passwordConfirmation,
+}: ResetPasswordParams): Promise<{ message: string }> =>
+  apiRequest<{ message: string }>(PASSWORD_RESET_ENDPOINT, {
+    method: 'POST',
+    token: null,
+    json: {
+      token,
+      email,
+      password,
+      // Laravel's `confirmed` rule looks for this exact snake_case field.
+      password_confirmation: passwordConfirmation,
+    },
   });

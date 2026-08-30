@@ -1,4 +1,10 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import {
+  cleanup,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ThemeProvider } from '@mui/material/styles';
@@ -1306,5 +1312,493 @@ describe('trivia', () => {
     ).toBeInTheDocument();
     const [request] = triviaRequests();
     expect(request).toContain('tones[]=heartbreaking');
+  });
+});
+
+describe('design refinements', () => {
+  const happyPost = {
+    id: 'post-1',
+    authorId: 'user-2',
+    authorName: 'Sam Rivera',
+    authorAvatar: null,
+    content: 'A dog found his family today.',
+    tags: ['happy_post', 'heartbreaking_post'],
+    medias: [],
+    createdAt: '2026-08-29T10:02:21Z',
+    updatedAt: '2026-08-29T10:02:21Z',
+  };
+
+  const withPosts = (posts: unknown[]) => {
+    routes = {
+      ...routes,
+      'api/posts': {
+        status: 200,
+        body: {
+          data: posts,
+          links: {},
+          meta: { current_page: 1, last_page: 1 },
+        },
+      },
+    };
+  };
+
+  it('invites the first post when a feed is empty', async () => {
+    signIn();
+    window.history.pushState({}, '', '/happy_posts');
+    renderApp();
+
+    expect(
+      await screen.findByText(/yours could be the first/i, undefined, {
+        timeout: 5000,
+      })
+    ).toBeInTheDocument();
+  });
+
+  it('asks for their story, not what is on your mind, on the heartbreaking feed', async () => {
+    signIn();
+    window.history.pushState({}, '', '/heartbreaking_posts');
+    renderApp();
+
+    await screen.findByText(/before you read on/i, undefined, {
+      timeout: 5000,
+    });
+    await userEvent.click(
+      screen.getByRole('button', { name: /show the posts/i })
+    );
+
+    expect(
+      await screen.findByLabelText(/tell their story/i)
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText(/what's on your mind/i)).toBeNull();
+  });
+
+  it('drops only the redundant badge on a single-tone feed', async () => {
+    signIn();
+    window.history.pushState({}, '', '/happy_posts');
+    withPosts([happyPost]);
+    renderApp();
+
+    await screen.findByText(/a dog found his family/i, undefined, {
+      timeout: 5000,
+    });
+    // The page already says Happy; the badge would repeat it on every card.
+    expect(screen.queryByText('Happy')).toBeNull();
+    // A second tone the feed does NOT imply still shows.
+    expect(screen.getByText('Heartbreaking')).toBeInTheDocument();
+  });
+
+  it('keeps the page title above the trivia card', async () => {
+    signIn();
+    window.history.pushState({}, '', '/happy_posts');
+    routes = {
+      ...routes,
+      'api/trivia': {
+        status: 200,
+        body: {
+          data: [
+            { id: 1, text: 'An ordering fact.', tone: 'happy', species: 'dog' },
+          ],
+        },
+      },
+    };
+    renderApp();
+
+    const fact = await screen.findByText(/an ordering fact/i, undefined, {
+      timeout: 5000,
+    });
+    const title = screen.getByRole('heading', { name: /happy posts/i });
+
+    // The page identity must come first in reading and tab order.
+    expect(
+      title.compareDocumentPosition(fact) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+  });
+
+  it('keeps Post disabled until there is something to post', async () => {
+    signIn();
+    window.history.pushState({}, '', '/happy_posts');
+    renderApp();
+
+    const post = await screen.findByRole(
+      'button',
+      { name: 'Post' },
+      {
+        timeout: 5000,
+      }
+    );
+    expect(post).toBeDisabled();
+
+    await userEvent.type(
+      screen.getByLabelText(/what's on your mind/i),
+      'A first story'
+    );
+    expect(post).toBeEnabled();
+  });
+
+  it('names the recovery when a login fails', async () => {
+    routes = { ...routes, 'api/login': { status: 401, body: {} } };
+    renderApp();
+
+    await userEvent.type(await screen.findByLabelText(/email/i), 'a@b.com');
+    await userEvent.type(screen.getByLabelText(/password/i), 'nope');
+    await userEvent.click(screen.getByRole('button', { name: /login/i }));
+
+    expect(
+      await screen.findByText(/don't match|do not match/i)
+    ).toBeInTheDocument();
+  });
+});
+
+describe('password reset', () => {
+  it('offers a way out from the login screen', async () => {
+    renderApp();
+
+    expect(
+      await screen.findByRole('link', { name: /forgot your password/i })
+    ).toHaveAttribute('href', '/forgot-password');
+  });
+
+  it('confirms without revealing whether the address has an account', async () => {
+    window.history.pushState({}, '', '/forgot-password');
+    routes = {
+      ...routes,
+      'api/password/forgot': {
+        status: 200,
+        body: {
+          message:
+            'If that address has an account, a reset link is on its way.',
+        },
+      },
+    };
+    renderApp();
+
+    await userEvent.type(
+      await screen.findByLabelText(/email/i, undefined, { timeout: 5000 }),
+      'someone@example.com'
+    );
+    await userEvent.click(
+      screen.getByRole('button', { name: /send.*link|reset link/i })
+    );
+
+    expect(
+      await screen.findByText(/if that address has an account/i)
+    ).toBeInTheDocument();
+  });
+
+  it('sends the token and address from the link, then points at sign-in', async () => {
+    window.history.pushState(
+      {},
+      '',
+      '/reset-password?token=tok-123&email=a%40b.test'
+    );
+    routes = {
+      ...routes,
+      'api/password/reset': {
+        status: 200,
+        body: { message: 'Your password has been reset.' },
+      },
+    };
+    renderApp();
+
+    await userEvent.type(
+      await screen.findByLabelText(/^new password/i, undefined, {
+        timeout: 5000,
+      }),
+      'new-password-1'
+    );
+    await userEvent.type(screen.getByLabelText(/confirm/i), 'new-password-1');
+    await userEvent.click(screen.getByRole('button', { name: /reset/i }));
+
+    await waitFor(() => {
+      const sent = vi
+        .mocked(fetch)
+        .mock.calls.find(([input]) =>
+          String(input).includes('api/password/reset')
+        );
+      expect(sent).toBeDefined();
+      // The token is the authority; the address is what the broker checks it
+      // against. Both come from the emailed link, not from the person.
+      const body = JSON.parse(String((sent?.[1] as RequestInit)?.body));
+      expect(body.token).toBe('tok-123');
+      expect(body.email).toBe('a@b.test');
+      expect(body.password_confirmation).toBe('new-password-1');
+    });
+
+    expect(
+      await screen.findByRole('link', { name: /sign in|login/i })
+    ).toBeInTheDocument();
+  });
+
+  it('says so when the link has expired', async () => {
+    window.history.pushState(
+      {},
+      '',
+      '/reset-password?token=stale&email=a%40b.test'
+    );
+    routes = {
+      ...routes,
+      'api/password/reset': {
+        status: 422,
+        body: {
+          message: 'This password reset token is invalid.',
+          errors: { email: ['This password reset token is invalid.'] },
+        },
+      },
+    };
+    renderApp();
+
+    await userEvent.type(
+      await screen.findByLabelText(/^new password/i, undefined, {
+        timeout: 5000,
+      }),
+      'new-password-1'
+    );
+    await userEvent.type(screen.getByLabelText(/confirm/i), 'new-password-1');
+    await userEvent.click(screen.getByRole('button', { name: /reset/i }));
+
+    expect(await screen.findByText(/token is invalid/i)).toBeInTheDocument();
+  });
+
+  it('states which tone the feed will tag a new post with', async () => {
+    signIn();
+    window.history.pushState({}, '', '/happy_posts');
+    renderApp();
+
+    // Closes the "feed decides the tag, silently" gap: the rule is stated
+    // where the decision is actually made.
+    expect(
+      await screen.findByText(/tagged happy/i, undefined, { timeout: 5000 })
+    ).toBeInTheDocument();
+  });
+});
+
+describe('welcome card', () => {
+  beforeEach(() => signIn());
+
+  it('orients a new account on the dashboard', async () => {
+    renderApp();
+
+    const card = await screen.findByRole('region', {
+      name: /getting started/i,
+    });
+
+    // The two things the app never explained: what the three feeds are, and
+    // that the dashboard fills up as you follow people.
+    expect(card).toHaveTextContent(/happy/i);
+    expect(card).toHaveTextContent(/heartbreaking/i);
+    expect(card).toHaveTextContent(/follow/i);
+  });
+
+  it('points at the people directory, where following starts', async () => {
+    renderApp();
+
+    const card = await screen.findByRole('region', {
+      name: /getting started/i,
+    });
+
+    expect(
+      within(card).getByRole('link', { name: /find people/i })
+    ).toHaveAttribute('href', '/discover');
+  });
+
+  it('stays gone once the account has dismissed it', async () => {
+    localStorage.setItem(
+      'loggedInUserPreferences',
+      JSON.stringify({ dismissed_welcome: true })
+    );
+    renderApp();
+
+    // The dashboard still has to render; only the card is suppressed.
+    await screen.findByText(/welcome back, test user/i);
+    expect(
+      screen.queryByRole('region', { name: /getting started/i })
+    ).toBeNull();
+  });
+
+  it('writes the dismissal to the account, not just this tab', async () => {
+    routes = {
+      ...routes,
+      'user/preferences': {
+        status: 200,
+        body: { data: { preferences: { dismissed_welcome: true } } },
+      },
+    };
+    renderApp();
+
+    const card = await screen.findByRole('region', {
+      name: /getting started/i,
+    });
+    await userEvent.click(
+      within(card).getByRole('button', { name: /dismiss|got it/i })
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('region', { name: /getting started/i })
+      ).toBeNull()
+    );
+
+    // Same rule as the content warning: the account is the source of truth, so
+    // dismissing on a phone must not leave it showing on a laptop.
+    const saved = vi
+      .mocked(fetch)
+      .mock.calls.some(([input]) => String(input).includes('user/preferences'));
+
+    expect(saved).toBe(true);
+  });
+
+  it('keeps the card if the dismissal could not be saved', async () => {
+    // Otherwise it vanishes locally and returns on the next device, which is
+    // indistinguishable from the button being broken.
+    routes = {
+      ...routes,
+      'user/preferences': { status: 500, body: { message: 'nope' } },
+    };
+    renderApp();
+
+    const card = await screen.findByRole('region', {
+      name: /getting started/i,
+    });
+    await userEvent.click(
+      within(card).getByRole('button', { name: /dismiss|got it/i })
+    );
+
+    expect(
+      await screen.findByRole('region', { name: /getting started/i })
+    ).toBeInTheDocument();
+  });
+});
+
+describe('discover people', () => {
+  beforeEach(() => signIn());
+
+  const person = (id: string, name: string, posts: number) => ({
+    id,
+    first_name: name,
+    last_name: 'Stranger',
+    email: `${id}@example.com`,
+    roles: ['user'],
+    preferences: {},
+    avatar: null,
+    is_following: false,
+    stats: { posts, followers: 2, following: 1 },
+  });
+
+  const withDiscoverable = (people: unknown[]) => {
+    routes = {
+      // FIRST, not spread last: `respond` returns the first fragment that
+      // matches, and `api/users` in the base routes would otherwise swallow
+      // this URL and answer with an empty page.
+      'api/users/discover': {
+        status: 200,
+        body: {
+          data: people,
+          links: {},
+          meta: { current_page: 1, last_page: 1, total: people.length },
+        },
+      },
+      ...routes,
+    };
+  };
+
+  it('lists people you do not follow yet, most active first', async () => {
+    window.history.pushState({}, '', '/discover');
+    withDiscoverable([person('u9', 'Ada', 12), person('u8', 'Grace', 3)]);
+    renderApp();
+
+    expect(
+      await screen.findByText(/ada stranger/i, undefined, { timeout: 5000 })
+    ).toBeInTheDocument();
+    expect(screen.getByText(/grace stranger/i)).toBeInTheDocument();
+
+    // Server-ranked; the page must not re-sort and must not invent an order.
+    const names = screen
+      .getAllByText(/stranger$/i)
+      .map((node) => node.textContent);
+    expect(names[0]).toMatch(/ada/i);
+  });
+
+  it('offers a follow button per person', async () => {
+    window.history.pushState({}, '', '/discover');
+    withDiscoverable([person('u9', 'Ada', 12)]);
+    renderApp();
+
+    await screen.findByText(/ada stranger/i, undefined, { timeout: 5000 });
+    expect(
+      screen.getByRole('button', { name: /^follow$/i })
+    ).toBeInTheDocument();
+  });
+
+  it('says so when there is nobody left to follow', async () => {
+    window.history.pushState({}, '', '/discover');
+    withDiscoverable([]);
+    renderApp();
+
+    expect(
+      await screen.findByText(/already follow everyone/i, undefined, {
+        timeout: 5000,
+      })
+    ).toBeInTheDocument();
+  });
+
+  it('is reachable from the sidebar by a non-admin', async () => {
+    renderApp();
+
+    // Scoped to the nav landmark: the dashboard's own card also links to
+    // /discover, so an unscoped query matches two links.
+    const nav = await screen.findByRole('navigation', { name: /sidebar/i });
+
+    expect(
+      within(nav).getByRole('link', { name: /find people/i })
+    ).toHaveAttribute('href', '/discover');
+    // The admin-only Users entry must stay hidden from a plain account.
+    expect(within(nav).queryByRole('link', { name: /^users$/i })).toBeNull();
+  });
+
+  it('is where the dashboard card sends you, not the admin user list', async () => {
+    renderApp();
+
+    const card = await screen.findByRole('region', {
+      name: /getting started/i,
+    });
+
+    // Regression: this pointed at /users, which AdminRoute bounces for a
+    // non-admin - the button was broken for exactly the people it was for.
+    expect(
+      within(card).getByRole('link', { name: /find people/i })
+    ).toHaveAttribute('href', '/discover');
+  });
+
+  it('trims the following page prompt and links to the full page', async () => {
+    signIn();
+    window.history.pushState({}, '', '/profile/user-1/following');
+    routes = {
+      'api/users/suggestions': {
+        status: 200,
+        body: {
+          data: [
+            person('u1', 'One', 9),
+            person('u2', 'Two', 8),
+            person('u3', 'Three', 7),
+          ],
+        },
+      },
+      'api/users/user-1/following': {
+        status: 200,
+        body: { data: [], meta: { current_page: 1, last_page: 1, total: 0 } },
+      },
+      ...routes,
+    };
+    renderApp();
+
+    expect(
+      await screen.findByRole(
+        'link',
+        { name: /see everyone/i },
+        {
+          timeout: 5000,
+        }
+      )
+    ).toHaveAttribute('href', '/discover');
   });
 });

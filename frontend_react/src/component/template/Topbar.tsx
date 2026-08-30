@@ -185,8 +185,10 @@ const Topbar = ({ onMenuClick }: TopbarProps) => {
                       'box-shadow 160ms ease, background-color 160ms ease',
                     '&.Mui-focused': {
                       bgcolor: 'background.paper',
+                      // The brand's own soft token, not a tone borrowed from
+                      // the happy category doing accent duty.
                       boxShadow: (theme) =>
-                        `0 0 0 2px ${theme.palette.tone.happy.soft}`,
+                        `0 0 0 2px ${theme.palette.primary.light}`,
                     },
                   }}
                   startAdornment={

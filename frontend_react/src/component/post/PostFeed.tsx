@@ -5,13 +5,15 @@ import {
   Button,
   Card,
   CardContent,
+  IconButton,
   Stack,
   TextField,
   Typography,
 } from '@mui/material';
+import CloseIcon from '@mui/icons-material/Close';
 import { useDropzone } from 'react-dropzone';
 import { Post } from '../../interface/Post';
-import { PostTag } from '../../config/tags';
+import { PostTag, TONE_BY_TAG, ToneKey } from '../../config/tags';
 import { useAuth } from '../../AuthContext';
 import { fetchPosts, addPost as addPostApi } from '../../service/post/postApi';
 import { errorSummary, isAbort } from '../../service/apiClient';
@@ -21,6 +23,7 @@ import ConfirmDeletePostDialog from './delete/ConfirmDeletePostDialog';
 import LoadingIndicator from '../template/LoadingIndicator';
 import EditPostDialog from './update/EditPostDialog';
 import PostCard from './PostCard';
+import TriviaCard from '../trivia/TriviaCard';
 
 interface PostFeedProps {
   title: string;
@@ -37,6 +40,16 @@ interface PostFeedProps {
    * composer: an untagged post appears in no category feed at all.
    */
   composer?: boolean;
+  /**
+   * Tones for a trivia card rendered under the title block - after the page
+   * has said its own name, never before it.
+   */
+  triviaTones?: ToneKey[];
+  /**
+   * Composer prompt. The default suits the lighter feeds; the heartbreaking
+   * page asks for the story instead of borrowing small-talk idiom.
+   */
+  composerPlaceholder?: string;
 }
 
 /**
@@ -67,6 +80,8 @@ const PostFeed: React.FC<PostFeedProps> = ({
   tag,
   authorId,
   composer = true,
+  triviaTones,
+  composerPlaceholder = "What's on your mind?",
 }) => {
   const [newContent, setNewContent] = useState<string>('');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -306,17 +321,37 @@ const PostFeed: React.FC<PostFeedProps> = ({
         {subtitle}
       </Typography>
 
+      {triviaTones && (
+        <Box mb={3}>
+          <TriviaCard tones={triviaTones} />
+        </Box>
+      )}
+
       {composer && (
         <Card variant="outlined" sx={{ mb: 3 }}>
           <CardContent>
             <TextField
               fullWidth
-              label="What's on your mind?"
+              label={composerPlaceholder}
               value={newContent}
               onChange={(e) => setNewContent(e.target.value)}
               multiline
               rows={4}
             />
+
+            {tag && (
+              // Which room you are standing in decides the story's tone, and
+              // nothing used to say so. State the rule where the decision is
+              // actually made rather than documenting it elsewhere.
+              <Typography
+                variant="caption"
+                color="text.muted"
+                sx={{ display: 'block', mt: 1 }}
+              >
+                Posted here, this story is tagged{' '}
+                {TONE_BY_TAG[tag].label.toLowerCase()}.
+              </Typography>
+            )}
 
             <Box
               {...getRootProps()}
@@ -352,20 +387,43 @@ const PostFeed: React.FC<PostFeedProps> = ({
                 sx={{ rowGap: { xs: 1, md: 0 } }}
               >
                 {previews.map((preview) => (
-                  <Box
-                    key={preview.url}
-                    component="img"
-                    src={preview.url}
-                    alt={`preview of ${preview.file.name}`}
-                    sx={{
-                      width: 100,
-                      height: 100,
-                      objectFit: 'cover',
-                      borderRadius: 1,
-                      border: '1px solid',
-                      borderColor: 'divider',
-                    }}
-                  />
+                  <Box key={preview.url} sx={{ position: 'relative' }}>
+                    <Box
+                      component="img"
+                      src={preview.url}
+                      alt={`preview of ${preview.file.name}`}
+                      sx={{
+                        width: 100,
+                        height: 100,
+                        objectFit: 'cover',
+                        borderRadius: 1,
+                        border: '1px solid',
+                        borderColor: 'divider',
+                        display: 'block',
+                      }}
+                    />
+                    <IconButton
+                      size="small"
+                      aria-label={`Remove ${preview.file.name}`}
+                      onClick={() =>
+                        setSelectedFiles((prev) =>
+                          prev.filter((file) => file !== preview.file)
+                        )
+                      }
+                      sx={{
+                        position: 'absolute',
+                        top: 2,
+                        right: 2,
+                        bgcolor: 'background.paper',
+                        border: '1px solid',
+                        borderColor: 'divider',
+                        p: 0.25,
+                        '&:hover': { bgcolor: 'surface.sunken' },
+                      }}
+                    >
+                      <CloseIcon sx={{ fontSize: 14 }} />
+                    </IconButton>
+                  </Box>
                 ))}
               </Stack>
             )}
@@ -374,6 +432,11 @@ const PostFeed: React.FC<PostFeedProps> = ({
               <Button
                 variant="contained"
                 loading={submitting}
+                // Nothing to post is not an error to recover from; it is a
+                // button that should not invite the click yet.
+                disabled={
+                  newContent.trim() === '' && selectedFiles.length === 0
+                }
                 onClick={handleAddPost}
               >
                 Post
@@ -396,10 +459,25 @@ const PostFeed: React.FC<PostFeedProps> = ({
               imageSizes={imageSizes}
               onEdit={handleOpenEditDialog}
               onDelete={handleOpenDeleteDialog}
+              suppressTone={tag}
             />
           );
         })}
       </Stack>
+
+      {posts.length === 0 && (
+        // A category with no stories used to render title, composer, silence -
+        // indistinguishable from a broken fetch. Say it, in the house voice.
+        <Typography
+          variant="body1"
+          color="text.muted"
+          sx={{ textAlign: 'center', my: 6 }}
+        >
+          {authorId
+            ? 'No posts here yet.'
+            : 'Nothing here yet — yours could be the first.'}
+        </Typography>
+      )}
 
       {page < lastPage && (
         <Box mt={3} textAlign="center">

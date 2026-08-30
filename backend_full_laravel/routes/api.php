@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\Auth\EmailVerificationController;
+use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\TriviaController;
@@ -28,6 +29,17 @@ Route::get('email/verify/{id}/{hash}', [EmailVerificationController::class, 'ver
     ->middleware(['signed', 'throttle:6,1'])
     ->name('verification.verify');
 
+// Public, and rate-limited per address: somebody who cannot sign in cannot
+// carry a token. Both answer uniformly whether or not the address exists, so
+// neither can be used to enumerate accounts.
+Route::post('password/forgot', [PasswordResetController::class, 'forgot'])
+    ->middleware('throttle:5,1')
+    ->name('password.forgot');
+
+Route::post('password/reset', [PasswordResetController::class, 'reset'])
+    ->middleware('throttle:5,1')
+    ->name('password.reset');
+
 Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('logout', [AuthController::class, 'logout'])->name('logout');
 
@@ -36,6 +48,8 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('users/search/{keyword}', [UserController::class, 'search'])->name('users.search');
     // Also before apiResource('users'), or `suggestions` resolves as a user id.
     Route::get('users/suggestions', [FollowController::class, 'suggestions'])->name('users.suggestions');
+    // Also before apiResource('users'), or `discover` resolves as a user id.
+    Route::get('users/discover', [FollowController::class, 'discover'])->name('users.discover');
     Route::get('users/{user}/followers', [FollowController::class, 'followers'])->name('users.followers');
     Route::get('users/{user}/following', [FollowController::class, 'following'])->name('users.following');
 

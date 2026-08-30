@@ -11,13 +11,23 @@ use App\Jobs\SyncAuthorName;
 use App\Models\Eloquent\User;
 use App\Models\Mongo\Post;
 use App\Services\PostService;
+use DateTimeInterface;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use MongoDB\BSON\UTCDateTime;
 use MongoDB\Laravel\Connection as MongoConnection;
 
 class UserService
 {
+    /**
+     * The window "posting most" is measured over. Long enough that a weekly
+     * poster always registers, short enough that a dormant account drops off.
+     */
+    private const RECENT_DAYS = 30;
+
     public function __construct(
         private readonly PostService $postService
     ) {
@@ -86,19 +96,25 @@ class UserService
     }
 
     /**
-     * People the viewer does not follow yet, most prolific first.
+     * The follow-suggestion ranking, shared by the "who to follow" prompt and
+     * the discover directory so the two can never disagree about what "posting
+     * most" means.
      *
-     * Ranked in Mongo, where the posts are: grouping authors by post count and
-     * taking the top slice is one indexed aggregation, and the alternative -
-     * counting posts per candidate from Postgres - is an N+1 across two stores.
+     * Ordered by posts in the last 30 days, then lifetime posts as the
+     * tie-break, then name. That ordering makes the tiers fall out of one
+     * comparator: somebody active this month outranks a dormant account with a
+     * longer history, and accounts that have never posted land at the tail with
+     * (0, 0) rather than needing a separate pass.
      *
-     * A wider slice than `$limit` is taken because the viewer and everyone they
-     * already follow are then removed; asking for exactly ten would return fewer
-     * than ten as soon as the top authors are all familiar.
+     * Every non-followed account is loaded to sort them, which is bounded by
+     * account count rather than post count. That is the trade for exact page
+     * sizes and for never-posted members being findable at all; the previous
+     * "take four times the limit from Mongo, filter afterwards" slice could
+     * return short pages and could not see them.
      *
      * @return list<User>
      */
-    public function suggestions(User $viewer, int $limit = 5): array
+    private function rankedCandidates(User $viewer, bool $includeNeverPosted): array
     {
         $excluded = $viewer->following()
             ->pluck('users.id')
@@ -106,44 +122,76 @@ class UserService
             ->all();
         $excluded[] = $viewer->id;
 
-        $ranked = $this->postCounts([], $limit * 4);
-        $candidates = array_values(array_diff(array_keys($ranked), $excluded));
+        $recent = $this->postCounts([], null, Carbon::now()->subDays(self::RECENT_DAYS));
+        $lifetime = $this->postCounts();
 
-        if ($candidates === []) {
-            return [];
-        }
-
-        /** @var array<string, User> $found */
-        $found = User::whereIn('id', array_slice($candidates, 0, $limit))
+        $candidates = User::whereNotIn('id', $excluded)
             ->get()
-            ->keyBy('id')
             ->all();
 
-        // Reordered to the ranking: `whereIn` makes no promise about order, and
-        // the whole point is "most posts first".
-        $suggestions = [];
-
-        foreach ($candidates as $id) {
-            if (isset($found[$id])) {
-                $suggestions[] = $found[$id];
-            }
+        if (! $includeNeverPosted) {
+            $candidates = array_values(array_filter(
+                $candidates,
+                static fn (User $user): bool => ($lifetime[$user->id] ?? 0) > 0
+            ));
         }
 
-        return $suggestions;
+        // Descending on both counts, so the operands are reversed; the name is
+        // the stable last resort, ascending.
+        usort(
+            $candidates,
+            static fn (User $a, User $b): int => [$recent[$b->id] ?? 0, $lifetime[$b->id] ?? 0, $a->first_name]
+                <=> [$recent[$a->id] ?? 0, $lifetime[$a->id] ?? 0, $b->first_name]
+        );
+
+        return $candidates;
+    }
+
+    /**
+     * Who to follow: a short prompt, capped and unpaginated. Never suggests an
+     * account that has not posted - there is nothing to recommend it on, which
+     * is a directory's job instead.
+     *
+     * @return list<User>
+     */
+    public function suggestions(User $viewer, int $limit = 3): array
+    {
+        return array_slice($this->rankedCandidates($viewer, false), 0, $limit);
+    }
+
+    /**
+     * The discover directory: the same ranking, paginated, and inclusive of
+     * members who have not posted yet so a new account is still findable.
+     *
+     * @return LengthAwarePaginator<int, User>
+     */
+    public function discoverable(User $viewer, int $perPage, int $page): LengthAwarePaginator
+    {
+        $ranked = $this->rankedCandidates($viewer, true);
+
+        return new LengthAwarePaginator(
+            array_slice($ranked, ($page - 1) * $perPage, $perPage),
+            count($ranked),
+            $perPage,
+            $page,
+        );
     }
 
     /**
      * Post counts per author, highest first.
      *
-     * One pipeline serves both callers: unfiltered with a limit it ranks the most
-     * prolific authors for suggestions, and filtered by ids it counts a known
-     * set for their profile stats.
+     * One pipeline serves three callers: unfiltered it ranks every author,
+     * filtered by ids it counts a known set for their profile stats, and with
+     * `$since` it counts only a recent window for the follow ranking.
      *
      * @param list<string> $onlyAuthors empty counts every author
      * @return array<string, int>
      */
-    private function postCounts(array $onlyAuthors = [], ?int $limit = null): array
-    {
+    private function postCounts(
+        array $onlyAuthors = [],
+        ?int $limit = null,
+        ?DateTimeInterface $since = null,
+    ): array {
         $pipeline = [];
 
         if ($onlyAuthors !== []) {
@@ -151,6 +199,17 @@ class UserService
                 '$match' => [
                     'authorId' => [
                         '$in' => $onlyAuthors,
+                    ],
+                ],
+            ];
+        }
+
+        if ($since instanceof DateTimeInterface) {
+            // Served by the existing `{authorId: 1, createdAt: -1}` index.
+            $pipeline[] = [
+                '$match' => [
+                    'createdAt' => [
+                        '$gte' => new UTCDateTime($since),
                     ],
                 ],
             ];

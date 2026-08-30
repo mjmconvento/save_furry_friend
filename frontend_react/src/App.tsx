@@ -3,6 +3,8 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import LoginRoute from './route/LoginRoute';
 import RegisterRoute from './route/RegisterRoute';
 import AdminRoute from './route/AdminRoute';
+import ForgotPasswordRoute from './route/ForgotPasswordRoute';
+import ResetPasswordRoute from './route/ResetPasswordRoute';
 import ProtectedLayout from './route/ProtectedLayout';
 
 // Pages load on demand: the login screen no longer pays for photoswipe,
@@ -17,6 +19,7 @@ const MyProfilePage = lazy(() => import('./page/MyProfilePage'));
 const ProfilePage = lazy(() => import('./page/ProfilePage'));
 const HomePage = lazy(() => import('./page/HomePage'));
 const FollowListPage = lazy(() => import('./page/FollowListPage'));
+const DiscoverPage = lazy(() => import('./page/DiscoverPage'));
 const UserPage = lazy(() => import('./page/UserPage'));
 const NotFoundPage = lazy(() => import('./page/NotFoundPage'));
 
@@ -27,6 +30,10 @@ const App = () => (
     <Routes>
       <Route path="/login" element={<LoginRoute />} />
       <Route path="/register" element={<RegisterRoute />} />
+      {/* Public, like login and register: whoever opens these cannot sign in,
+          which is the whole problem. */}
+      <Route path="/forgot-password" element={<ForgotPasswordRoute />} />
+      <Route path="/reset-password" element={<ResetPasswordRoute />} />
       <Route element={<ProtectedLayout />}>
         <Route index element={<HomePage />} />
         <Route path="/happy_posts" element={<HappyPostPage />} />
@@ -35,6 +42,7 @@ const App = () => (
           path="/heartbreaking_posts"
           element={<HeartbreakingPostPage />}
         />
+        <Route path="/discover" element={<DiscoverPage />} />
         <Route path="/my_profile" element={<MyProfilePage />} />
         <Route path="/profile/:id" element={<ProfilePage />} />
         {/* Both sides of the graph share one page and one route shape, so

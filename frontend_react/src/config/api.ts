@@ -17,4 +17,7 @@ export const TRIVIA_ENDPOINT = 'api/trivia';
 export const PREFERENCES_ENDPOINT = 'api/user/preferences';
 export const AVATAR_ENDPOINT = 'api/user/avatar';
 export const REGISTER_ENDPOINT = 'api/register';
+// Public: the caller cannot sign in, which is the problem being solved.
+export const PASSWORD_FORGOT_ENDPOINT = 'api/password/forgot';
+export const PASSWORD_RESET_ENDPOINT = 'api/password/reset';
 export const VERIFICATION_ENDPOINT = 'api/email/verification-notification';

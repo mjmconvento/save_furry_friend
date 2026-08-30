@@ -9,6 +9,7 @@ import {
   Typography,
 } from '@mui/material';
 import PeopleIcon from '@mui/icons-material/People';
+import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import MessageIcon from '@mui/icons-material/Message';
 import HeartBrokenIcon from '@mui/icons-material/HeartBroken';
 import MoodIcon from '@mui/icons-material/Mood';
@@ -18,8 +19,13 @@ import { useAuth } from '../../AuthContext';
 
 const drawerWidth = 240;
 
-type NavItem = { label: string; to: string; icon: ReactNode };
-type NavGroup = { label: string; items: NavItem[]; adminOnly?: boolean };
+type NavItem = {
+  label: string;
+  to: string;
+  icon: ReactNode;
+  adminOnly?: boolean;
+};
+type NavGroup = { label: string; items: NavItem[] };
 type SidebarProps = {
   /** Overlay drawer state - only consulted below `md`. */
   open: boolean;
@@ -44,17 +50,34 @@ const navGroups: NavGroup[] = [
   },
   {
     label: 'Community',
-    items: [{ label: 'Users', to: '/users', icon: <PeopleIcon /> }],
-    // User administration. `AdminRoute` guards the path itself as well, because
-    // dropping a link does not stop anyone typing the URL.
-    adminOnly: true,
+    items: [
+      // Visible to everyone: without it a non-admin had no way to browse
+      // people at all, only the topbar search - which needs you to already
+      // know who you are looking for.
+      { label: 'Find people', to: '/discover', icon: <PersonAddIcon /> },
+      {
+        label: 'Users',
+        to: '/users',
+        icon: <PeopleIcon />,
+        // User administration. `AdminRoute` guards the path itself as well,
+        // because dropping a link does not stop anyone typing the URL.
+        adminOnly: true,
+      },
+    ],
   },
 ];
 
 const Sidebar = ({ open, onClose }: SidebarProps) => {
   const location = useLocation();
   const { isAdmin } = useAuth();
-  const groups = navGroups.filter((group) => !group.adminOnly || isAdmin);
+  // Gated per item rather than per group: Community now holds one entry for
+  // everybody and one for admins, so a whole-group flag cannot express it.
+  const groups = navGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => !item.adminOnly || isAdmin),
+    }))
+    .filter((group) => group.items.length > 0);
 
   // One nav tree, two hosts: the temporary overlay below `md` and the
   // permanent rail from `md` up. Group data and item props live here only.

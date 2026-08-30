@@ -8,13 +8,16 @@ use App\Models\Eloquent\User;
 use App\Models\Mongo\Post;
 use App\Policies\PostPolicy;
 use App\Policies\UserPolicy;
+use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Contracts\Auth\CanResetPassword;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
+use InvalidArgumentException;
 use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Component\Mailer\Bridge\Brevo\Transport\BrevoTransportFactory;
 use Symfony\Component\Mailer\Transport\Dsn;
@@ -41,6 +44,33 @@ class AppServiceProvider extends ServiceProvider
             Limit::perMinute(5)->by($request->string('email')->lower() . '|' . $request->ip()),
             Limit::perMinute(20)->by($request->ip()),
         ]);
+
+        // Laravel's default builds this from a `password.reset` WEB route, which
+        // this API does not have and should not: the person needs a form, and
+        // only the SPA has one. The token travels in the query and comes back
+        // to `PasswordResetController::reset` in a POST body.
+        //
+        // The address is appended because the broker verifies the token against
+        // it, and the SPA cannot know which account a bare token belongs to.
+        // The signature must accept `mixed` to satisfy the framework's own
+        // callback type, so the notifiable is narrowed here instead. The throw
+        // is unreachable in this app - `Foundation\Auth\User` implements the
+        // contract - but it states the requirement rather than building a
+        // silently broken link out of an unexpected notifiable.
+        ResetPassword::createUrlUsing(function (mixed $user, string $token): string {
+            if (! $user instanceof CanResetPassword) {
+                throw new InvalidArgumentException(
+                    'A password reset URL needs a CanResetPassword notifiable.'
+                );
+            }
+
+            return sprintf(
+                '%s/reset-password?token=%s&email=%s',
+                Config::string('cors.frontend_url'),
+                $token,
+                urlencode($user->getEmailForPasswordReset()),
+            );
+        });
 
         // Brevo is not one of Laravel's built-in transports, so it is registered
         // here - the pattern Laravel's mail documentation prescribes, using Brevo

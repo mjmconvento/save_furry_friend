@@ -20,6 +20,7 @@ import {
   RegisterParams,
 } from './service/auth/authApi';
 import { setUnauthorizedHandler } from './service/authBridge';
+import { USER_PREFERENCE_KEYS } from './interface/User';
 import type {
   UserPreferenceKey,
   UserPreferences,
@@ -104,7 +105,8 @@ const USER_VERIFIED_KEY = 'loggedInUserVerified';
 
 /**
  * Only known keys, and only booleans. Anything else is dropped, which keeps a
- * hand-edited value from turning into a truthy preference.
+ * hand-edited value from turning into a truthy preference. `false` is dropped
+ * too: an absent key already means off, so there is nothing to store.
  */
 const toPreferences = (value: unknown): UserPreferences => {
   if (value === null || typeof value !== 'object') {
@@ -112,10 +114,15 @@ const toPreferences = (value: unknown): UserPreferences => {
   }
 
   const source = value as Record<string, unknown>;
+  const known: UserPreferences = {};
 
-  return source.hide_heartbreaking_warning === true
-    ? { hide_heartbreaking_warning: true }
-    : {};
+  for (const key of USER_PREFERENCE_KEYS) {
+    if (source[key] === true) {
+      known[key] = true;
+    }
+  }
+
+  return known;
 };
 
 const readStoredPreferences = (raw: string | null): UserPreferences => {

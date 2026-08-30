@@ -12,7 +12,7 @@ import { Link } from 'react-router-dom';
 import { Gallery, Item } from 'react-photoswipe-gallery';
 import 'photoswipe/dist/photoswipe.css';
 import { Post } from '../../interface/Post';
-import { POST_TONE_BY_TAG, ToneKey } from '../../config/tags';
+import { POST_TONE_BY_TAG, PostTag, ToneKey } from '../../config/tags';
 
 /**
  * `subtitle2` supplies the uppercase eyebrow treatment; `component="span"` stops
@@ -98,6 +98,12 @@ interface PostCardProps {
   imageSizes: Record<string, { width: number; height: number }>;
   onEdit: (post: Post) => void;
   onDelete: (post: Post) => void;
+  /**
+   * The tone the surrounding feed already announces. A single-tone feed
+   * repeating its own name on every card is pure noise, so that one badge is
+   * dropped - any OTHER tone a post carries still shows.
+   */
+  suppressTone?: PostTag;
 }
 
 const PostCard: React.FC<PostCardProps> = ({
@@ -107,9 +113,12 @@ const PostCard: React.FC<PostCardProps> = ({
   imageSizes,
   onEdit,
   onDelete,
+  suppressTone,
 }) => {
   const [cover, ...moreMedias] = post.medias ?? [];
-  const toneTag = post.tags?.find((tag) => tag in POST_TONE_BY_TAG);
+  const toneTag = post.tags?.find(
+    (tag) => tag in POST_TONE_BY_TAG && tag !== suppressTone
+  );
   const badge = toneTag ? POST_TONE_BY_TAG[toneTag] : undefined;
   const hasFooter = moreMedias.length > 0 || isOwner;
 
@@ -192,7 +201,12 @@ const PostCard: React.FC<PostCardProps> = ({
                 </Link>
 
                 <Typography variant="caption">
-                  {new Date(post.createdAt).toLocaleString()}
+                  {/* Seconds are noise on a feed; day + minute is the story's
+                      real resolution. */}
+                  {new Date(post.createdAt).toLocaleString(undefined, {
+                    dateStyle: 'medium',
+                    timeStyle: 'short',
+                  })}
                 </Typography>
               </Box>
 
@@ -202,7 +216,10 @@ const PostCard: React.FC<PostCardProps> = ({
             <Typography
               variant="body1"
               color="text.secondary"
-              sx={{ overflowWrap: 'anywhere' }}
+              // 60ch of Inter is ~75 real characters per line - the readable
+              // measure. Unconstrained, text ran 105-123 characters; ch tracks
+              // the wide "0" glyph, so 70ch still rendered ~88.
+              sx={{ overflowWrap: 'anywhere', maxWidth: '60ch' }}
             >
               {post.content}
             </Typography>

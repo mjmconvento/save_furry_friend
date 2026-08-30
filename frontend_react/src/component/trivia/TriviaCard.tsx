@@ -118,7 +118,13 @@ const TriviaCard: React.FC<TriviaCardProps> = ({ tones }) => {
     <Card variant="outlined">
       <CardContent>
         <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.5 }}>
-          <Typography variant="subtitle2" color="text.muted" sx={{ flex: 1 }}>
+          {/* Eyebrow, not a heading - subtitle2 defaults to an h6 element. */}
+          <Typography
+            variant="subtitle2"
+            component="p"
+            color="text.muted"
+            sx={{ flex: 1 }}
+          >
             Did you know?
           </Typography>
 
@@ -158,7 +164,9 @@ const TriviaCard: React.FC<TriviaCardProps> = ({ tones }) => {
         ) : (
           trivia && (
             <>
-              <Typography variant="body1" sx={{ mb: 1.5 }}>
+              {/* 60ch of Inter is ~75 real characters - the readable measure.
+                  Uncapped, a fact ran the full 950px card. */}
+              <Typography variant="body1" sx={{ mb: 1.5, maxWidth: '60ch' }}>
                 {trivia.text}
               </Typography>
 

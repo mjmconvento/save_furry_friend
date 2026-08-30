@@ -17,6 +17,7 @@ import { errorSummary, isAbort } from '../service/apiClient';
 import { useCountUp } from '../hook/useCountUp';
 import ErrorList from '../component/template/ErrorList';
 import TriviaCard from '../component/trivia/TriviaCard';
+import WelcomeCard from '../component/home/WelcomeCard';
 
 /**
  * Dashboard trivia stays light on purpose: happy and neutral only, per the
@@ -74,7 +75,9 @@ const ToneCard: React.FC<ToneCardProps> = ({
               bgcolor: `tone.${tone}.main`,
             }}
           />
-          <Typography variant="subtitle2" color="text.muted">
+          {/* An eyebrow, not a heading: subtitle2's default h6 element made the
+              outline read h4 -> h6. */}
+          <Typography variant="subtitle2" component="p" color="text.muted">
             {label}
           </Typography>
         </Stack>
@@ -94,7 +97,14 @@ const ToneCard: React.FC<ToneCardProps> = ({
           </Typography>
         )}
 
-        <Typography variant="body2" color="text.muted" sx={{ mt: 0.5 }}>
+        <Typography
+          variant="body2"
+          color="text.muted"
+          sx={{ mt: 0.5 }}
+          // The count's aria-label above already says "posts this week"; a
+          // screen reader was hearing "0 happy posts this week posts this week".
+          aria-hidden="true"
+        >
           {count === 1 ? 'post this week' : 'posts this week'}
         </Typography>
 
@@ -162,6 +172,10 @@ const HomePage: React.FC = () => {
       </Typography>
 
       <ErrorList errors={errors} />
+
+      {/* Above the counters because it explains them - including why they read
+          zero on a brand-new account. */}
+      <WelcomeCard />
 
       <Stack
         direction={{ xs: 'column', sm: 'row' }}

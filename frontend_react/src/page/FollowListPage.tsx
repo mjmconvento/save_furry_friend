@@ -192,7 +192,10 @@ const FollowListPage: React.FC<FollowListPageProps> = ({ mode }) => {
             The people posting most that you are not following yet.
           </Typography>
           <Stack spacing={1.5}>
-            {suggestions.map((person) => (
+            {/* Three, not the whole prompt: this stays a nudge beside the list
+                you came to read, and /discover is the directory it points at.
+                Showing five here duplicated that page. */}
+            {suggestions.slice(0, 3).map((person) => (
               <PersonRow
                 key={person.id}
                 person={person}
@@ -204,6 +207,14 @@ const FollowListPage: React.FC<FollowListPageProps> = ({ mode }) => {
               />
             ))}
           </Stack>
+          <Typography
+            component={Link}
+            to="/discover"
+            variant="body2"
+            sx={{ display: 'inline-block', mt: 2 }}
+          >
+            See everyone you could follow →
+          </Typography>
         </Box>
       )}
     </Container>

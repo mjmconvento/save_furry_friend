@@ -6,9 +6,20 @@ export type UserRole = 'admin' | 'user';
  * defaults to off, so a missing key and `false` mean the same thing - which is
  * what lets a session predating a preference behave safely rather than guessing.
  */
-export type UserPreferenceKey = 'hide_heartbreaking_warning';
+export type UserPreferenceKey =
+  'hide_heartbreaking_warning' | 'dismissed_welcome';
 
 export type UserPreferences = Partial<Record<UserPreferenceKey, boolean>>;
+
+/**
+ * The same list as data, because types vanish at runtime and the parser needs
+ * an allowlist to filter a stored or server-sent object against. Adding a
+ * preference means one entry here and one in the union above.
+ */
+export const USER_PREFERENCE_KEYS: UserPreferenceKey[] = [
+  'hide_heartbreaking_warning',
+  'dismissed_welcome',
+];
 
 export interface User {
   id: string;

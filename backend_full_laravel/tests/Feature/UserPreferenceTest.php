@@ -19,6 +19,7 @@ it('reports every known preference on login, defaulting to off', function (): vo
         ->assertOk()
         ->assertJsonPath('user.preferences', [
             UserPreference::HideHeartbreakingWarning->value => false,
+            UserPreference::DismissedWelcome->value => false,
         ]);
 });
 
@@ -143,6 +144,49 @@ it('keeps preferences it was not asked about', function (): void {
         ->toBe([
             'some_future_preference' => true,
             UserPreference::HideHeartbreakingWarning->value => true,
+        ]);
+});
+
+it('remembers that the welcome card was dismissed', function (): void {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->patchJson('/api/user/preferences', [
+            UserPreference::DismissedWelcome->value => true,
+        ])
+        ->assertOk()
+        ->assertJsonPath(
+            'data.preferences.' . UserPreference::DismissedWelcome->value,
+            true
+        );
+
+    expect($user->fresh()?->preferences[UserPreference::DismissedWelcome->value])
+        ->toBeTrue();
+});
+
+it('dismisses the welcome card without touching the content warning', function (): void {
+    // Two real preferences now share the column, so this is the case the merge
+    // exists for: dismissing one must not clear the other.
+    $user = User::factory()->create([
+        'preferences' => [
+            UserPreference::HideHeartbreakingWarning->value => true,
+        ],
+    ]);
+
+    $this->actingAs($user)
+        ->patchJson('/api/user/preferences', [
+            UserPreference::DismissedWelcome->value => true,
+        ])
+        ->assertOk();
+
+    // `toMatchArray` rather than a literal array: jsonb stores object keys
+    // sorted by length then bytes, so an identical-array assertion would pin a
+    // Postgres storage detail instead of the merge behaviour under test.
+    expect($user->fresh()?->preferences)
+        ->toHaveCount(2)
+        ->toMatchArray([
+            UserPreference::HideHeartbreakingWarning->value => true,
+            UserPreference::DismissedWelcome->value => true,
         ]);
 });
 

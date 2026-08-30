@@ -61,11 +61,27 @@ export const fetchFollowing = async (
   });
 
 /**
- * Who to follow: the most prolific authors you do not follow yet. Deliberately
- * unpaginated - it is a prompt, not a directory.
+ * Who to follow: a short prompt beside your following list. Deliberately
+ * unpaginated and capped by the API - `fetchDiscoverable` is the directory.
  */
 export const fetchSuggestions = async (
   token: string | null,
   signal?: AbortSignal
 ): Promise<User[]> =>
   apiRequest<User[]>(`${USERS_ENDPOINT}/suggestions`, { token, signal });
+
+/**
+ * A page of everyone you do not follow yet, ranked by who has posted most in
+ * the last month. Paginated, unlike the suggestions prompt, because this is the
+ * surface people open to browse.
+ */
+export const fetchDiscoverable = async (
+  token: string | null,
+  page = 1,
+  signal?: AbortSignal
+): Promise<Page<User>> =>
+  apiPage<User>(`${USERS_ENDPOINT}/discover`, {
+    token,
+    query: { page: page > 1 ? String(page) : null },
+    signal,
+  });

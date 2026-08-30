@@ -96,6 +96,26 @@ class FollowController extends Controller
     }
 
     /**
+     * The discover directory: every account the viewer does not follow yet,
+     * paginated, most-active-first.
+     *
+     * Distinct from `suggestions` on purpose. That one is a five-second prompt
+     * with a deliberate cap; this is the surface somebody opens to browse, so
+     * it pages and it includes members who have not posted yet.
+     */
+    public function discover(IndexFollowRequest $request): AnonymousResourceCollection
+    {
+        /** @var User $viewer */
+        $viewer = $request->user();
+
+        return $this->people($request, $this->userService->discoverable(
+            $viewer,
+            $this->perPage($request),
+            $request->integer('page') ?: 1,
+        ));
+    }
+
+    /**
      * Both list endpoints answer the same shape: a page of people, each carrying
      * whether the viewer follows them and the counts a row displays.
      *

@@ -13,10 +13,13 @@ namespace App\Enums;
  *
  * Every preference is a boolean that defaults to false, and false must always be
  * the safe answer: a session that has never heard of a preference behaves as if
- * it were off. `hide_heartbreaking_warning` reads that way round for exactly
- * that reason - the default shows the warning.
+ * it were off. Both cases read that way round for exactly that reason - the
+ * defaults show the warning and show the welcome card.
  */
 enum UserPreference: string
 {
     case HideHeartbreakingWarning = 'hide_heartbreaking_warning';
+
+    /** Set once the reader dismisses the dashboard's orientation card. */
+    case DismissedWelcome = 'dismissed_welcome';
 }
