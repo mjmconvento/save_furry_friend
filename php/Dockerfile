@@ -1,7 +1,7 @@
 # Pinned minor, floating patch: Laravel 12 supports PHP 8.2-8.4, and the whole
 # verified state of this app (test suite, static analysis, the image on disk)
 # is 8.2. The ARG below is what controls the extension version, not the tag.
-FROM php:8.2-fpm AS base
+FROM php:8.5-fpm AS base
 
 # Pinned deliberately to the version the app is actually validated against
 # (`php --ri mongodb` in the current image reports 2.0.0). It satisfies the
