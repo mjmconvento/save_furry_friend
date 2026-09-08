@@ -1,0 +1,143 @@
+name: Keepalive
+# Two of the free tiers this demo runs on time out on idleness, and only one of
+# them recovers by itself:
+#
+#   - Render free spins the API down after 15 idle minutes, then wakes it on the
+#     next request - about a minute of cold start, but automatic.
+#   - MongoDB Atlas M0 PAUSES after 30 idle days and needs a manual click in the
+#     dashboard to come back. That is the one that turns a portfolio link into a
+#     dead link three months after you last touched the repo.
+#
+# So this runs weekly, not often: comfortably inside Atlas's 30-day window,
+# nowhere near enough to defeat Render's 15-minute sleep. Do not make it
+# frequent - an always-awake free service is ~730 of the 750 monthly instance
+# hours, and Render reserves the right to suspend free services that generate
+# unusual outbound traffic.
+#
+# workflow_dispatch is not just for debugging this file: it is how you warm the
+# stack before sharing the link, so the first visitor does not pay the cold
+# start.
+#
+# On public repos GitHub disables scheduled workflows after 60 days with no
+# repository activity. If the commits stop, re-enable this in the Actions tab.
+on:
+    schedule:
+        - cron: '0 6 * * 1' # Mondays, 06:00 UTC
+    workflow_dispatch:
+
+# Outbound HTTP only: nothing here reads or writes the repository, so the job
+# needs no GITHUB_TOKEN scopes at all.
+permissions: {}
+
+# A manual run kicked off while the scheduled one is still waiting out a cold
+# start would just queue behind it. Never cancel: a half-finished ping resets
+# nothing.
+concurrency:
+    group: keepalive
+    cancel-in-progress: false
+
+jobs:
+    ping:
+        runs-on: ubuntu-latest
+        # The retry loop below is bounded, but a hung TLS connect is not.
+        timeout-minutes: 10
+
+        env:
+            # A repository VARIABLE, not a secret, and not hardcoded: the public
+            # hostname is environment-specific, which is exactly what render.yaml
+            # keeps out of committed files. Settings -> Secrets and variables ->
+            # Actions -> Variables, e.g. https://sff-api.onrender.com (no
+            # trailing slash).
+            API: ${{ vars.API_BASE_URL }}
+
+            # The seeded demo account, whose password the README publishes so
+            # anyone can log into the demo. It protects nothing, so it is not a
+            # secret. A token is unavoidable: every endpoint that reads MongoDB
+            # sits behind auth:sanctum, and a 401 is rejected by middleware
+            # without ever reaching a database - which would defeat the entire
+            # point of this workflow.
+            EMAIL: test1@user.com
+            PASSWORD: password112233
+
+        steps:
+            # A missing variable must fail here, by name, rather than as a curl
+            # exit 3 against "/up" thirty seconds later.
+            - name: Require the API_BASE_URL variable
+              run: |
+                  if [ -z "$API" ]; then
+                      echo "API_BASE_URL is not set in the repository's Actions variables." >&2
+                      echo "Add the API's public origin, e.g. https://sff-api.onrender.com" >&2
+                      exit 1
+                  fi
+
+            # /up is Laravel's health route (declared in bootstrap/app.php) and
+            # touches no database - which makes it the right probe for "is the
+            # container serving HTTP again" and the wrong one for Atlas.
+            - name: Wake Render
+              run: |
+                  for i in $(seq 1 10); do
+                      code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 "$API/up" || true)
+                      [ "$code" = "200" ] && echo "/up -> 200 on attempt $i" && break
+                      echo "attempt $i: /up -> ${code:-no response}; waiting out the cold start"
+                      sleep 20
+                  done
+                  if [ "$code" != "200" ]; then
+                      echo "/up never returned 200; last code=${code:-none}" >&2
+                      exit 1
+                  fi
+
+            # The step that actually justifies this workflow. /api/posts/summary
+            # is the one endpoint that reads BOTH stores in a single request -
+            # Postgres for the follow graph, then a MongoDB aggregation over the
+            # posts in that window - so one call resets Neon's and Atlas's idle
+            # timers together.
+            #
+            # Logout is not politeness: login mints a personal_access_tokens row
+            # every week, and revoking it keeps this from accumulating 52 dead
+            # tokens a year in the production database.
+            - name: Touch both databases
+              run: |
+                  # jq builds the body so the credentials cannot break the JSON.
+                  login=$(jq -n --arg email "$EMAIL" --arg password "$PASSWORD" \
+                      '{email: $email, password: $password}')
+
+                  code=$(curl -sS -X POST "$API/api/login" \
+                      --max-time 60 -o login.json -w '%{http_code}' \
+                      -H 'Content-Type: application/json' \
+                      -H 'Accept: application/json' \
+                      -d "$login" || true)
+                  if [ "$code" != "200" ]; then
+                      echo "POST /api/login -> ${code:-no response}" >&2
+                      cat login.json >&2 || true
+                      exit 1
+                  fi
+
+                  token=$(jq -r '.token // empty' login.json)
+                  if [ -z "$token" ]; then
+                      echo "login returned 200 without a token" >&2
+                      exit 1
+                  fi
+                  # The token is live until the logout below; keep it out of the
+                  # log even if a later curl echoes its own arguments.
+                  echo "::add-mask::$token"
+
+                  code=$(curl -sS "$API/api/posts/summary" \
+                      --max-time 60 -o summary.json -w '%{http_code}' \
+                      -H "Authorization: Bearer $token" \
+                      -H 'Accept: application/json' || true)
+                  if [ "$code" != "200" ]; then
+                      echo "GET /api/posts/summary -> ${code:-no response}" >&2
+                      cat summary.json >&2 || true
+                      exit 1
+                  fi
+
+                  # A 200 carrying no counts means the Mongo aggregation did not
+                  # actually run, which is the failure this workflow exists to
+                  # catch.
+                  jq -e '.data.counts | objects | has("happy_post")' summary.json > /dev/null
+                  echo "summary -> $(jq -c '.data' summary.json)"
+
+                  curl -sS -X POST "$API/api/logout" \
+                      --max-time 60 -o /dev/null \
+                      -H "Authorization: Bearer $token" \
+                      -H 'Accept: application/json' || true

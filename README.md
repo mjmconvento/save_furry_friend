@@ -566,3 +566,23 @@ does not overwrite variables that already exist in the environment, so the expor
 `compose` copies `.env.docker.example` to `.env` first, because compose interpolation aborts on the
 `${VAR:?}` form when a credential is missing.
 
+`.github/workflows/keepalive.yml` is separate, and weekly rather than per-push. Render wakes itself
+on the next request, but MongoDB Atlas M0 **pauses** after 30 idle days and only a click in its
+dashboard brings it back — so a demo nobody visits for a month is a dead link. The job wakes the API
+on `/up`, then logs in as the seeded demo account and calls `/api/posts/summary`, which is the one
+endpoint that reads Postgres and MongoDB in a single request; `/up` alone touches neither database
+and would let Atlas pause anyway. It revokes its token on the way out, so the weekly run does not
+leave a `personal_access_tokens` row behind.
+
+It needs one repository **variable** (Settings → Secrets and variables → Actions → Variables), not a
+secret, because the API's public origin is not sensitive — and `render.yaml` deliberately keeps
+environment-specific URLs out of committed files:
+
+| Variable | Value |
+| --- | --- |
+| `API_BASE_URL` | The API's public origin, no trailing slash, e.g. `https://sff-api.onrender.com` |
+
+The `workflow_dispatch` trigger is also how you warm the stack before sharing the link, so the first
+visitor does not pay Render's ~1 minute cold start. Do not shorten the schedule to defeat that
+sleep: an always-awake service is ~730 of the free tier's 750 monthly instance hours.
+
