@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "626a3d0668b92ad2317bfb325e2fe64e",
+    "content-hash": "4634d2989976b9c9f0d64786f31973c8",
     "packages": [
         {
             "name": "aws/aws-crt-php",
@@ -2408,23 +2408,25 @@
         },
         {
             "name": "mongodb/mongodb",
-            "version": "2.0.0",
+            "version": "2.5.0",
             "source": {
                 "type": "git",
-                "url": "https://github.com/mongodb/mongo-php-library.git",
-                "reference": "04cd7edc6a28950e3fab6eccb2869d72a0541232"
+                "url": "https://github.com/mongodb/mongo-php-library",
+                "reference": "d70875dbb897a1cc7de15b6d21ceed43706f1937"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/mongodb/mongo-php-library/zipball/04cd7edc6a28950e3fab6eccb2869d72a0541232",
-                "reference": "04cd7edc6a28950e3fab6eccb2869d72a0541232",
+                "url": "https://api.github.com/repos/mongodb/mongo-php-library/zipball/d70875dbb897a1cc7de15b6d21ceed43706f1937",
+                "reference": "d70875dbb897a1cc7de15b6d21ceed43706f1937",
                 "shasum": ""
             },
             "require": {
                 "composer-runtime-api": "^2.0",
-                "ext-mongodb": "^2.0",
+                "ext-mongodb": "^2.5",
                 "php": "^8.1",
-                "psr/log": "^1.1.4|^2|^3"
+                "psr/log": "^1.1.4|^2|^3",
+                "symfony/polyfill-php84": "^1.38",
+                "symfony/polyfill-php85": "^1.33"
             },
             "replace": {
                 "mongodb/builder": "*"
@@ -2432,9 +2434,9 @@
             "require-dev": {
                 "doctrine/coding-standard": "^12.0",
                 "phpunit/phpunit": "^10.5.35",
-                "rector/rector": "^1.2",
+                "rector/rector": "~2.6.4",
                 "squizlabs/php_codesniffer": "^3.7",
-                "vimeo/psalm": "6.5.*"
+                "vimeo/psalm": "~6.14.2"
             },
             "type": "library",
             "extra": {
@@ -2476,11 +2478,7 @@
                 "mongodb",
                 "persistence"
             ],
-            "support": {
-                "issues": "https://github.com/mongodb/mongo-php-library/issues",
-                "source": "https://github.com/mongodb/mongo-php-library/tree/2.0.0"
-            },
-            "time": "2025-04-10T08:34:11+00:00"
+            "time": "2026-09-29T12:27:47+00:00"
         },
         {
             "name": "monolog/monolog",
@@ -5741,16 +5739,16 @@
         },
         {
             "name": "symfony/polyfill-php84",
-            "version": "v1.38.1",
+            "version": "v1.43.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/polyfill-php84.git",
-                "reference": "f4e1dfaee5b74aba5964fe1fd4dfc7ba5e3085fa"
+                "reference": "22c6548499cbe5c5bb072fc0c42312dff062a015"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/polyfill-php84/zipball/f4e1dfaee5b74aba5964fe1fd4dfc7ba5e3085fa",
-                "reference": "f4e1dfaee5b74aba5964fe1fd4dfc7ba5e3085fa",
+                "url": "https://api.github.com/repos/symfony/polyfill-php84/zipball/22c6548499cbe5c5bb072fc0c42312dff062a015",
+                "reference": "22c6548499cbe5c5bb072fc0c42312dff062a015",
                 "shasum": ""
             },
             "require": {
@@ -5797,7 +5795,7 @@
                 "shim"
             ],
             "support": {
-                "source": "https://github.com/symfony/polyfill-php84/tree/v1.38.1"
+                "source": "https://github.com/symfony/polyfill-php84/tree/v1.43.0"
             },
             "funding": [
                 {
@@ -5817,20 +5815,20 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-05-26T12:51:13+00:00"
+            "time": "2026-09-23T22:01:09+00:00"
         },
         {
             "name": "symfony/polyfill-php85",
-            "version": "v1.41.0",
+            "version": "v1.43.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/polyfill-php85.git",
-                "reference": "255fab485aaa1006ed411040c42aecd7b5302d7a"
+                "reference": "86a42cbcc07adc331481a5ab310a4024bfc227f6"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/polyfill-php85/zipball/255fab485aaa1006ed411040c42aecd7b5302d7a",
-                "reference": "255fab485aaa1006ed411040c42aecd7b5302d7a",
+                "url": "https://api.github.com/repos/symfony/polyfill-php85/zipball/86a42cbcc07adc331481a5ab310a4024bfc227f6",
+                "reference": "86a42cbcc07adc331481a5ab310a4024bfc227f6",
                 "shasum": ""
             },
             "require": {
@@ -5877,7 +5875,7 @@
                 "shim"
             ],
             "support": {
-                "source": "https://github.com/symfony/polyfill-php85/tree/v1.41.0"
+                "source": "https://github.com/symfony/polyfill-php85/tree/v1.43.0"
             },
             "funding": [
                 {
@@ -5897,7 +5895,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-07-01T12:47:55+00:00"
+            "time": "2026-09-25T15:46:47+00:00"
         },
         {
             "name": "symfony/polyfill-php86",
@@ -9158,16 +9156,16 @@
         },
         {
             "name": "rector/rector",
-            "version": "2.6.2",
+            "version": "2.6.4",
             "source": {
                 "type": "git",
                 "url": "https://github.com/rectorphp/rector.git",
-                "reference": "03cd615cdd5648abb5f10ff3a684fdb976687190"
+                "reference": "6ff008471683591224951526247b7a2b86980ba9"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/rectorphp/rector/zipball/03cd615cdd5648abb5f10ff3a684fdb976687190",
-                "reference": "03cd615cdd5648abb5f10ff3a684fdb976687190",
+                "url": "https://api.github.com/repos/rectorphp/rector/zipball/6ff008471683591224951526247b7a2b86980ba9",
+                "reference": "6ff008471683591224951526247b7a2b86980ba9",
                 "shasum": ""
             },
             "require": {
@@ -9206,7 +9204,7 @@
             ],
             "support": {
                 "issues": "https://github.com/rectorphp/rector/issues",
-                "source": "https://github.com/rectorphp/rector/tree/2.6.2"
+                "source": "https://github.com/rectorphp/rector/tree/2.6.4"
             },
             "funding": [
                 {
@@ -9214,7 +9212,7 @@
                     "type": "github"
                 }
             ],
-            "time": "2026-08-12T06:23:05+00:00"
+            "time": "2026-08-27T09:20:34+00:00"
         },
         {
             "name": "sebastian/cli-parser",
@@ -10562,11 +10560,11 @@
     "prefer-stable": true,
     "prefer-lowest": false,
     "platform": {
-        "php": "^8.2"
+        "php": "^8.5"
     },
     "platform-dev": {},
     "platform-overrides": {
-        "php": "8.2.0"
+        "php": "8.5.12"
     },
     "plugin-api-version": "2.9.0"
 }

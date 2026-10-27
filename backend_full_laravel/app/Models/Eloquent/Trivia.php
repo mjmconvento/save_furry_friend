@@ -24,13 +24,16 @@ class Trivia extends Model
      * `Str::plural('trivia')` need not be `trivias`, and the migration says
      * `trivias`.
      */
+    #[\Override]
     protected $table = 'trivias';
 
+    #[\Override]
     protected $fillable = ['text', 'tone', 'species'];
 
     /**
      * @var array<string, string>
      */
+    #[\Override]
     protected $casts = [
         'tone' => TriviaTone::class,
         'species' => TriviaSpecies::class,

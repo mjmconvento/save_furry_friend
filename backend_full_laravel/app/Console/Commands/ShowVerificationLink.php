@@ -22,8 +22,10 @@ use Illuminate\Support\Facades\URL;
  */
 class ShowVerificationLink extends Command
 {
+    #[\Override]
     protected $signature = 'email:verification-link {email}';
 
+    #[\Override]
     protected $description = "Print the signed email verification link for an account";
 
     public function handle(): int

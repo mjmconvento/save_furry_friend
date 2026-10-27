@@ -38,19 +38,25 @@ class Post extends Model
 
     public const UPDATED_AT = 'updatedAt';
 
+    #[\Override]
     protected $connection = 'mongodb';
 
+    #[\Override]
     protected $table = 'posts';
 
+    #[\Override]
     protected $fillable = ['authorId', 'authorName', 'content', 'tags', 'medias'];
 
+    #[\Override]
     public $incrementing = false;
 
+    #[\Override]
     protected $keyType = 'string';
 
     /**
      * @var array<string, string>
      */
+    #[\Override]
     protected $casts = [
         'createdAt' => 'datetime',
         'updatedAt' => 'datetime',

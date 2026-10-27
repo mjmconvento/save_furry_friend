@@ -23,9 +23,9 @@ graph LR
 ## Layout
 
 ```
-backend_full_laravel/   Laravel 12 API (PHP 8.2, Sanctum, mongodb/laravel-mongodb, Pest)
+backend_full_laravel/   Laravel 12 API (PHP 8.5, Sanctum, mongodb/laravel-mongodb, Pest)
 frontend_react/         React 19 SPA (Vite 7 + TypeScript 5.8, MUI 7, react-router 7, Vitest)
-php/Dockerfile          php-fpm 8.2 image used by the `app` service
+php/Dockerfile          php-fpm 8.5 image used by the `app` service
 nginx/conf.d/           vhost that fronts php-fpm on :8081
 docker-compose.yml      app, db, mongo, nginx, react, minio
 ```

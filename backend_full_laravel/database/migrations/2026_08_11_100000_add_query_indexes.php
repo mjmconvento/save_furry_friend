@@ -15,7 +15,7 @@ return new class() extends Migration {
      *
      * @var array<int, array<string, int>>
      */
-    private const MONGO_POST_INDEXES = [
+    private const array MONGO_POST_INDEXES = [
         [
             'authorId' => 1,
             'createdAt' => -1,
@@ -26,7 +26,7 @@ return new class() extends Migration {
         ],     // tag filter
     ];
 
-    private const USERS_TRGM_INDEX = 'users_names_trgm';
+    private const string USERS_TRGM_INDEX = 'users_names_trgm';
 
     public function up(): void
     {

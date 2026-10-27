@@ -39,19 +39,25 @@ class Comment extends Model
 
     public const UPDATED_AT = 'updatedAt';
 
+    #[\Override]
     protected $connection = 'mongodb';
 
+    #[\Override]
     protected $table = 'comments';
 
+    #[\Override]
     protected $fillable = ['postId', 'authorId', 'content'];
 
+    #[\Override]
     public $incrementing = false;
 
+    #[\Override]
     protected $keyType = 'string';
 
     /**
      * @var array<string, string>
      */
+    #[\Override]
     protected $casts = [
         'createdAt' => 'datetime',
         'updatedAt' => 'datetime',

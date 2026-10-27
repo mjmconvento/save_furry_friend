@@ -26,16 +26,16 @@ use RuntimeException;
 class SamplePostSeeder extends Seeder
 {
     /** Marks a document as this seeder's output. */
-    private const MARKER = 'sample';
+    private const string MARKER = 'sample';
 
     /** Fixed so the sample corpus is identical on every machine and deploy. */
-    private const RANDOM_SEED = 20260812;
+    private const int RANDOM_SEED = 20260812;
 
     /**
      * How many of the 50 land inside today, so the home page summary has
      * something to count on a fresh install.
      */
-    private const POSTS_TODAY = 6;
+    private const int POSTS_TODAY = 6;
 
     /**
      * Content is grouped by tone rather than assigned randomly: a

@@ -23,7 +23,7 @@ return RectorConfig::configure()
         // failed the Rector check with a diff nobody should apply.
         __DIR__ . '/bootstrap/cache',
     ])
-    ->withPhpSets(php82: true)
+    ->withPhpSets(php85: true)
     // Turns a whole class of silent scalar coercions into TypeErrors.
     ->withRules([
         DeclareStrictTypesRector::class,

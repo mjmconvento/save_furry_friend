@@ -53,7 +53,7 @@ jobs:
             - name: Setup PHP
               uses: shivammathur/setup-php@v2
               with:
-                  php-version: '8.2'
+                  php-version: '8.5'
                   # mongodb is required: the Post model and three migrations
                   # talk to MongoDB, so the suite cannot boot without it.
                   extensions: mbstring, pdo, pdo_pgsql, mongodb
@@ -125,7 +125,7 @@ jobs:
             - name: Setup PHP
               uses: shivammathur/setup-php@v2
               with:
-                  php-version: '8.2'
+                  php-version: '8.5'
                   # mongodb only because composer's platform check requires the
                   # extension to install at all; nothing here connects to Mongo.
                   extensions: mbstring, pdo, pdo_pgsql, mongodb

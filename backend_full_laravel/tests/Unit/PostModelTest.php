@@ -12,7 +12,7 @@ it('resolves to the posts collection', function (): void {
     // BE-10: the collection used to be declared in a `$collection` property
     // that the framework never reads, so a class rename would have silently
     // pointed the model at a different collection.
-    expect((new Post())->getTable())
+    expect(new Post()->getTable())
         ->toBe('posts');
 });
 
@@ -21,12 +21,13 @@ it('manages its own camelCase timestamps', function (): void {
     // created_at plus updated_at.
     expect(Post::CREATED_AT)->toBe('createdAt')
         ->and(Post::UPDATED_AT)->toBe('updatedAt')
-        ->and((new Post())->usesTimestamps())
+        ->and(new Post()->usesTimestamps())
         ->toBeTrue();
 });
 
 it('does not accept a title or a hand-set createdAt by mass assignment', function (): void {
-    $fillable = (new Post())->getFillable();
+    $fillable = new Post()
+        ->getFillable();
 
     expect($fillable)
         ->not->toContain('title')
@@ -41,7 +42,8 @@ it('does not accept a title or a hand-set createdAt by mass assignment', functio
 });
 
 it('casts its timestamps to dates', function (): void {
-    $casts = (new Post())->getCasts();
+    $casts = new Post()
+        ->getCasts();
 
     expect($casts)
         ->toHaveKey('createdAt')

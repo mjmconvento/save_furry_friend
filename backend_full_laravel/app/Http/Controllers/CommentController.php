@@ -40,7 +40,7 @@ class CommentController extends Controller
 
         $comment = $this->commentService->store($post, $author, $content);
 
-        return (new CommentResource($comment))
+        return new CommentResource($comment)
             ->response()
             ->setStatusCode(201);
     }

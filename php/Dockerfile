@@ -1,15 +1,16 @@
-# Pinned minor, floating patch: Laravel 12 supports PHP 8.2-8.4, and the whole
-# verified state of this app (test suite, static analysis, the image on disk)
-# is 8.2. The ARG below is what controls the extension version, not the tag.
-FROM php:8.2-fpm AS base
+# Exact patch pin: Dependabot's docker ecosystem then opens a PR for every new
+# 8.5.x patch, and .github/dependabot.yml ignores php minor/major bumps because
+# moving to 8.6 is a deliberate upgrade (composer.json platform, CI, Rector).
+# composer.json's config.platform.php must never be newer than this tag.
+FROM php:8.5.12-fpm AS base
 
-# Pinned deliberately to the version the app is actually validated against
-# (`php --ri mongodb` in the current image reports 2.0.0). It satisfies the
-# locked constraint `ext-mongodb: ^2.0` (mongodb/mongodb 2.0.0 in composer.lock)
-# and its package.xml declares PHP 8.1.0-8.99.99. Bump on purpose, never by
+# Pinned deliberately: the PECL release must satisfy what composer.lock
+# requires (mongodb/mongodb 2.5.0 requires `ext-mongodb: ^2.5`), and 2.5.5's
+# package.xml declares PHP 8.1.0-8.99.99. Bump on purpose, never by
 # rebuilding: an unpinned `pecl install` builds clean and then `composer install`
-# refuses the day PECL ships a new major.
-ARG MONGODB_EXT_VERSION=2.0.0
+# refuses the day PECL ships a release the lock does not accept. When
+# mongodb/mongodb moves to a new minor, raise this to a matching 2.x first.
+ARG MONGODB_EXT_VERSION=2.5.5
 
 RUN set -eux; \
     apt-get update; \
@@ -23,7 +24,9 @@ RUN set -eux; \
         libxml2-dev \
         libzip-dev \
         pkg-config; \
-    docker-php-ext-install -j"$(nproc)" pdo_pgsql pgsql zip intl opcache; \
+    # No opcache here: since PHP 8.5 OPcache is compiled into PHP itself, and
+    # `docker-php-ext-install opcache` fails with "cp: cannot stat 'modules/*'".
+    docker-php-ext-install -j"$(nproc)" pdo_pgsql pgsql zip intl; \
     pecl install "mongodb-${MONGODB_EXT_VERSION}"; \
     docker-php-ext-enable mongodb; \
     pecl clear-cache; \

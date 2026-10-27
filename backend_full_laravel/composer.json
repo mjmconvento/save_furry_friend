@@ -9,12 +9,13 @@
     ],
     "license": "MIT",
     "require": {
-        "php": "^8.2",
+        "php": "^8.5",
         "laravel/framework": "^12.0",
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^3.0.2",
         "league/flysystem-aws-s3-v3": "^3.29",
         "mongodb/laravel-mongodb": "^5.4",
+        "mongodb/mongodb": "^2.5",
         "symfony/brevo-mailer": "^7.4",
         "symfony/http-client": "^7.4"
     },
@@ -86,7 +87,7 @@
     },
     "config": {
         "platform": {
-            "php": "8.2.0"
+            "php": "8.5.12"
         },
         "optimize-autoloader": true,
         "preferred-install": "dist",

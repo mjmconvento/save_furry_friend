@@ -26,11 +26,11 @@ class UserController extends Controller
      * turns every search into a sequential scan, so it is matched exactly and
      * the words are separated in PHP instead.
      */
-    private const FULL_NAME_SQL = "(first_name || ' ' || coalesce(middle_name, '') || ' ' || last_name)";
+    private const string FULL_NAME_SQL = "(first_name || ' ' || coalesce(middle_name, '') || ' ' || last_name)";
 
-    private const MAX_SEARCH_WORDS = 5;
+    private const int MAX_SEARCH_WORDS = 5;
 
-    private const SEARCH_LIMIT = 10;
+    private const int SEARCH_LIMIT = 10;
 
     public function __construct(
         private readonly UserService $userService
@@ -68,7 +68,7 @@ class UserController extends Controller
     {
         $user = $this->userService->storeUser($request);
 
-        return (new UserResource($user))
+        return new UserResource($user)
             ->response()
             ->setStatusCode(201);
     }

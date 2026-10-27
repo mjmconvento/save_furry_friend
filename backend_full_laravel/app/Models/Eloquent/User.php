@@ -57,6 +57,7 @@ class User extends Authenticatable implements MustVerifyEmail
      *
      * @var list<string>
      */
+    #[\Override]
     protected $fillable = [
         'first_name',
         'middle_name',
@@ -75,6 +76,7 @@ class User extends Authenticatable implements MustVerifyEmail
      *
      * @var array<string, string>
      */
+    #[\Override]
     protected $attributes = [
         'roles' => '["' . UserRole::User->value . '"]',
         'preferences' => '{}',
@@ -85,6 +87,7 @@ class User extends Authenticatable implements MustVerifyEmail
      *
      * @var list<string>
      */
+    #[\Override]
     protected $hidden = [
         'password',
         'remember_token',

@@ -54,6 +54,12 @@ updates:
       # Active LTS on 2026-10-28, and 24 is supported until 2028-04-30.
       - dependency-name: node
         versions: ["25.x", "27.x"]
+      # PHP minor/major upgrades are deliberate: they also move composer.json
+      # (require.php, config.platform.php), CI's setup-php version and Rector's
+      # PHP set. Only php 8.5.x patch bumps should arrive as PRs.
+      - dependency-name: php
+        update-types:
+          ["version-update:semver-major", "version-update:semver-minor"]
     groups:
       base-images:
         patterns: ["*"]
@@ -65,8 +71,10 @@ updates:
     schedule:
       interval: monthly
     ignore:
-      # postgres is pinned to 16 on purpose: 18 moved its data directory and
-      # refuses to start against the existing pgdata volume.
+      # postgres is pinned to the 18 major on purpose: a major bump cannot reuse
+      # the existing cluster (it needs pg_upgrade or a dump/restore), and since
+      # the 18 image keeps PGDATA under /var/lib/postgresql/<major>/docker, a
+      # newer major would start against an empty data directory instead.
       - dependency-name: postgres
         update-types: ["version-update:semver-major"]
       # mongo is pinned to the 8.0 line (the tag still tracks 8.0.x patches).

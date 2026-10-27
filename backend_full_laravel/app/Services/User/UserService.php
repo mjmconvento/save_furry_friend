@@ -26,7 +26,7 @@ class UserService
      * The window "posting most" is measured over. Long enough that a weekly
      * poster always registers, short enough that a dormant account drops off.
      */
-    private const RECENT_DAYS = 30;
+    private const int RECENT_DAYS = 30;
 
     public function __construct(
         private readonly PostService $postService
