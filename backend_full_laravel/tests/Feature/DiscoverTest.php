@@ -14,11 +14,7 @@ use Illuminate\Testing\TestResponse;
  */
 function discoverPosts(User $author, int $recent, int $old = 0): void
 {
-    foreach (range(1, max($recent, 0)) as $ignored) {
-        if ($recent < 1) {
-            break;
-        }
-
+    for ($i = 1; $i <= $recent; ++$i) {
         Post::create([
             'authorId' => $author->id,
             'authorName' => $author->first_name,
@@ -27,11 +23,7 @@ function discoverPosts(User $author, int $recent, int $old = 0): void
         ]);
     }
 
-    foreach (range(1, max($old, 0)) as $ignored) {
-        if ($old < 1) {
-            break;
-        }
-
+    for ($i = 1; $i <= $old; ++$i) {
         $post = Post::create([
             'authorId' => $author->id,
             'authorName' => $author->first_name,

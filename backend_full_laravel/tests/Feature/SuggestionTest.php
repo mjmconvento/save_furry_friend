@@ -7,7 +7,7 @@ use App\Models\Eloquent\User;
 use App\Models\Mongo\Post;
 
 $postsFor = static function (User $author, int $count): void {
-    foreach (range(1, $count) as $ignored) {
+    for ($i = 1; $i <= $count; ++$i) {
         Post::create([
             'authorId' => $author->id,
             'authorName' => $author->first_name,
