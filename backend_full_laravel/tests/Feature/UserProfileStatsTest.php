@@ -17,7 +17,7 @@ it('reports post, follower and following counts on a profile', function (): void
     $subject->following()
         ->attach($followed->id);
 
-    foreach (range(1, 3) as $ignored) {
+    for ($i = 1; $i <= 3; ++$i) {
         Post::create([
             'authorId' => $subject->id,
             'authorName' => $subject->first_name,
