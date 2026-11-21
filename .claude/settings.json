@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(make help)",
+      "Bash(make test)",
+      "Bash(make lint)",
+      "Bash(make up)",
+      "Bash(make logs)",
+      "Bash(docker compose ps *)",
+      "Bash(docker compose logs *)",
+      "Bash(docker compose config *)",
+      "Bash(docker compose exec -T app composer phpstan)",
+      "Bash(docker compose exec -T app composer ecs-check)",
+      "Bash(docker compose exec -T app composer ecs-fix)",
+      "Bash(docker compose exec -T app composer rector)",
+      "Bash(docker compose exec -T app composer rector-fix)",
+      "Bash(docker compose exec -T app composer test)",
+      "Bash(docker compose exec -T app vendor/bin/pest *)",
+      "Bash(docker compose exec -T app php artisan route:list *)",
+      "Bash(docker compose exec -T app php artisan migrate:status *)",
+      "Bash(docker compose exec -T react yarn typecheck)",
+      "Bash(docker compose exec -T react yarn lint)",
+      "Bash(docker compose exec -T react yarn format)",
+      "Bash(docker compose exec -T react yarn format:check)",
+      "Bash(docker compose exec -T react yarn test *)",
+      "Bash(python3 .claude/hooks/ci_gate.py *)",
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git show *)"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./backend_full_laravel/.env)",
+      "Read(./frontend_react/.env)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/session_context.py\"",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard_bash.py\"",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/protect_files.py\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/post_edit.py\"",
+            "timeout": 120,
+            "statusMessage": "Formatting and linting the edited file"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/ci_gate.py\" --hook",
+            "timeout": 900,
+            "statusMessage": "Running the local CI gate on changed files"
+          }
+        ]
+      }
+    ]
+  }
+}

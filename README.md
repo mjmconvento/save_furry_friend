@@ -586,3 +586,26 @@ The `workflow_dispatch` trigger is also how you warm the stack before sharing th
 visitor does not pay Render's ~1 minute cold start. Do not shorten the schedule to defeat that
 sleep: an always-awake service is ~730 of the free tier's 750 monthly instance hours.
 
+## Working with Claude Code
+
+The repository carries a [Claude Code](https://code.claude.com/docs) setup, committed so every clone
+gets the same behaviour. It needs `python3` on the host for the hooks (stdlib only) and the Compose
+stack up for anything that formats or tests.
+
+| Piece | Where | What it does |
+| --- | --- | --- |
+| Project memory | `CLAUDE.md` | Stack, commands, the invariants above in short form, conventions |
+| Path rules | `.claude/rules/backend.md`, `frontend.md` | Load only when a file in that tree is touched: layering, level-10 typing, Mongo idioms, test style |
+| Skill `/api-endpoint` | `.claude/skills/api-endpoint/` | Route → FormRequest → policy → service → resource → Pest → SPA service/interface → README, with templates; injects the live `route:list` |
+| Skill `/data-migration` | `.claude/skills/data-migration/` | Postgres vs Mongo decision, idempotent backfills, denormalized fields, seeders, and what `deploy-db` will run in production |
+| Skill `/ci-check` | `.claude/skills/ci-check/` | Runs the pipeline locally and maps each failure to its fix |
+| Agent `sff-reviewer` | `.claude/agents/sff-reviewer.md` | Read-only review of a diff: authorization, payload privacy, cross-store consistency, N+1, migrations, contract drift |
+| `SessionStart` hook | `.claude/hooks/session_context.py` | Tells Claude the branch, stack health, and whether the `testing` database exists |
+| `PreToolUse` hooks | `guard_bash.py`, `protect_files.py` | Deny `npm`, force-push, and `php`/`yarn` run on a host that lacks them; ask before volume wipes, `migrate:fresh`, pushes to `main`, or editing a migration already on `main`; deny edits to `.env` files, lockfiles and generated trees |
+| `PostToolUse` hook | `post_edit.py` | ECS on edited PHP, Prettier + ESLint on edited TS; reminds about the mirrored file on the other side of the API |
+| `Stop` hook | `ci_gate.py` | Runs the CI checks for the side(s) with uncommitted changes and sends failures back to Claude before the turn ends; cached per change set so it never loops |
+| `@claude` in GitHub | `.github/workflows/claude.yml` | Mention `@claude` on an issue or PR; needs an `ANTHROPIC_API_KEY` repository secret |
+
+`ci_gate.py` is also a plain script: `python3 .claude/hooks/ci_gate.py --all` is the closest local
+equivalent of a green CI run. Personal overrides go in `.claude/settings.local.json` (gitignored).
+

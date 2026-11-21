@@ -1,0 +1,50 @@
+name: Claude
+# Mention-triggered only: comment `@claude <request>` on an issue or PR. Nothing
+# here runs on push, so the CI pipeline and Dependabot PRs (which cannot read
+# secrets) are unaffected. The action itself refuses commenters without write
+# access to the repository.
+#
+# Needs one repository secret: ANTHROPIC_API_KEY. Claude reads CLAUDE.md,
+# .claude/rules and .claude/skills from the checkout, so it follows the same
+# conventions as a local session.
+
+on:
+    issue_comment:
+        types: [created]
+    pull_request_review_comment:
+        types: [created]
+    pull_request_review:
+        types: [submitted]
+    issues:
+        types: [opened, assigned]
+
+jobs:
+    claude:
+        if: >-
+            (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude'))
+            || (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude'))
+            || (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude'))
+            || (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
+        runs-on: ubuntu-latest
+        permissions:
+            contents: write
+            pull-requests: write
+            issues: write
+            id-token: write
+            # Lets Claude read the CI run of the PR it was asked about.
+            actions: read
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v7
+              with:
+                  fetch-depth: 1
+
+            - name: Run Claude Code
+              uses: anthropics/claude-code-action@v1
+              with:
+                  anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+                  # No Docker stack on this runner, so the local hooks' checks skip
+                  # themselves; CI on the resulting push is the gate.
+                  claude_args: |
+                      --max-turns 30
