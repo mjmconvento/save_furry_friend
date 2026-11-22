@@ -31,24 +31,33 @@ type TopbarProps = {
 const Topbar = ({ onMenuClick }: TopbarProps) => {
   const { logout, token } = useAuth();
   const [search, setSearch] = useState('');
-  const [results, setResults] = useState<User[]>([]);
-  const [searching, setSearching] = useState(false);
+  // The last answer and the keyword it answers. `results` and `searching` are
+  // derived from it, so the effect below only sets state from its async
+  // callback, never synchronously in the effect body.
+  const [answer, setAnswer] = useState<{
+    keyword: string;
+    users: User[];
+  } | null>(null);
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
   const keyword = search.trim();
+  // While a newer keyword is in flight the previous rows stay listed; an empty
+  // box lists nothing.
+  const results = keyword === '' ? [] : (answer?.users ?? []);
+  // On from the keystroke, not from the request: a spinner that only covered
+  // the 200ms the network takes would flash and read as a glitch. Off once the
+  // answer for this exact keyword (or its failure) has landed.
+  const searching = keyword !== '' && answer?.keyword !== keyword;
+
+  // Emptying the box forgets the last answer, so the next search does not open
+  // on a stale list.
+  const changeSearch = (value: string) => {
+    setSearch(value);
+    if (value.trim() === '') setAnswer(null);
+  };
 
   useEffect(() => {
-    if (keyword === '') {
-      setResults([]);
-      setSearching(false);
-
-      return;
-    }
-
-    // Set before the debounce, not inside the request: the spinner should appear
-    // on the keystroke, or it flashes for the 200ms the network takes and reads
-    // as a glitch.
-    setSearching(true);
+    if (keyword === '') return;
 
     // One controller per debounce window: the cleanup below aborts the
     // in-flight request as soon as the query changes, so a slow response for
@@ -57,16 +66,15 @@ const Topbar = ({ onMenuClick }: TopbarProps) => {
 
     const timer = setTimeout(async () => {
       try {
-        setResults(await searchUsersApi(token, keyword, controller.signal));
-        setSearching(false);
+        const users = await searchUsersApi(token, keyword, controller.signal);
+        setAnswer({ keyword, users });
       } catch (error: unknown) {
-        // An abort means a newer keystroke owns the spinner now; clearing it
+        // An abort means a newer keystroke owns the spinner now; answering
         // here would blink it off between windows.
         if (isAbort(error)) return;
 
         console.error('Search failed', error);
-        setResults([]);
-        setSearching(false);
+        setAnswer({ keyword, users: [] });
       }
     }, 300);
 
@@ -147,7 +155,7 @@ const Topbar = ({ onMenuClick }: TopbarProps) => {
               value={null}
               inputValue={search}
               onInputChange={(_, value, reason) =>
-                setSearch(reason === 'input' ? value : '')
+                changeSearch(reason === 'input' ? value : '')
               }
               onChange={(_, user) => {
                 if (user) navigate(`/profile/${user.id}`);
@@ -204,7 +212,7 @@ const Topbar = ({ onMenuClick }: TopbarProps) => {
                         <IconButton
                           aria-label="Clear search"
                           size="small"
-                          onClick={() => setSearch('')}
+                          onClick={() => changeSearch('')}
                           sx={{ ml: 0.5, p: 0.25 }}
                         >
                           <CloseIcon sx={{ fontSize: 14 }} />
