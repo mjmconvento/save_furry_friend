@@ -37,24 +37,25 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({
   const { token } = useAuth();
   const notify = useNotify();
 
-  // Reload the form whenever a user is handed in or the dialog is (re)opened,
-  // so reopening discards unsaved edits. Adjusting state while rendering, not
-  // in an effect: an effect would paint the stale form first, then re-render.
+  // Reload the form whenever `user` or `open` changes (and on mount), so
+  // reopening discards unsaved edits. Adjusting state while rendering, not in
+  // an effect: an effect would paint the stale form first, then re-render.
+  // Tracked even while `user` is null: the list clears it on close and hands
+  // the same object back on reopen.
   // https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
   const [loadedFrom, setLoadedFrom] = useState<{
-    user: User | null;
-    open: boolean;
-  }>({
-    user: null,
-    open: false,
-  });
-  if (user && (loadedFrom.user !== user || loadedFrom.open !== open)) {
+    user: User | null | undefined;
+    open: boolean | undefined;
+  }>({ user: undefined, open: undefined });
+  if (loadedFrom.user !== user || loadedFrom.open !== open) {
     setLoadedFrom({ user, open });
-    setUpdatedFirstName(user.first_name);
-    // `middle_name` is nullable on the wire; the field is a controlled input.
-    setUpdatedMiddleName(user.middle_name ?? '');
-    setUpdatedLastName(user.last_name);
-    setUpdatedEmail(user.email);
+    if (user) {
+      setUpdatedFirstName(user.first_name);
+      // `middle_name` is nullable on the wire; the field is a controlled input.
+      setUpdatedMiddleName(user.middle_name ?? '');
+      setUpdatedLastName(user.last_name);
+      setUpdatedEmail(user.email);
+    }
   }
 
   const handleUpdate = async () => {

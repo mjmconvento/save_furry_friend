@@ -56,21 +56,22 @@ const EditPostDialog: React.FC<EditPostDialogProps> = ({
     setUpdatedTags(newTags);
   };
 
-  // Reload the form whenever a post is handed in or the dialog is (re)opened,
-  // so reopening discards unsaved edits. Adjusting state while rendering, not
-  // in an effect: an effect would paint the stale form first, then re-render.
+  // Reload the form whenever `post` or `open` changes (and on mount), so
+  // reopening discards unsaved edits. Adjusting state while rendering, not in
+  // an effect: an effect would paint the stale form first, then re-render.
+  // Tracked even while `post` is null: a caller may clear it on close and hand
+  // the same object back on reopen.
   // https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
   const [loadedFrom, setLoadedFrom] = useState<{
-    post: Post | null;
-    open: boolean;
-  }>({
-    post: null,
-    open: false,
-  });
-  if (post && (loadedFrom.post !== post || loadedFrom.open !== open)) {
+    post: Post | null | undefined;
+    open: boolean | undefined;
+  }>({ post: undefined, open: undefined });
+  if (loadedFrom.post !== post || loadedFrom.open !== open) {
     setLoadedFrom({ post, open });
-    setUpdatedContent(post.content);
-    setUpdatedTags(post.tags);
+    if (post) {
+      setUpdatedContent(post.content);
+      setUpdatedTags(post.tags);
+    }
   }
 
   const handleUpdate = async () => {
