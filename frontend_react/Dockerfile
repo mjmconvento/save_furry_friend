@@ -1,7 +1,7 @@
 # Dockerfile for React
 # Node 24 "Krypton" is the Active LTS line (EOL 2028-04-30). Do not follow
 # odd-numbered majors here - they go end-of-life six months after release.
-FROM node:24
+FROM node:26
 
 # Set the working directory
 WORKDIR /app
