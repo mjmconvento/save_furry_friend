@@ -25,5 +25,9 @@ export default defineConfig({
     // Vite transforming it. On a cold run - which is every CI run - that
     // exceeded the 5s default and failed a test that passes in isolation.
     testTimeout: 20_000,
+    // Node 25+ defines its own global `localStorage` (undefined unless
+    // --localstorage-file is given), which shadows jsdom's Storage, so every
+    // `localStorage.clear()` in the suite throws. Turn Node's off in the workers.
+    execArgv: ['--no-experimental-webstorage'],
   },
 });
