@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -56,12 +56,23 @@ const EditPostDialog: React.FC<EditPostDialogProps> = ({
     setUpdatedTags(newTags);
   };
 
-  useEffect(() => {
+  // Reload the form whenever `post` or `open` changes (and on mount), so
+  // reopening discards unsaved edits. Adjusting state while rendering, not in
+  // an effect: an effect would paint the stale form first, then re-render.
+  // Tracked even while `post` is null: a caller may clear it on close and hand
+  // the same object back on reopen.
+  // https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
+  const [loadedFrom, setLoadedFrom] = useState<{
+    post: Post | null | undefined;
+    open: boolean | undefined;
+  }>({ post: undefined, open: undefined });
+  if (loadedFrom.post !== post || loadedFrom.open !== open) {
+    setLoadedFrom({ post, open });
     if (post) {
       setUpdatedContent(post.content);
       setUpdatedTags(post.tags);
     }
-  }, [post, open]);
+  }
 
   const handleUpdate = async () => {
     if (!post) return;
