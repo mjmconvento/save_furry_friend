@@ -17,7 +17,7 @@
         "mongodb/laravel-mongodb": "^5.4",
         "mongodb/mongodb": "^2.5",
         "symfony/brevo-mailer": "^7.4",
-        "symfony/http-client": "^7.4"
+        "symfony/http-client": "^8.1"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
