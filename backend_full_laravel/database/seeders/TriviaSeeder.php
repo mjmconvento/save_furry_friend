@@ -54,7 +54,7 @@ class TriviaSeeder extends Seeder
             }
         });
 
-        $this->command->info(sprintf('TriviaSeeder: %d trivia seeded.', count($rows)));
+        $this->command?->info(sprintf('TriviaSeeder: %d trivia seeded.', count($rows)));
     }
 
     /**

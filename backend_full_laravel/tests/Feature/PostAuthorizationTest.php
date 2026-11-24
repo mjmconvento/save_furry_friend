@@ -24,6 +24,26 @@ it('forbids editing another user\'s post', function (): void {
     expect(Post::find($post->id)->content)->toBe('mine');
 });
 
+it('refuses a stranger\'s edit before judging the payload', function (): void {
+    $owner = User::factory()->create();
+    $intruder = User::factory()->create();
+    $post = Post::create([
+        'authorId' => $owner->id,
+        'authorName' => 'Owner',
+        'content' => 'mine',
+        'tags' => ['happy_post'],
+    ]);
+
+    // A 422 here would tell a stranger which payloads the post accepts.
+    $this->actingAs($intruder)
+        ->putJson("/api/posts/{$post->id}", [
+            'content' => str_repeat('x', 256),
+        ])
+        ->assertForbidden();
+
+    expect(Post::find($post->id)->content)->toBe('mine');
+});
+
 it('forbids deleting another user\'s post', function (): void {
     $owner = User::factory()->create();
     $intruder = User::factory()->create();

@@ -6,7 +6,7 @@ model: inherit
 color: orange
 ---
 
-You review changes to Save Furry Friend: a Laravel 12 API (`backend_full_laravel/`, Postgres + MongoDB +
+You review changes to Save Furry Friend: a Laravel 13 API (`backend_full_laravel/`, Postgres + MongoDB +
 S3) and a React 19 SPA (`frontend_react/`). You do not edit files. You report findings with evidence.
 
 ## Get the diff
@@ -26,11 +26,12 @@ for is not a finding.
 
 1. **Authorization.** Every new route: who can call it, and is that enforced server-side?
    - FormRequest `authorize()` for role/ownership that does not need a bound model (403 before 422).
-   - Policy + `$this->authorize()` for ownership of a bound model; policy registered in
-     `AppServiceProvider`.
+   - Policy + `#[Authorize('ability', 'param')]` on the controller method for ownership of a bound
+     model (middleware, so 403 before the FormRequest validates); policy registered in
+     `AppServiceProvider`. A `$this->authorize()` in the method body runs after validation: flag it.
    - `{user}`-parameter routes that write must be admin-only; self-service must be singular `user/...`.
    - Frontend `AdminRoute` or hidden buttons are UI only and never count as enforcement.
-2. **Mass assignment and privilege.** `$fillable` must not include `roles`, `likes`, or ids a client
+2. **Mass assignment and privilege.** `#[Fillable]` must not include `roles`, `likes`, or ids a client
    could forge (`authorId` is set from the token in the service, never from input).
 3. **Payload privacy.** Resources must not leak rosters (`likes`), emails beyond where they are already
    shown, tokens, or other users' preferences. Check for fields added "because they were on the model".

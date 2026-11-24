@@ -1,6 +1,6 @@
 # Save Furry Friend
 
-Social app for street-animal rescuers: Laravel 12 API (`backend_full_laravel/`) + React 19 SPA
+Social app for street-animal rescuers: Laravel 13 API (`backend_full_laravel/`) + React 19 SPA
 (`frontend_react/`), on Docker Compose. `README.md` is the long-form design record — read the
 relevant section before changing a feature it describes; do not import it wholesale.
 
@@ -44,8 +44,9 @@ Pest needs the Postgres `testing` database: `docker compose exec db createdb -U 
 - **Every endpoint lives in `routes/api.php`.** Literal segments (`users/search`, `posts/summary`,
   `posts/{post}/like`) must be declared **before** `apiResource(...)` or the `{id}` wildcard eats them.
 - **Authorization runs before validation**: put it in the FormRequest's `authorize()` (403 before 422)
-  or in a Policy via `$this->authorize()`. Self-service routes use singular `user/...` with no `{user}`
-  parameter so they cannot be aimed at someone else.
+  or, for a bound model, in a Policy named by `#[Authorize('ability', 'param')]` on the controller
+  method (it runs as middleware, before the FormRequest). Self-service routes use singular
+  `user/...` with no `{user}` parameter so they cannot be aimed at someone else.
 - **No mass-assignable privilege.** `roles` is not fillable; `likes` is not fillable on `Post`.
 - **Postgres and Mongo cannot join.** `authorName` is denormalized into posts and fanned out by the
   `SyncAuthorName` job on rename; avatars and comment counts are attached at read time by

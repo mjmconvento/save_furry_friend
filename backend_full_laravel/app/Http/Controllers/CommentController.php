@@ -13,6 +13,7 @@ use App\Models\Mongo\Post;
 use App\Services\CommentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Routing\Attributes\Controllers\Authorize;
 
 class CommentController extends Controller
 {
@@ -49,10 +50,9 @@ class CommentController extends Controller
      * Bound to the comment alone, so `CommentPolicy` looks the post up itself
      * to decide whether the caller owns the story this hangs off.
      */
+    #[Authorize('delete', 'comment')]
     public function destroy(Comment $comment): JsonResponse
     {
-        $this->authorize('delete', $comment);
-
         $comment->delete();
 
         return response()->json([

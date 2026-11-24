@@ -18,6 +18,7 @@ use App\Services\User\UserService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Routing\Attributes\Controllers\Authorize;
 
 class PostController extends Controller
 {
@@ -167,10 +168,13 @@ class PostController extends Controller
         return new PostResource($post);
     }
 
+    /**
+     * Authorized as middleware, ahead of `UpdatePostRequest`: a stranger gets
+     * 403 whatever the payload, rather than a 422 that grades it.
+     */
+    #[Authorize('update', 'post')]
     public function update(UpdatePostRequest $request, Post $post): PostResource
     {
-        $this->authorize('update', $post);
-
         $this->postService->updatePost($request, $post);
         // After the save, never before: the attribute is not persisted, and
         // hydrating first would write it into the document.
@@ -179,10 +183,9 @@ class PostController extends Controller
         return new PostResource($post);
     }
 
+    #[Authorize('delete', 'post')]
     public function destroy(Post $post): JsonResponse
     {
-        $this->authorize('delete', $post);
-
         $this->postService->deletePost($post);
 
         return response()->json([

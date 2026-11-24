@@ -25,7 +25,8 @@ it('emails a reset link pointing at the SPA, not the API', function (): void {
         $url = $notification->toMail($user)
             ->actionUrl;
 
-        return str_contains($url, '/reset-password?token=')
+        return is_string($url)
+            && str_contains($url, '/reset-password?token=')
             && str_contains($url, urlencode('a@b.test'));
     });
 });

@@ -10,24 +10,24 @@
     "license": "MIT",
     "require": {
         "php": "^8.5",
-        "laravel/framework": "^12.0",
+        "laravel/framework": "^13.0",
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^3.0.2",
         "league/flysystem-aws-s3-v3": "^3.29",
         "mongodb/laravel-mongodb": "^5.4",
         "mongodb/mongodb": "^2.5",
-        "symfony/brevo-mailer": "^7.4",
-        "symfony/http-client": "^7.4"
+        "symfony/brevo-mailer": "^8.0",
+        "symfony/http-client": "^8.0"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
         "larastan/larastan": "^3.10",
-        "laravel/pail": "^1.2.2",
+        "laravel/pail": "^1.2.5",
         "laravel/sail": "^1.41",
         "mockery/mockery": "^1.6",
         "nunomaduro/collision": "^8.6",
-        "pestphp/pest": "^3.8",
-        "pestphp/pest-plugin-laravel": "^3.2",
+        "pestphp/pest": "^4.0",
+        "pestphp/pest-plugin-laravel": "^4.0",
         "phpstan/phpstan": "^2.1",
         "rector/rector": "^2.1",
         "symplify/easy-coding-standard": "^13.2"
@@ -76,7 +76,7 @@
             "@php vendor/bin/rector"
         ],
         "test": [
-            "@php artisan config:clear --ansi",
+            "@php artisan config:clear --ansi @no_additional_args",
             "@php artisan test"
         ]
     },

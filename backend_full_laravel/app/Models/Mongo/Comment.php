@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace App\Models\Mongo;
 
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Attributes\Connection;
+use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Table;
 use Illuminate\Support\Str;
 use MongoDB\Laravel\Eloquent\Model;
 
@@ -27,32 +30,20 @@ use MongoDB\Laravel\Eloquent\Model;
  * @property ?Carbon $updatedAt
  * @property ?string $authorName
  *   Not stored: filled in from Postgres by `CommentService::attachAuthors()`.
- *   Absent from `$fillable`, and these instances are never saved.
+ *   Absent from `#[Fillable]`, and these instances are never saved.
  * @property ?string $authorAvatar
  *   Not stored either, same reason.
  *
  * @method static ?Comment find(string $id)
  */
+#[Connection('mongodb')]
+#[Table('comments', keyType: 'string', incrementing: false)]
+#[Fillable(['postId', 'authorId', 'content'])]
 class Comment extends Model
 {
     public const CREATED_AT = 'createdAt';
 
     public const UPDATED_AT = 'updatedAt';
-
-    #[\Override]
-    protected $connection = 'mongodb';
-
-    #[\Override]
-    protected $table = 'comments';
-
-    #[\Override]
-    protected $fillable = ['postId', 'authorId', 'content'];
-
-    #[\Override]
-    public $incrementing = false;
-
-    #[\Override]
-    protected $keyType = 'string';
 
     /**
      * @var array<string, string>

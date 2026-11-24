@@ -200,11 +200,12 @@ class SamplePostSeeder extends Seeder
      * between that and having doubled it.
      *
      * `$command` is set by `Seeder::call()` for anything reached through
-     * `db:seed`, which is the only way these seeders run.
+     * `db:seed`; a seeder run directly has none, and then there is nobody to
+     * tell.
      */
     private function note(string $message): void
     {
-        $this->command->info($message);
+        $this->command?->info($message);
     }
 
     /**

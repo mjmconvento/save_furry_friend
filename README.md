@@ -23,7 +23,7 @@ graph LR
 ## Layout
 
 ```
-backend_full_laravel/   Laravel 12 API (PHP 8.5, Sanctum, mongodb/laravel-mongodb, Pest)
+backend_full_laravel/   Laravel 13 API (PHP 8.5, Sanctum, mongodb/laravel-mongodb, Pest 4)
 frontend_react/         React 19 SPA (Vite 7 + TypeScript 5.8, MUI 7, react-router 7, Vitest)
 php/Dockerfile          php-fpm 8.5 image used by the `app` service
 nginx/conf.d/           vhost that fronts php-fpm on :8081
@@ -348,7 +348,8 @@ same payload.
 Authorization for these lives in the FormRequests (`IndexUserRequest`, `StoreUserRequest`,
 `UpdateUserRequest`) rather than the controller, because `authorize()` runs *before* validation — an
 unauthorized caller gets `403` instead of a `422` that would disclose whether their payload was
-well-formed. `destroy` has no request class, so it authorizes in the controller.
+well-formed. `destroy` has no request class, so it carries `#[Authorize('delete', User::class)]`, which
+runs as route middleware and so also answers before anything else is read.
 
 In the SPA the Users nav group is hidden for non-admins and `/users` is wrapped in `AdminRoute`,
 which redirects — hiding a link does not stop anyone typing the URL. Both are UI only: the roles are

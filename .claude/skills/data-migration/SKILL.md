@@ -65,7 +65,7 @@ Mongo backfill (model: `2026_08_11_100100_normalize_post_medias_to_keys.php`):
 
 ## 4. Everything that moves with the schema
 
-- [ ] Model: `$fillable` (never privilege fields), `$casts`, and the `@property` docblock -
+- [ ] Model: `#[Fillable]` (never privilege fields), `$casts`, and the `@property` docblock -
       Larastan's `checkModelProperties` fails on a property the docblock does not declare.
 - [ ] Resource + `frontend_react/src/interface/*.ts` if the field is served.
 - [ ] Enum ↔ frontend mirror if a vocabulary changed (`PostTag` ↔ `src/config/tags.ts`).

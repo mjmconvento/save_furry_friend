@@ -6,7 +6,7 @@ paths:
   - "backend_full_laravel/composer.json"
 ---
 
-# Backend rules (Laravel 12, PHP 8.5)
+# Backend rules (Laravel 13, PHP 8.5)
 
 Run everything through `docker compose exec -T app …`; there is no PHP on the host.
 
@@ -16,8 +16,12 @@ Run everything through `docker compose exec -T app …`; there is no PHP on the 
   (`app/Services/`) → `JsonResource` (`app/Http/Resources/`). Controllers never query directly.
 - Inject services through constructor promotion: `private readonly PostService $postService`.
 - Postgres models live in `App\Models\Eloquent`, Mongo models in `App\Models\Mongo`
-  (`MongoDB\Laravel\Eloquent\Model`, `$connection = 'mongodb'`, UUID string keys, camelCase fields
+  (`MongoDB\Laravel\Eloquent\Model`, `#[Connection('mongodb')]`, UUID string keys, camelCase fields
   `authorId` / `createdAt`). Postgres columns are snake_case. Do not mix the two conventions.
+- Model configuration uses Laravel 13's class attributes - `#[Table]`, `#[Connection]`,
+  `#[Fillable]`, `#[Hidden]` - not the `$table` / `$fillable` / `$hidden` properties.
+- Ownership checks on a bound model: `#[Authorize('ability', 'param')]` on the controller method,
+  never `$this->authorize()` in its body, which runs after the FormRequest has already validated.
 - Policies are registered explicitly in `AppServiceProvider` with `Gate::policy(...)`. Register new
   ones there too; do not rely on auto-discovery with the nested `Models\Eloquent` / `Models\Mongo`
   namespaces. An ability with no resolvable policy is denied, so a missing line reads as a 403 bug.

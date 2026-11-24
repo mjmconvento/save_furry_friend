@@ -42,5 +42,3 @@ parameters:
           path: tests/*
         - identifier: encapsedStringPart.nonString
           path: tests/*
-        - identifier: variable.undefined
-          path: tests/Pest.php

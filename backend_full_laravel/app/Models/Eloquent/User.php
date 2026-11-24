@@ -9,6 +9,8 @@ use App\Enums\UserPreference;
 use App\Enums\UserRole;
 use Database\Factories\Eloquent\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -29,6 +31,8 @@ use Laravel\Sanctum\HasApiTokens;
  * @property array<string, mixed> $preferences
  * @property ?string $avatar bare S3 object key, rendered to a URL by UserResource
  */
+#[Fillable(['first_name', 'middle_name', 'last_name', 'email', 'password'])]
+#[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements MustVerifyEmail
 {
     use HasApiTokens;
@@ -53,20 +57,6 @@ class User extends Authenticatable implements MustVerifyEmail
     public ?array $profileStats = null;
 
     /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
-    #[\Override]
-    protected $fillable = [
-        'first_name',
-        'middle_name',
-        'last_name',
-        'email',
-        'password',
-    ];
-
-    /**
      * The column has the same default, but Eloquent does not read it back after
      * an insert - so a freshly created `User` had no roles in memory, and
      * `UserResource` died on it while the row itself was fine. Declaring it here
@@ -80,17 +70,6 @@ class User extends Authenticatable implements MustVerifyEmail
     protected $attributes = [
         'roles' => '["' . UserRole::User->value . '"]',
         'preferences' => '{}',
-    ];
-
-    /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var list<string>
-     */
-    #[\Override]
-    protected $hidden = [
-        'password',
-        'remember_token',
     ];
 
     /**
@@ -134,7 +113,7 @@ class User extends Authenticatable implements MustVerifyEmail
      * A value in the column that is not a known case is dropped by `UserRoles`,
      * so hand-edited data costs an account that role rather than granting one.
      *
-     * `roles` is deliberately absent from `$fillable`: no request may set it, so
+     * `roles` is deliberately absent from `#[Fillable]`: no request may set it, so
      * there is no payload that can promote an account. Roles are assigned by the
      * seeder, which writes through the query builder.
      */

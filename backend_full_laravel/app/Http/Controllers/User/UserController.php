@@ -11,11 +11,11 @@ use App\Http\Requests\User\UpdateUserRequest;
 use App\Http\Resources\UserResource;
 use App\Models\Eloquent\User;
 use App\Services\User\UserService;
-use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthManager;
 use Illuminate\Database\Query\JoinClause;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Routing\Attributes\Controllers\Authorize;
 
 class UserController extends Controller
 {
@@ -80,13 +80,9 @@ class UserController extends Controller
         return new UserResource($user);
     }
 
-    /**
-     * @throws AuthorizationException
-     */
+    #[Authorize('delete', User::class)]
     public function destroy(User $user): JsonResponse
     {
-        $this->authorize('delete', User::class);
-
         $this->userService->destroyUser($user);
 
         return response()->json([

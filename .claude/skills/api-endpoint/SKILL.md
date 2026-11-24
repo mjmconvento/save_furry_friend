@@ -41,9 +41,10 @@ Answer these before touching code, and state the answers to the user in one shor
    model goes in `authorize()` so a stranger gets 403 before 422 (see `IndexUserRequest`). Rules
    cap everything: string `max:`, array `max:`, `per_page` `max:50`.
 3. **Policy** for ownership checks on a bound model (`PostPolicy`, `CommentPolicy`); register it with
-   `Gate::policy()` in `AppServiceProvider`; call `$this->authorize('ability', $model)` in the controller.
+   `Gate::policy()` in `AppServiceProvider`; put `#[Authorize('ability', 'param')]` on the controller
+   method, which runs as middleware and so refuses before the FormRequest validates.
 4. **Service** method in `app/Services/`: all querying and writing. Keep fields that must never be
-   client-set out of `$fillable` (`roles`, `likes`).
+   client-set out of `#[Fillable]` (`roles`, `likes`).
 5. **Controller** method: resolve `$request->user()` with a `/** @var User $viewer */`, call the service,
    return a Resource. If it returns posts, call `$this->postService->hydrate([...])` **after** any save.
 6. **Resource**: camelCase keys for Mongo-backed payloads, snake_case for Postgres ones, matching the
